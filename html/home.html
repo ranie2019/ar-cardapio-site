@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Home - Sistema</title>
+
+  <!-- CSS da página home -->
+  <link rel="stylesheet" href="../css/home.css" />
+
+  <!-- A-Frame para preview 3D dos modelos GLB -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+</head>
+<body>
+
+  <!-- CABEÇALHO: Título e botão Perfil com dropdown -->
+  <header class="header">
+    <h1 class="titulo">Bem-vindo(a) ao Sistema</h1>
+    <div class="profile-menu">
+      <button id="profile-btn">Perfil ▼</button>
+      <div id="profile-dropdown" class="dropdown-content hidden">
+        <button id="btnLogout">Sair</button>
+        <!-- Adicione outras opções de perfil aqui -->
+      </div>
+    </div>
+  </header>
+
+  <!-- BOTÃO CARDÁPIO + MENU CATEGORIAS -->
+  <div class="cardapio-menu">
+    <button id="cardapio-btn">Cardápio ▼</button>
+    <div id="dropdownCardapio" class="dropdown-cardapio hidden">
+      <button data-categoria="bebidas">Bebidas</button>
+      <button data-categoria="carnes">Carnes</button>
+      <button data-categoria="pizzas">Pizzas</button>
+      <button data-categoria="lanches">Lanches</button>
+      <button data-categoria="sobremesas">Sobremesas</button>
+      <button data-categoria="porcoes">Porções</button>
+    </div>
+  </div>
+
+  <!-- CONTAINER ITENS DO CARDÁPIO -->
+  <div id="itensContainer" class="itens-container"></div>
+
+  <!-- SEÇÃO CADASTRO DE GARÇONS -->
+  <section id="garconsSection">
+    <h2>Adicionar Garçons</h2>
+    <div id="controleGarcons">
+      <input type="number" id="quantidadeGarcons" value="1" min="1" />
+      <div id="botoesGarcons">
+        <button id="btnMaisGarcom">+</button>
+        <button id="btnMenosGarcom">-</button>
+      </div>
+    </div>
+    <div id="formularioGarcons"></div>
+  </section>
+
+  <!-- MODAL PARA QR CODES -->
+  <div id="modalQrCode" class="modal hidden">
+    <div class="conteudo-modal">
+      <span class="fechar-modal" id="fecharModal">&times;</span>
+      <h3>QR Code do Garçom</h3>
+
+      <div id="controleQtdQr" style="margin-bottom: 20px; text-align: center;">
+        <label for="qtdQr" style="margin-right: 10px;">Quantidade de QR Codes:</label>
+        <input type="number" id="qtdQr" value="1" min="1" style="width: 50px; text-align: center; margin-right: 10px;" />
+        <button id="aumentarQr">+</button>
+        <button id="diminuirQr">-</button>
+        <button id="imprimirQr" class="btn-imprimir" title="Imprimir QR Codes">🖨️</button>
+      </div>
+
+      <div id="qrcodeContainer" style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;"></div>
+    </div>
+  </div>
+
+  <!-- Biblioteca QR Code -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- Scripts -->
+  <script src="../java/home.js"></script>
+  <script src="../java/cardapio.js"></script>
+
+</body>
+</html>

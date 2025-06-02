@@ -1,0 +1,13 @@
+/* A estrutura de cadastro é compartilhada com login */
+p {
+  margin-top: 20px;
+}
+
+p a {
+  color: #c70039;
+  text-decoration: none;
+}
+
+p a:hover {
+  text-decoration: underline;
+}

@@ -1,0 +1,99 @@
+/* Estiliza o topo da página com espaço para o botão "Entrar" à direita */
+.top-bar {
+  width: 100%;                        /* Ocupa toda a largura da tela */
+  display: flex;                      /* Flexbox para alinhar conteúdo */
+  justify-content: flex-end;         /* Alinha conteúdo (botão) à direita */
+  padding: 20px;                      /* Espaçamento interno */
+  box-sizing: border-box;            /* Inclui padding no cálculo do tamanho */
+  position: relative;                /* Permite controle sobre posicionamento interno */
+  background-color: #e28080;         /* 🎯 Cor de fundo da barra (altere aqui como quiser: branco, cinza, etc.) */
+}
+
+/* Container do botão no topo (permite fácil controle visual) */
+.btn-container {
+  position: static;                  /* Remove qualquer posicionamento absoluto */
+}
+
+/* Modificação para o botão "login" */
+.top-bar .btn-vermelho {
+  background-color: #e50914;         /* Cor de fundo vermelha */
+  color: white;                      /* Texto branco */
+  border: none;                      /* Sem bordas */
+  padding: 10px 20px;                /* Ajuste do tamanho do botão */
+  font-size: 16px;                   /* Tamanho da fonte */
+  border-radius: 5px;                /* Cantos arredondados */
+  cursor: pointer;                   /* Cursor de mão */
+  transition: background-color 0.3s; /* Transição suave ao passar o mouse */
+  margin-left: 10px;                 /* Espaço lateral para não grudar */
+  width: auto;                       /* Largura automática conforme o conteúdo */
+  height: auto;                      /* Altura automática */
+  display: inline-block;             /* Faz com que o botão tenha apenas o espaço necessário */
+}
+
+/* Efeito ao passar o mouse sobre o botão login */
+.top-bar .btn-vermelho:hover {
+  background-color: #c2080b;         /* Cor mais escura no hover */
+}
+
+/* Conteúdo principal da seção de planos */
+.conteudo-planos {
+  text-align: center;                /* Centraliza todo o conteúdo */
+  padding: 40px 20px;                /* Espaçamento geral */
+}
+
+/* Container de todos os cards */
+.cards {
+  display: flex;                     /* Usa flexbox */
+  justify-content: center;          /* Centraliza os cards horizontalmente */
+  gap: 20px;                         /* Espaço entre os cards */
+  flex-wrap: wrap;                   /* Permite quebra de linha em telas menores */
+  margin-top: 30px;
+}
+
+/* Estilo base para todos os cards de plano */
+.card {
+  background-color: rgb(255, 255, 255);
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 30px 20px;
+  width: 250px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s;
+}
+
+/* Destaca o plano Pro */
+.card.destaque {
+  border: 2px solid #e50914;
+  box-shadow: 0 6px 12px rgba(229, 9, 20, 0.3);
+}
+
+/* Animação ao passar o mouse no card */
+.card:hover {
+  transform: scale(1.05);
+}
+
+/* Estilo para o preço */
+.card .preco {
+  font-size: 24px;
+  font-weight: bold;
+  color: #e50914;
+  margin: 15px 0;
+}
+
+/* Botão "SE CADASTRE" dentro dos cards */
+.card .btn-vermelho {
+  background-color: #e50914;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  font-size: 14px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+/* Efeito ao passar o mouse no botão do card */
+.card .btn-vermelho:hover {
+  background-color: #c2080b;
+}
+

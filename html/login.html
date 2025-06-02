@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Acesso - Sistema</title>
+
+  <!-- CSS específicos para esta página -->
+  <link rel="stylesheet" href="../css/login.css" />
+  <link rel="stylesheet" href="../css/index.css" />
+
+  <script>
+    // Função para validar o formulário e redirecionar
+    function validarLogin(event) {
+      event.preventDefault(); // Impede o envio tradicional do formulário
+      
+      const email = document.getElementById('email').value.trim();
+      const senha = document.getElementById('senha').value.trim();
+
+      if (email === "" || senha === "") {
+        alert("Por favor, preencha todos os campos.");
+      } else {
+        // Se os campos estiverem preenchidos, redireciona para home.html
+        window.location.href = "home.html";
+      }
+    }
+  </script>
+</head>
+<body>
+
+  <!-- Wrapper que centraliza todo o conteúdo na tela -->
+  <div class="login-wrapper">
+    <div class="container">
+      <h2>Acesso ao Sistema</h2>
+
+      <!-- Formulário de login -->
+      <form onsubmit="validarLogin(event)">
+        <!-- Campo de e-mail -->
+        <div class="input-container">
+          <label for="email">E-mail:</label>
+          <input type="email" id="email" name="email" required placeholder="Digite seu e-mail" />
+        </div>
+        
+        <!-- Campo de senha -->
+        <div class="input-container">
+          <label for="senha">Senha:</label>
+          <input type="password" id="senha" name="senha" required placeholder="Digite sua senha" />
+        </div>
+
+        <!-- Botão de acesso -->
+        <button class="btn-vermelho" type="submit">Acessar</button>
+      </form>
+
+      <!-- Link para recuperação de senha -->
+      <div class="forgot-password">
+        <a href="esqueci_senha.html">Esqueci minha senha</a>
+      </div>
+
+      <!-- Link para cadastro -->
+      <p>Não tem uma conta? <a href="cadastro.html">Cadastre-se</a></p>
+    </div>
+  </div>
+
+</body>
+</html>

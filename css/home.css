@@ -1,0 +1,483 @@
+/* Estiliza o corpo da página */
+body {
+  margin: 0;                /* Remove margens padrão do navegador */
+  padding: 0;               /* Remove padding padrão */
+  background-color: #fff;   /* Define fundo branco para a página */
+  font-family: Arial, sans-serif; /* Define a fonte principal como Arial ou similar */
+}
+
+/* Cabeçalho principal da página */
+.header {
+  display: flex;                   /* Ativa layout flexível para alinhar itens horizontalmente */
+  justify-content: space-between; /* Espaça os itens do header nas extremidades (esquerda e direita) */
+  align-items: center;             /* Alinha verticalmente os itens ao centro */
+  padding: 20px 40px;              /* Espaçamento interno: 20px em cima/baixo e 40px nas laterais */
+  background-color: white;         /* Fundo branco para o cabeçalho */
+  border-bottom: 1px solid #ddd;   /* Linha cinza clara abaixo para separar do conteúdo */
+}
+
+/* Título central no cabeçalho */
+.titulo {
+  flex: 1;                        /* Faz o título ocupar todo espaço possível no meio */
+  text-align: center;             /* Centraliza o texto horizontalmente */
+  color: #c70039;                 /* Define a cor do texto para um vermelho forte */
+  margin: 0;                      /* Remove qualquer margem padrão ao redor do título */
+  font-size: 34px;                /* Define tamanho da fonte para ser visível e legível */
+}
+
+
+/* Botão que abre o menu de perfil */
+#profile-btn {
+  background-color: #c70039;      /* Cor vermelha forte no fundo */
+  color: white;                   /* Texto branco */
+  border: none;                  /* Remove borda padrão */
+  padding: 10px 16px;             /* Espaçamento interno do botão para ficar confortável */
+  border-radius: 20px;            /* Bordas arredondadas, formato de pílula */
+  cursor: pointer;                /* Muda cursor para mãozinha quando passa por cima (indica clicável) */
+  font-weight: bold;              /* Texto em negrito para destaque */
+  font-size: 24px;                /* Tamanho da fonte pequeno mas legível */
+}
+
+/* ===================== CARDÁPIO CASCATA (botão e dropdown) ===================== */
+
+/* Container do menu do cardápio, posicionado no canto superior esquerdo */
+.cardapio-menu {
+  position: absolute;           /* Posição absoluta para posicionamento fixo */
+  top: 20px;                   /* Distância de 20px do topo da página */
+  left: 20px;                  /* Distância de 20px da esquerda da página */
+}
+
+/* Botão principal do cardápio */
+#cardapio-btn {
+  background-color: #e50914;   /* Vermelho forte para destaque */
+  color: white;                /* Texto branco */
+  border: none;                /* Sem borda */
+  padding: 10px 16px;          /* Espaçamento confortável */
+  font-size: 16px;             /* Texto de tamanho médio */
+  border-radius: 6px;          /* Bordas levemente arredondadas */
+  cursor: pointer;             /* Cursor muda para indicar que é clicável */
+}
+
+/* Dropdown que contém os botões de categoria do cardápio */
+.dropdown-cardapio {
+  display: none;               /* Inicialmente escondido */
+  position: absolute;          /* Posição absoluta para aparecer abaixo do botão */
+  top: 60px;                   /* Posicionado 45px abaixo do botão principal */
+  left: 0;                    /* Alinhado à esquerda do container */
+  background: transparent;     /* Fundo transparente para não atrapalhar visual */
+  z-index: 10;                 /* Para ficar acima de outros elementos */
+}
+
+/* Mostra o dropdown quando ativado */
+.dropdown-cardapio.show {
+  display: block;
+}
+
+/* ===================== Nomes dos objetos exibidos ao lado dos botões ===================== */
+.itens-container {
+  position: absolute;         /* Posiciona o container no lugar fixo */
+  top: 90px;                 /* Alinhado 90px do topo */
+  left: 160px;               /* Posicionado 160px da esquerda para ficar ao lado dos botões */
+  display: flex;             /* Usa flexbox para alinhar os itens */
+  flex-wrap: wrap;           /* Permite quebra de linha automática para os itens */
+  gap: 10px;                 /* Espaço de 10px entre as caixas */
+  max-width: calc(100% - 180px); /* Limita a largura máxima para não ultrapassar a tela, considerando os 180px dos botões + margem */
+}
+
+/* Caixa individual que contém o nome de cada item do cardápio */
+.item-box {
+  background-color: #ffb342;         /* Fundo laranja claro para destacar */
+  padding: 8px 12px;                 /* Espaçamento interno confortável */
+  border-radius: 6px;                /* Bordas arredondadas */
+  font-size: 14px;                   /* Fonte legível, tamanho médio */
+  color: #000000;                       /* Cor do texto preto */
+  
+  /* ==== Animação adicionada ==== */
+  opacity: 0;                        /* Começa invisível */
+  animation: fadeSlideUp 0.4s ease forwards; /* Aplica a animação e mantém estado final */
+}
+
+/* Efeito hover nas caixas de item */
+.item-box:hover {
+  background-color: #fa951a;  /* Cor de fundo vermelha ao passar o mouse */
+  color: rgb(0, 0, 0);               /* Texto branco para contraste */
+  cursor: pointer;            /* Mostra que a caixa é interativa */
+  transition: background-color 0.2s ease, color 0.2s ease; /* Transição suave */
+}
+
+/*  Bloco de estilo para itens que foram desativados manualmente.
+  Aplica aparência diferenciada e mantém interatividade. */
+.item-box.desativado {
+  opacity: 0.4; /* Define transparência para indicar visualmente que o item está desativado */
+  pointer-events: auto; /* Garante que o item ainda pode ser clicado (mesmo estando "apagado") */
+  background-color: #999 !important; /* Altera a cor de fundo para cinza, com !important para sobrepor outros estilos */
+}
+
+/* ===================== Animação para entrada dos itens ===================== */
+
+/* Define a animação "fadeSlideUp":
+   - Os itens começam invisíveis e deslocados para baixo (20px)
+   - Durante 0% a 100% da animação, eles sobem para a posição original e aparecem
+   - Dá um efeito suave de entrada, deslizando e esmaecendo */
+@keyframes fadeSlideUp {
+  0% {
+    opacity: 0;                /* Totalmente invisível no começo */
+    transform: translateY(20px); /* Começa 20px abaixo da posição final */
+  }
+  100% {
+    opacity: 1;                /* Totalmente visível no final */
+    transform: translateY(0);     /* Volta para posição original, sem deslocamento */
+  }
+}
+
+/* Responsividade: adapta o layout para telas pequenas (largura até 768px)
+   Ajusta cabeçalho, título, menu e container de itens para caber melhor na tela menor */
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column; /* Muda o cabeçalho para coluna, empilhando os elementos verticalmente */
+    padding: 10px 20px;     /* Dá um espaçamento menor nas laterais */
+  }
+
+  .titulo {
+    font-size: 24px;        /* Diminui o tamanho da fonte do título para caber melhor */
+    margin-top: 10px;       /* Dá um espaçamento acima do título para separar */
+  }
+
+  .cardapio-menu {
+    top: 10px;              /* Ajusta a posição do menu no topo e à esquerda */
+    left: 10px;
+  }
+
+  .itens-container {
+    top: 100px;             /* Afasta o container dos itens do topo */
+    left: 10px;             /* Posiciona com margem esquerda */
+    max-width: calc(100% - 20px); /* Limita a largura para caber na tela, considerando margens */
+    justify-content: center; /* Centraliza os itens dentro do container */
+  }
+}
+
+/* ===================== HOME - MODAL DE PRÉ-VISUALIZAÇÃO ===================== */
+.model-preview-modal {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  background-color: rgb(0, 255, 162);
+  border: 2px solid #000000;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgb(255, 255, 255);
+  z-index: 9999;
+  overflow: hidden;
+}
+.model-preview-modal {
+  background-color: #5a5757 !important; /* escuro sólido */
+}
+
+
+
+/* Botão ATIVADO */
+#dropdownCardapio button {
+  background-color: rgb(255, 0, 0);
+  color: white;
+  font-weight: bold;
+  margin-bottom: 8px;
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+/* Botão DESATIVADO */
+#dropdownCardapio button.desativado {
+  background-color: lightgray;
+  color: #333;
+}
+
+/* Esconde botões padrão da visualização 3D como fullscreen e VR
+   Isso evita poluição visual na interface do preview */
+.a-enter-vr-button {            /* Classe usada internamente por A-Frame */
+  display: none !important;     /* Força que esses botões fiquem invisíveis */
+}
+
+/* CSS do modal de preview 3D */
+.model-preview-modal {
+  position: fixed;
+  z-index: 9999;
+  width: 320px;
+  height: 320px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  padding: 5px;
+}
+
+/* Imagem de carregamento */
+.loading-spinner {
+  width: 80px;
+  height: 80px;
+  margin: 100px auto;
+  display: block;
+}
+
+
+/* ============================== */
+/* HOME - GARÇONS */
+/* ============================== */
+
+/* Estilo da seção que envolve toda a área de garçons */
+#garconsSection {
+  margin-top: 30px; /* Espaço acima da seção */
+  padding: 20px; /* Espaçamento interno para dar "respiro" */
+  background: #ffffff; /* Fundo cinza claro para destacar a área */
+  border-radius: 15px; /* Cantos arredondados para suavizar o visual */
+}
+
+/* Estilo do título da seção */
+#garconsSection h2 {
+  margin-bottom: 10px; /* Espaço abaixo do título para separar do conteúdo */
+}
+
+/* Contêiner dos controles para adicionar/remover garçons */
+#controleGarcons {
+  display: flex; /* Layout em linha dos elementos */
+  align-items: center; /* Alinha verticalmente ao centro */
+  gap: 10px; /* Espaço entre os itens */
+  margin-bottom: 20px; /* Espaço abaixo do grupo de controle */
+}
+
+/* Estilo dos botões + e - */
+#controleGarcons button {
+  background-color: rgb(255, 0, 0); /* Fundo vermelho para chamar atenção */
+  color: rgb(255, 255, 255); /* Texto branco para contraste */
+  border: none; /* Remove borda padrão */
+  padding: 6px 12px; /* Espaçamento interno confortável */
+  font-size: 20px; /* Fonte maior para facilitar clique */
+  border-radius: 8px; /* Bordas arredondadas */
+  cursor: pointer; /* Muda cursor para indicar clicável */
+}
+
+/* Estilo do input numérico que mostra a quantidade de garçons */
+#controleGarcons input {
+  width: 60px; /* Largura fixa para manter tamanho uniforme */
+  text-align: center; /* Texto centralizado dentro do campo */
+  font-size: 18px; /* Fonte legível e grande */
+  border-radius: 8px; /* Bordas arredondadas para combinar */
+  padding: 5px; /* Espaçamento interno */
+}
+
+/* Contêiner dos formulários de cadastro de garçons */
+#formularioGarcons {
+  display: flex; /* Layout flexível */
+  flex-direction: column; /* Formulários empilhados verticalmente */
+  gap: 15px; /* Espaço entre cada formulário */
+}
+
+/* Estilo dos inputs dentro de cada formulário */
+.form-garcom input {
+  margin-right: 10px; /* Espaço à direita para separar inputs */
+  padding: 6px; /* Espaçamento interno para conforto */
+  border-radius: 6px; /* Bordas arredondadas */
+  border: 1px solid #000000; /* Borda cinza clara */
+}
+
+/* Estilo do botão que gera o QR Code */
+.btn-qr {
+  background-color: red; /* Fundo vermelho para destaque */
+  color: white; /* Texto branco para contraste */
+  border: none; /* Remove borda padrão */
+  padding: 6px 12px; /* Espaçamento confortável */
+  border-radius: 8px; /* Bordas arredondadas */
+  cursor: pointer; /* Indica que é clicável */
+}
+
+/* Remove as setas do input number (controle de incremento/decremento) */
+
+/* Para Chrome, Edge, Safari */
+/* Remove as setas que aparecem ao lado do input tipo number, deixando visual mais limpo */
+#quantidadeGarcons::-webkit-outer-spin-button,
+#quantidadeGarcons::-webkit-inner-spin-button {
+  -webkit-appearance: none; /* Desativa a aparência padrão */
+  margin: 0; /* Remove margem extra */
+}
+
+/* ============================== */
+/* MODAL - QR CODE GARÇOM        */
+/* ============================== */
+
+#modalQrCode {
+  position: fixed;
+  z-index: 1000;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.7);
+
+  display: none; /* será ativado via JS */
+  justify-content: center;
+  align-items: center;
+}
+
+#modalQrCode.ativo {
+  display: flex; /* centraliza o conteúdo do modal */
+}
+
+#modalQrCode .conteudo-modal {
+  background-color: white;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  position: relative;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+/* Botão de fechar o modal */
+#modalQrCode .fechar-modal {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+  cursor: pointer;
+}
+
+/* Container dos QR Codes gerados */
+#qrcodeContainer {
+  margin-top: 10px;
+}
+
+/* Conteúdo do modal com scroll se necessário */
+#modalQrCode .conteudo {
+  max-height: 80vh;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+/* ============================== */
+/* BLOCO DE QUANTIDADE DE QR CODE */
+/* ============================== */
+
+.quantidade-bloco {
+  background-color: #f9f9f9;   /* fundo claro para contraste */
+  border: 1px solid #ccc;      /* borda suave */
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.quantidade-bloco h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 18px;
+  color: #333;
+}
+
+.controle-quantidade {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.controle-quantidade button {
+  background-color: #d62828;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  font-size: 18px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.controle-quantidade input[type="number"] {
+  width: 60px;
+  text-align: center;
+  font-size: 16px;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+
+
+}
+
+/* Remove setas do input number em navegadores WebKit (Chrome, Edge, Safari) */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ============================== */
+/* BOTÃO IMPRIMIR QR CODE        */
+/* ============================== */
+
+.btn-imprimir {
+  margin-left: 15px;
+  background-color: #a1a2a1;
+  color: rgb(255, 255, 255);
+  border: none;
+  padding: 8px 12px;
+  font-size: 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.btn-imprimir:hover {
+  background-color: #000000;
+}
+
+/* ============================== */
+/* IMPRESSÃO - SOMENTE QR CODES  */
+/* ============================== */
+@media print {
+  /* Esconde tudo no print */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Torna visível só o container dos QR Codes e seus filhos */
+  #qrcodeContainer, #qrcodeContainer * {
+    visibility: visible !important;
+  }
+
+  /* Ajusta o container para ocupar toda a página e organizar em grid */
+  #qrcodeContainer {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    padding: 10mm;
+    background: white !important;
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(60mm, 1fr));
+    gap: 15mm;
+    justify-content: center;
+    align-content: start;
+    overflow: visible !important;
+    z-index: 9999;
+  }
+
+  /* Estilo para o rótulo das mesas (se tiver) */
+  .qrcode-wrapper {
+    text-align: center;
+  }
+
+  .mesa-label {
+    font-size: 12pt;
+    margin-top: 5px;
+    font-weight: bold;
+  }
+
+  /* Remove margens do papel para otimizar espaço */
+  @page {
+    margin: 10mm;
+  }
+}

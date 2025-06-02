@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cadastro do Cliente - Mensal</title>
+  <link rel="stylesheet" href="../css/cadastro.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: white;
+      font-family: Arial, sans-serif;
+      color: black;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 800px;
+      padding: 40px;
+    }
+
+    h2 {
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      width: 100%;
+    }
+
+    .row {
+      display: flex;
+      gap: 30px;
+      width: 100%;
+      margin-bottom: 15px;
+    }
+
+    .input-container {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    label {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    input {
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background-color: #d6d6d6;
+    }
+
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
+      background-color: red;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 20px;
+      align-self: center;
+      transition: background-color 0.3s ease;
+    }
+
+    button:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Cadastro do Cliente</h2>
+
+    <form id="formCadastro">
+      <!-- Nome da Empresa -->
+      <div class="row">
+        <div class="input-container" style="flex: 1;">
+          <label for="empresa">Nome da Empresa</label>
+          <input type="text" id="empresa" name="empresa" required />
+        </div>
+      </div>
+
+      <!-- E-mail e Telefone -->
+      <div class="row">
+        <div class="input-container">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" name="email" required />
+        </div>
+        <div class="input-container">
+          <label for="telefone">Telefone</label>
+          <input type="tel" id="telefone" name="telefone" required />
+        </div>
+      </div>
+
+      <!-- CNPJ -->
+      <div class="row">
+        <div class="input-container" style="flex: 1;">
+          <label for="cnpj">CNPJ da Empresa</label>
+          <input type="text" id="cnpj" name="cnpj" required />
+        </div>
+      </div>
+
+      <!-- Senha -->
+      <div class="row">
+        <div class="input-container" style="flex: 1;">
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" name="senha" required />
+        </div>
+      </div>
+
+      <!-- Confirmar Senha -->
+      <div class="row">
+        <div class="input-container" style="flex: 1;">
+          <label for="confirmarSenha">Confirmar Senha</label>
+          <input type="password" id="confirmarSenha" name="confirmarSenha" required />
+        </div>
+      </div>
+
+      <!-- Botão -->
+      <button type="submit" id="botaoCadastro" disabled>Cadastrar</button>
+    </form>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    // Máscara telefone
+    document.getElementById('telefone').addEventListener('input', function (e) {
+      let x = e.target.value.replace(/\D/g, '').slice(0, 11);
+      if (x.length > 6) {
+        e.target.value = `(${x.slice(0, 2)}) ${x.slice(2, 7)}-${x.slice(7, 11)}`;
+      } else if (x.length > 2) {
+        e.target.value = `(${x.slice(0, 2)}) ${x.slice(2)}`;
+      } else {
+        e.target.value = x.replace(/^(\d{0,2})/, '($1');
+      }
+    });
+
+    // Máscara CNPJ
+    document.getElementById('cnpj').addEventListener('input', function (e) {
+      let x = e.target.value.replace(/\D/g, '').slice(0, 14);
+      let formatado = x;
+
+      if (x.length > 12) {
+        formatado = `${x.slice(0, 2)}.${x.slice(2, 5)}.${x.slice(5, 8)}/${x.slice(8, 12)}-${x.slice(12, 14)}`;
+      } else if (x.length > 8) {
+        formatado = `${x.slice(0, 2)}.${x.slice(2, 5)}.${x.slice(5, 8)}/${x.slice(8)}`;
+      } else if (x.length > 5) {
+        formatado = `${x.slice(0, 2)}.${x.slice(2, 5)}.${x.slice(5)}`;
+      } else if (x.length > 2) {
+        formatado = `${x.slice(0, 2)}.${x.slice(2)}`;
+      }
+
+      e.target.value = formatado;
+    });
+
+    // Validação de campos preenchidos + senha igual
+    const form = document.getElementById('formCadastro');
+    const botao = document.getElementById('botaoCadastro');
+
+    const validarCampos = () => {
+      const empresa = document.getElementById('empresa').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const telefone = document.getElementById('telefone').value.trim();
+      const cnpj = document.getElementById('cnpj').value.trim();
+      const senha = document.getElementById('senha').value.trim();
+      const confirmarSenha = document.getElementById('confirmarSenha').value.trim();
+
+      const todosPreenchidos = empresa && email && telefone && cnpj && senha && confirmarSenha;
+      const senhasIguais = senha === confirmarSenha;
+
+      botao.disabled = !(todosPreenchidos && senhasIguais);
+    };
+
+    form.addEventListener('input', validarCampos);
+
+    // Redireciona para planos.html ao cadastrar
+    form.addEventListener('submit', function (e) {
+      e.preventDefault(); // Impede o envio padrão do formulário
+      if (!botao.disabled) { // Verifica se o botão está habilitado antes de redirecionar
+        // Aqui você poderia salvar os dados ou fazer uma requisição
+        window.location.href = "../html/plano.html"; // Redireciona para a página planos.html
+      }
+    });
+  </script>
+</body>
+</html>

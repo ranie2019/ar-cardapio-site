@@ -1,0 +1,92 @@
+/* Define altura total da tela e centraliza vertical e horizontalmente */
+body, html {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Envolve todo o conteúdo de login para centralização */
+.login-wrapper {
+  display: flex;
+  align-items: center;        /* Centraliza verticalmente */
+  justify-content: center;    /* Centraliza horizontalmente */
+  height: 100vh;              /* Ocupa 100% da altura da viewport */
+  background-color: #f9f9f9;  /* Fundo claro opcional */
+}
+
+/* Container do formulário de login */
+.container {
+  width: 100%;
+  max-width: 400px;
+  padding: 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+/* Título do login */
+.container h2 {
+  color: #c70039;
+  margin-bottom: 20px;
+}
+
+/* Grupo de entrada */
+.input-container {
+  margin-bottom: 20px;
+}
+
+/* Rótulo dos campos */
+.input-container label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+/* Estilo dos campos de input */
+.input-container input[type="text"],
+.input-container input[type="email"],
+.input-container input[type="password"],
+.input-container input[type="tel"] {
+  width: calc(100% - 20px); /* Reduz a largura para deixar espaço nas laterais */
+  padding: 10px;             /* Espaço interno do campo */
+  margin: 0 auto;            /* Centraliza horizontalmente */
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  display: block;            /* Garante que o auto funcione */
+}
+
+/* Botão de login */
+button.btn,
+button.btn-vermelho {
+  width: 100%;
+  padding: 10px;
+  background-color: #c70039;   /* Cor vermelha do botão */
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s, box-shadow 0.3s;
+}
+
+button.btn:hover,
+button.btn-vermelho:hover {
+  background-color: #900c3f;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Link de esqueci a senha */
+.forgot-password {
+  margin-top: 10px;
+}
+
+.forgot-password a {
+  color: #c70039;
+  text-decoration: none;
+}
+
+.forgot-password a:hover {
+  text-decoration: underline;
+}
