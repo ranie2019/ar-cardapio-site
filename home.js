@@ -354,7 +354,10 @@ function setupQrCodeGarcons() {
       wrapper.appendChild(label);
       qrCodeContainer.appendChild(wrapper);
 
-      const urlPedido = `${window.location.origin}/logo.jpg`;
+      const nome = "Carlos";
+      const i = 1;
+      const IP_LOCAL = '10.0.0.198';
+      const urlPedido = `http://${IP_LOCAL}:5500/logo.jpg?garcom=${encodeURIComponent(nome)}&mesa=${i}`;
 
       new QRCode(qrDiv, {
         text: urlPedido,
