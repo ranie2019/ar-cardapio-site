@@ -8,8 +8,8 @@ let infoVisible = false;
 // Caminho base do bucket
 const BUCKET_BASE = "https://ar-menu-models.s3.amazonaws.com/";
 
-// ==================== ATUALIZAÇÃO DA INTERFACE ====================
 
+// ==================== ATUALIZAÇÃO DA INTERFACE ====================
 function formatProductName(path) {
   const file = path.split('/').pop().replace('.glb', '');
   return file
@@ -37,7 +37,6 @@ function updateUI(model) {
 }
 
 // ==================== CARREGAMENTO DO MODELO ====================
-
 function loadModel(path) {
   const container = document.querySelector("#modelContainer");
   const loadingIndicator = document.getElementById("loadingIndicator");
@@ -96,7 +95,6 @@ function getModelPrice(path) {
 }
 
 // ==================== CONTROLE DE MODELOS ====================
-
 function changeModel(dir) {
   const lista = models[currentCategory];
   currentIndex = (currentIndex + dir + lista.length) % lista.length;
@@ -117,7 +115,6 @@ function selectCategory(category) {
 }
 
 // ==================== EVENTOS INICIAIS ====================
-
 document.getElementById("menuBtn").addEventListener("click", () => {
   const el = document.getElementById("categoryButtons");
   el.style.display = el.style.display === "flex" ? "none" : "flex";
@@ -128,7 +125,6 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==================== ROTAÇÃO AUTOMÁTICA ====================
-
 setInterval(() => {
   const model = document.querySelector("#modelContainer");
   if (!model) return;
@@ -138,7 +134,6 @@ setInterval(() => {
 }, 30);
 
 // ==================== ZOOM COM PINÇA ====================
-
 let initialDistance = null;
 let initialScale = 1;
 
@@ -173,7 +168,6 @@ window.addEventListener("touchend", () => {
 });
 
 // ==================== ROTAÇÃO VERTICAL ====================
-
 let startY = null;
 let initialRotationX = 0;
 
@@ -200,7 +194,6 @@ window.addEventListener("touchend", () => {
 });
 
 // ==================== BOTÃO DE INFORMAÇÕES ====================
-
 document.getElementById("infoBtn").addEventListener("click", () => {
   const panel = document.getElementById("infoPanel");
 
