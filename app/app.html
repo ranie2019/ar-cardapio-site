@@ -25,13 +25,13 @@
   </head>
 
   <body>
-    <!-- Botão minimalista de confirmação (✔) -->
+    <!-- Botão de confirmação -->
     <button id="checkBtn" class="check-btn">✔</button>
 
-    <!-- Botão de abertura do menu -->
+    <!-- Botão de menu -->
     <button id="menuBtn">Menu</button>
 
-    <!-- Botões de categorias (ocultos até clicar em "Menu") -->
+    <!-- Botões de categoria -->
     <div id="categoryButtons" style="display: none">
       <button class="category-btn" onclick="selectCategory('bebidas')">Bebidas</button>
       <button class="category-btn" onclick="selectCategory('pizzas')">Pizzas</button>
@@ -45,7 +45,7 @@
     <!-- Exibe o preço -->
     <div id="priceDisplay">R$ 0,00</div>
 
-    <!-- Nome do produto atual -->
+    <!-- Nome do produto -->
     <div id="productNameDisplay" style="
       position: absolute;
       bottom: 80px;
@@ -60,21 +60,21 @@
       z-index: 1000;
     "></div>
 
-    <!-- Botão para ir ao modelo anterior -->
+    <!-- Botão modelo anterior -->
     <button id="prevBtn" class="btn" onclick="changeModel(-1)">
       <svg viewBox="0 0 24 24">
         <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
       </svg>
     </button>
 
-    <!-- Botão para ir ao próximo modelo -->
+    <!-- Botão próximo modelo -->
     <button id="nextBtn" class="btn" onclick="changeModel(1)">
       <svg viewBox="0 0 24 24">
         <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/>
       </svg>
     </button>
 
-    <!-- Botão "Info" (só visível em algumas categorias) -->
+    <!-- Botão Info -->
     <button id="infoBtn" class="btn" onclick="toggleInfo()" style="display: none;">
       ℹ️ Info
     </button>
@@ -98,7 +98,6 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       text-align: left;
     ">
-      <!-- Botão para fechar o painel -->
       <button onclick="document.getElementById('infoPanel').style.display='none'" style="
         position: absolute;
         top: 8px;
@@ -108,16 +107,15 @@
         font-size: 1.2em;
         cursor: pointer;
       ">✖</button>
-      <!-- Conteúdo será carregado via JS -->
+      <div id="infoContent">Carregando...</div>
     </div>
 
-    <!-- Cena A-Frame com AR.js -->
+    <!-- Cena AR -->
     <a-scene
       embedded
       vr-mode-ui="enabled: false"
       arjs="sourceType: webcam; debugUIEnabled: false;"
     >
-      <!-- Contêiner do modelo 3D dinâmico -->
       <a-entity
         id="modelContainer"
         rotation="0 180 0"
@@ -131,11 +129,10 @@
         crossorigin="anonymous"
       ></a-entity>
 
-      <!-- Câmera AR -->
       <a-camera position="0 1.5 3"></a-camera>
     </a-scene>
 
-    <!-- Scripts JS -->
+    <!-- Scripts -->
     <script src="../app/models.js"></script>
     <script src="../app/app.js"></script>
   </body>
