@@ -45,108 +45,101 @@ function updateUI(model) {
 
 // ==================== CARREGAMENTO DE MODELO ====================
 
-/* Carrega o modelo 3D e atualiza a interface.*/
+/**
+ * Carrega o modelo 3D e atualiza a interface.
+ */
 function loadModel(path) {
-  // Obtém o elemento A-Frame onde o modelo será exibido
   const container = document.querySelector("#modelContainer");
-
-  // Obtém o elemento que mostra o status de carregamento
   const loadingIndicator = document.getElementById("loadingIndicator");
 
-  // Mostra o indicador de carregamento com a mensagem "Carregando..."
   loadingIndicator.style.display = "block";
   loadingIndicator.innerText = "Carregando...";
-
-  // Remove qualquer modelo anterior carregado no container
   container.removeAttribute("gltf-model");
 
-  // Define rotação, posição e escala padrão para o modelo que será carregado
   container.setAttribute("rotation", "0 180 0");
   container.setAttribute("position", "0 -.6 0");
   container.setAttribute("scale", "1 1 1");
 
-  // Salva o caminho do modelo atual em uma variável global
-  currentModelPath = path;
+  currentModelPath = path; // Atualiza o modelo atual
 
-  // Se o modelo já estiver no cache, carrega a versão em cache imediatamente
   if (modelCache[path]) {
-    container.setAttribute("gltf-model", modelCache[path]); // Aponta o modelo usando o blob já salvo
-    loadingIndicator.style.display = "none"; // Esconde o carregando
-    updateUI({ path, price: getModelPrice(path) }); // Atualiza interface (ex: preço, nome, etc.)
+    container.setAttribute("gltf-model", modelCache[path]);
+    loadingIndicator.style.display = "none";
+    updateUI({ path, price: getModelPrice(path) });
   } else {
-    // Se não estiver no cache, inicia o carregamento do modelo usando XMLHttpRequest
     const xhr = new XMLHttpRequest();
-
-    // Define o método GET e adiciona um parâmetro de versão para forçar o navegador a não usar cache
     xhr.open("GET", path + "?v=" + Date.now(), true);
-    xhr.responseType = "blob"; // Define que a resposta será um arquivo binário
+    xhr.responseType = "blob";
 
-    // Enquanto o modelo carrega, atualiza a porcentagem no indicador
     xhr.onprogress = (e) => {
       if (e.lengthComputable) {
-        const percent = Math.round((e.loaded / e.total) * 100); // Calcula porcentagem
-        loadingIndicator.innerText = `${percent}%`; // Mostra no carregador
+        const percent = Math.round((e.loaded / e.total) * 100);
+        loadingIndicator.innerText = `${percent}%`;
       }
     };
 
-    // Quando o carregamento terminar com sucesso
     xhr.onload = () => {
-      const blobURL = URL.createObjectURL(xhr.response); // Cria uma URL temporária para o blob
-      modelCache[path] = blobURL; // Salva no cache para uso futuro
-      container.setAttribute("gltf-model", blobURL); // Aponta o modelo 3D no container
-      loadingIndicator.style.display = "none"; // Esconde o carregador
-      updateUI({ path, price: getModelPrice(path) }); // Atualiza informações na UI
+      const blobURL = URL.createObjectURL(xhr.response);
+      modelCache[path] = blobURL;
+      container.setAttribute("gltf-model", blobURL);
+      loadingIndicator.style.display = "none";
+      updateUI({ path, price: getModelPrice(path) });
     };
 
-    // Se ocorrer erro no carregamento, exibe mensagem de erro
     xhr.onerror = () => {
-      console.error("Erro ao carregar o modelo:", path); // Log no console
-      loadingIndicator.innerText = "Erro ao carregar o modelo"; // Mensagem na interface
+      console.error("Erro ao carregar o modelo:", path);
+      loadingIndicator.innerText = "Erro ao carregar o modelo";
     };
 
-    // Envia a requisição
     xhr.send();
   }
 }
 
+/**
+ * Retorna o preço do modelo atual.
+ */
+function getModelPrice(path) {
+  for (let cat in models) {
+    for (let model of models[cat]) {
+      if (model.path === path) return model.price;
+    }
+  }
+  return 0;
+}
+
+
 // ==================== CONTROLE DE MODELOS ====================
 
 function changeModel(dir) {
-  // Pega a lista de modelos da categoria atual
   const lista = models[currentCategory];
-
-  // Atualiza o índice atual com base na direção (dir: 1 para próximo, -1 para anterior)
-  // A lógica com módulo (%) permite circular: se passar do final, volta para o início
   currentIndex = (currentIndex + dir + lista.length) % lista.length;
-
-  // Carrega o modelo correspondente ao novo índice
   loadModel(lista[currentIndex].path);
 
-  // Fecha o painel de informações, se estiver aberto
+  // Fecha o painel de informações se estiver visível
   const infoPanel = document.getElementById('infoPanel');
   if (infoPanel.style.display === 'block') {
-    infoPanel.style.display = 'none'; // Esconde o painel
-    infoVisible = false;              // Atualiza estado para refletir que o painel está fechado
+    infoPanel.style.display = 'none';
+    infoVisible = false; // <-- ESSA LINHA RESOLVE O PROBLEMA
   }
 }
-// Troca a categoria atual dos modelos 3D exibidos
+
+
 function selectCategory(category) {
-  if (!models[category]) return; // Verifica se a categoria existe no objeto 'models'. Se não existir, encerra a função.
-  currentCategory = category;    // Atualiza a categoria atual com a nova selecionada
-  currentIndex = 0;              // Reinicia o índice para exibir o primeiro modelo da nova categoria
-  loadModel(models[category][0].path); // Carrega o modelo 3D correspondente ao primeiro item da nova categoria
+  if (!models[category]) return;
+  currentCategory = category;
+  currentIndex = 0;
+  loadModel(models[category][0].path);
 }
 
-// Mostra ou esconde os botões de categoria dinamicamente ao clicar no botão de menu
 document.getElementById("menuBtn").addEventListener("click", () => {
-  const el = document.getElementById("categoryButtons");   // Pega o container dos botões de categori
-  el.style.display = el.style.display === "flex" ? "none" : "flex"; // Alterna entre mostrar e esconder os botões de categoria
+  const el = document.getElementById("categoryButtons");
+  el.style.display = el.style.display === "flex" ? "none" : "flex";
 });
 
-// Quando o conteúdo HTML da página estiver totalmente carregado, exibe o primeiro modelo da categoria atual
 window.addEventListener("DOMContentLoaded", () => {
-  loadModel(models[currentCategory][0].path); // Garante que o primeiro modelo da categoria seja carregado automaticamente ao abrir a página
+  loadModel(models[currentCategory][0].path);
 });
+
 
 // ==================== ROTAÇÃO AUTOMÁTICA ====================
 setInterval(() => {
@@ -253,3 +246,4 @@ document.getElementById("infoBtn").addEventListener("click", () => {
       infoVisible = true;
     });
 });
+

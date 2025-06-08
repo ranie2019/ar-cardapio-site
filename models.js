@@ -26,6 +26,7 @@ const models = {
     { path: `${baseURL}/pizzas/presunto_de_Parma_e_rúcula.glb`, price: 45.00, info: `${baseURL}/informacoes/presunto_de_Parma_e_rúcula.txt` },
     { path: `${baseURL}/pizzas/mussarela.glb`, price: 45.00, info: `${baseURL}/informacoes/mussarela.txt` },
     { path: `${baseURL}/pizzas/salami.glb`, price: 45.00, info: `${baseURL}/informacoes/salami.txt` },
+    { path: `${baseURL}/pizzas/pizza.glb`, price: 45.00, info: `${baseURL}/informacoes/pizza.txt` }
   ],
   sobremesas: [
     { path: `${baseURL}/sobremesas/cupcake_chocolate.glb`, price: 12.00, info: `${baseURL}/informacoes/cupcake_chocolate.txt` },
