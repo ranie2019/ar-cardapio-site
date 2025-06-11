@@ -1,25 +1,18 @@
 // ==================== VARIÁVEIS GLOBAIS ====================
-let currentCategory = 'inicio'; // Categoria inicial
-let currentIndex = 0; // Índice atual do modelo dentro da categoria
-const modelCache = {}; // Armazena os modelos carregados em cache
-let currentModelPath = ''; // Caminho do modelo atual exibido
-let infoVisible = false; // Estado do painel de informações (visível ou não)
+let currentCategory = 'inicio';
+let currentIndex = 0;
+const modelCache = {};
+let currentModelPath = '';
+let infoVisible = false;
 
 
 // ==================== ATUALIZAÇÕES DE INTERFACE ====================
 
-/**
- * Converte o nome do arquivo em um nome legível.
- * Ex: "pizza_calabresa" -> "Pizza Calabresa"
- */
 function formatProductName(path) {
   const file = path.split('/').pop().replace('.glb', '');
   return file.replace(/[_-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
-/**
- * Atualiza nome e preço do produto visível.
- */
 function updateUI(model) {
   document.getElementById("productNameDisplay").textContent = formatProductName(model.path);
   document.getElementById("priceDisplay").textContent = `R$ ${model.price.toFixed(2)}`;
@@ -41,9 +34,6 @@ function updateUI(model) {
 
 // ==================== CARREGAMENTO DO MODELO 3D ====================
 
-/**
- * Carrega o modelo GLB no container e atualiza o nome e preço.
- */
 function loadModel(path) {
   const container = document.querySelector("#modelContainer");
   const loadingIndicator = document.getElementById("loadingIndicator");
@@ -52,7 +42,6 @@ function loadModel(path) {
   loadingIndicator.innerText = "Carregando...";
   container.removeAttribute("gltf-model");
 
-  // Reset de rotação e posição
   container.setAttribute("rotation", "0 180 0");
   container.setAttribute("position", "0 -.6 0");
   container.setAttribute("scale", "1 1 1");
@@ -65,7 +54,7 @@ function loadModel(path) {
     updateUI({ path, price: getModelPrice(path) });
   } else {
     const xhr = new XMLHttpRequest();
-    xhr.open("GET", path + "?v=" + Date.now(), true); // Evita cache
+    xhr.open("GET", path + "?v=" + Date.now(), true);
     xhr.responseType = "blob";
 
     xhr.onprogress = (e) => {
@@ -91,9 +80,6 @@ function loadModel(path) {
   }
 }
 
-/**
- * Retorna o preço do modelo atual.
- */
 function getModelPrice(path) {
   for (let cat in models) {
     for (let model of models[cat]) {
@@ -111,7 +97,6 @@ function changeModel(dir) {
   currentIndex = (currentIndex + dir + lista.length) % lista.length;
   loadModel(lista[currentIndex].path);
 
-  // Fecha o painel de informações se estiver aberto
   const infoPanel = document.getElementById('infoPanel');
   if (infoPanel.style.display === 'block') {
     infoPanel.style.display = 'none';
@@ -137,6 +122,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 // ==================== ROTAÇÃO AUTOMÁTICA ====================
+
 setInterval(() => {
   const model = document.querySelector("#modelContainer");
   if (!model) return;
@@ -147,6 +133,7 @@ setInterval(() => {
 
 
 // ==================== ZOOM COM DOIS DEDOS ====================
+
 let initialDistance = null;
 let initialScale = 1;
 
@@ -181,6 +168,7 @@ window.addEventListener("touchend", () => {
 
 
 // ==================== ROTAÇÃO VERTICAL COM UM DEDO ====================
+
 let startY = null;
 let initialRotationX = 0;
 
@@ -208,6 +196,7 @@ window.addEventListener("touchend", () => {
 
 
 // ==================== BOTÃO DE INFORMAÇÕES ====================
+
 document.getElementById("infoBtn").addEventListener("click", () => {
   const panel = document.getElementById("infoPanel");
 
@@ -220,22 +209,51 @@ document.getElementById("infoBtn").addEventListener("click", () => {
   if (!currentModelPath) return;
 
   const filename = currentModelPath.split('/').pop().replace('.glb', '');
-  const infoPath = `informacao/${filename}.txt`;
 
-  fetch(infoPath)
-    .then(response => {
-      if (!response.ok) throw new Error('Arquivo não encontrado');
-      return response.text();
-    })
-    .then(data => {
-      panel.innerText = data;
-      panel.style.display = "block";
-      infoVisible = true;
-    })
-    .catch(err => {
-      console.error("Erro ao carregar info:", err);
-      panel.innerText = "Informações não disponíveis.";
-      panel.style.display = "block";
-      infoVisible = true;
-    });
+  // 1º Tenta carregar JSON
+  loadProductInfoJSON(filename, panel);
 });
+
+
+// ==================== NOVA FUNÇÃO: LER JSON DE INFORMAÇÕES ====================
+async function loadProductInfoJSON(filename, panel) {
+  try {
+    // Construir a URL completa do JSON baseado no caminho do modelo atual
+    const modelData = getCurrentModelData();
+    if (!modelData || !modelData.info) {
+      throw new Error("Informações não disponíveis para este produto");
+    }
+
+    const response = await fetch(modelData.info + "?v=" + Date.now());
+    if (!response.ok) throw new Error("Erro ao carregar informações");
+    
+    const data = await response.json();
+    let content = "<ul>";
+    
+    for (let key in data) {
+      content += `<li><strong>${key}:</strong> ${data[key]}</li>`;
+    }
+    
+    content += "</ul>";
+    document.getElementById("infoContent").innerHTML = content;
+    panel.style.display = "block";
+    infoVisible = true;
+  } catch (error) {
+    console.error("Erro:", error);
+    document.getElementById("infoContent").innerHTML = "Informações não disponíveis";
+    panel.style.display = "block";
+    infoVisible = true;
+  }
+}
+
+// Função auxiliar para obter os dados do modelo atual
+function getCurrentModelData() {
+  for (let cat in models) {
+    for (let model of models[cat]) {
+      if (model.path === currentModelPath) {
+        return model;
+      }
+    }
+  }
+  return null;
+}
