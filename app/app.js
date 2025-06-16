@@ -210,30 +210,27 @@ document.getElementById("infoBtn").addEventListener("click", () => {
 
   const filename = currentModelPath.split('/').pop().replace('.glb', '');
 
-  // 1º Tenta carregar JSON
   loadProductInfoJSON(filename, panel);
 });
 
 
 // ==================== NOVA FUNÇÃO: LER JSON DE INFORMAÇÕES ====================
+
 async function loadProductInfoJSON(filename, panel) {
   try {
-    // Construir a URL completa do JSON baseado no caminho do modelo atual
     const modelData = getCurrentModelData();
-    if (!modelData || !modelData.info) {
-      throw new Error("Informações não disponíveis para este produto");
-    }
+    if (!modelData || !modelData.info) throw new Error("Informações não disponíveis");
 
     const response = await fetch(modelData.info + "?v=" + Date.now());
     if (!response.ok) throw new Error("Erro ao carregar informações");
-    
+
     const data = await response.json();
     let content = "<ul>";
-    
+
     for (let key in data) {
       content += `<li><strong>${key}:</strong> ${data[key]}</li>`;
     }
-    
+
     content += "</ul>";
     document.getElementById("infoContent").innerHTML = content;
     panel.style.display = "block";
@@ -246,14 +243,60 @@ async function loadProductInfoJSON(filename, panel) {
   }
 }
 
-// Função auxiliar para obter os dados do modelo atual
 function getCurrentModelData() {
   for (let cat in models) {
     for (let model of models[cat]) {
-      if (model.path === currentModelPath) {
-        return model;
-      }
+      if (model.path === currentModelPath) return model;
     }
   }
   return null;
-} 
+}
+
+
+// ==============================
+// SINCRONIZAÇÃO DE CATEGORIAS (APP AR)
+// ==============================
+const canal = new BroadcastChannel('sincronizacao_categorias');
+
+// A. Ouvinte para mensagens do painel admin
+canal.onmessage = (event) => {
+  const { acao, categoria, desativado } = event.data;
+  
+  if (acao === 'atualizar_botao') {
+    const botaoApp = document.querySelector(`.category-btn[onclick*="selectCategory('${categoria}')"]`);
+    
+    if (botaoApp) {
+      // 1. Atualiza visibilidade
+      botaoApp.style.display = desativado ? 'none' : 'block';
+      
+      // 2. Redireciona se a categoria ativa foi desativada
+      if (currentCategory === categoria && desativado) {
+        const primeiraCategoriaVisivel = document.querySelector('.category-btn[style*="block"], .category-btn:not([style])');
+        if (primeiraCategoriaVisivel) {
+          const novaCategoria = primeiraCategoriaVisivel.getAttribute('onclick').match(/'([^']+)'/)[1];
+          selectCategory(novaCategoria);
+        } else {
+          selectCategory('inicio');
+        }
+      }
+    }
+  }
+};
+
+// B. Sincronização inicial ao carregar
+window.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.category-btn').forEach(btn => {
+    const categoria = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
+    const estaDesativado = localStorage.getItem(`btnEstado_${categoria}`) === 'true';
+    
+    // Esconde botões desativados
+    if (estaDesativado) {
+      btn.style.display = 'none';
+      
+      // Força sincronização se o app iniciar com categoria inválida
+      if (currentCategory === categoria) {
+        selectCategory('inicio');
+      }
+    }
+  });
+});

@@ -46,56 +46,71 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==============================
-  // CARDÁPIO - Clique e Hover nos botões de categoria
-  // ==============================
-  document.querySelectorAll('#dropdownCardapio button').forEach(btn => {
-    const categoria = btn.getAttribute('data-categoria');
-    const id = 'btnEstado_' + categoria;
+// CARDÁPIO - Clique e Hover nos botões de categoria (COM SINCRONIZAÇÃO)
+// ==============================
+document.querySelectorAll('#dropdownCardapio button').forEach(btn => {
+  const categoria = btn.getAttribute('data-categoria');
+  const id = 'btnEstado_' + categoria;
 
-    // Recupera estado salvo no localStorage
-    const estaDesativado = localStorage.getItem(id) === 'true';
-    if (estaDesativado) {
-      btn.classList.add('desativado');
+  // 1. Recupera estado inicial do localStorage
+  const estaDesativado = localStorage.getItem(id) === 'true';
+  if (estaDesativado) {
+    btn.classList.add('desativado');
+    
+    // Notifica o app AR imediatamente ao carregar (para sincronização inicial)
+    const canal = new BroadcastChannel('sincronizacao_categorias');
+    canal.postMessage({
+      acao: 'atualizar_botao',
+      categoria: categoria,
+      desativado: true
+    });
+  }
+
+  // 2. Clique no botão (COM SINCRONIZAÇÃO)
+  btn.addEventListener('click', () => {
+    const desativadoAgora = !btn.classList.contains('desativado');
+    
+    // Atualiza estado local
+    btn.classList.toggle('desativado');
+    localStorage.setItem(id, desativadoAgora);
+
+    // Envia para o app AR via BroadcastChannel
+    const canal = new BroadcastChannel('sincronizacao_categorias');
+    canal.postMessage({
+      acao: 'atualizar_botao',
+      categoria: categoria,
+      desativado: desativadoAgora
+    });
+
+    // Lógica existente de limpeza/recarrega
+    if (desativadoAgora) {
+      if (categoriaAtiva === categoria) {
+        categoriaAtiva = null;
+        container.innerHTML = '';
+        container.style.display = 'none';
+        modelModal.style.display = 'none';
+        modelModal.innerHTML = '';
+      }
+    } else {
+      categoriaAtiva = categoria;
+      mostrarItens(categoria);
+      container.style.display = 'flex';
+      
+      document.querySelectorAll(`.item-box[data-categoria="${categoria}"]`).forEach(item => {
+        item.classList.remove('desativado');
+      });
     }
-
-    // Clique no botão da categoria
-    btn.addEventListener('click', () => {
-      const desativadoAgora = !btn.classList.contains('desativado');
-      btn.classList.toggle('desativado');
-      localStorage.setItem(id, desativadoAgora);
-
-      if (desativadoAgora) {
-        // Categoria foi desativada
-        if (categoriaAtiva === categoria) {
-          categoriaAtiva = null;
-          container.innerHTML = '';
-          container.style.display = 'none';
-          modelModal.style.display = 'none';
-          modelModal.innerHTML = '';
-        }
-      } else {
-        // Categoria foi reativada
-        categoriaAtiva = categoria;
-        mostrarItens(categoria);
-        container.style.display = 'flex';
-
-        // REMOVE A CLASSE 'desativado' DOS ITENS DA CATEGORIA
-        const itensDaCategoria = document.querySelectorAll(`.item-box[data-categoria="${categoria}"]`);
-        itensDaCategoria.forEach(item => {
-          item.classList.remove('desativado');
-        });
-      }
-    });
-
-    // Hover mostra itens sem alterar o estado
-    btn.addEventListener('mouseenter', () => {
-      if (!btn.classList.contains('desativado') && categoriaAtiva !== categoria) {
-        mostrarItens(categoria);
-      }
-    });
   });
 
-  // ==============================
+  // 3. Hover (mantido original)
+  btn.addEventListener('mouseenter', () => {
+    if (!btn.classList.contains('desativado') && categoriaAtiva !== categoria) {
+      mostrarItens(categoria);
+    }
+  });
+});
+
+// ==============================
 // Função para exibir itens da categoria com animação e controle de estado
 // ==============================
 function mostrarItens(categoria) {
@@ -463,6 +478,44 @@ function setupQrCodeGarcons() {
   });
 }
 
+// ==============================
+// SINCRONIZAÇÃO DE VISIBILIDADE EM TEMPO REAL (PAINEL ↔ APP)
+// ==============================
+
+const canalStatus = new BroadcastChannel('estado_cardapio');
+
+// 🔁 Apenas no painel: use esta função ao ocultar o botão
+function alterarVisibilidadeItem(nomeItem, visivel) {
+  const botao = document.querySelector(`[data-nome="${nomeItem}"]`);
+
+  // Painel: esconde o botão
+  if (botao) {
+    if (visivel) {
+      botao.classList.remove('desativado');
+      botao.style.display = 'inline-block';
+    } else {
+      botao.classList.add('desativado');
+      botao.style.display = 'none';
+    }
+  }
+
+  // Envia para o app a mudança de estado
+  canalStatus.postMessage({ nome: nomeItem, visivel: visivel });
+}
+
+// 👂 Apenas no app: escuta alterações do painel
+canalStatus.onmessage = (event) => {
+  const { nome, visivel } = event.data;
+  const botao = document.querySelector(`[data-nome="${nome}"]`);
+
+  if (botao) {
+    if (visivel) {
+      botao.style.display = 'inline-block';
+    } else {
+      botao.remove(); // Remove completamente do app
+    }
+  }
+};
 
 // Chamada das funções
 setupCadastroGarcons();

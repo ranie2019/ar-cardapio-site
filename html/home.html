@@ -25,12 +25,24 @@
   <div class="cardapio-menu">
     <button id="cardapio-btn">Cardápio ▼</button>
     <div id="dropdownCardapio" class="dropdown-cardapio hidden">
-      <button data-categoria="bebidas">Bebidas</button>
-      <button data-categoria="carnes">Carnes</button>
-      <button data-categoria="pizzas">Pizzas</button>
-      <button data-categoria="lanches">Lanches</button>
-      <button data-categoria="sobremesas">Sobremesas</button>
-      <button data-categoria="porcoes">Porções</button>
+      <div class="categoria-control">
+        <button data-categoria="bebidas" data-nome="bebidas" class="btn-categoria">Bebidas</button>
+      </div>
+      <div class="categoria-control">
+        <button data-categoria="carnes" data-nome="carnes" class="btn-categoria">Carnes</button>
+      </div>
+      <div class="categoria-control">
+        <button data-categoria="pizzas" data-nome="pizzas" class="btn-categoria">Pizzas</button>
+      </div>
+      <div class="categoria-control">
+        <button data-categoria="lanches" data-nome="lanches" class="btn-categoria">Lanches</button>
+      </div>
+      <div class="categoria-control">
+        <button data-categoria="sobremesas" data-nome="sobremesas" class="btn-categoria">Sobremesas</button>
+      </div>
+      <div class="categoria-control">
+        <button data-categoria="porcoes" data-nome="porcoes" class="btn-categoria">Porções</button>
+      </div>
     </div>
   </div>
 
@@ -74,6 +86,30 @@
   <!-- Scripts -->
   <script src="../java/home.js"></script>
   <script src="../java/cardapio.js"></script>
+
+  <!-- SINCRONIZAÇÃO DE VISIBILIDADE EM TEMPO REAL -->
+  <script>
+    const canalStatus = new BroadcastChannel('estado_cardapio');
+    const visibilidadeCategorias = {};
+
+    function alternarVisibilidade(nome) {
+      const botao = document.querySelector(`button[data-nome="${nome}"]`);
+      if (!botao) return;
+
+      const visivel = botao.style.display !== 'none';
+      botao.style.display = visivel ? 'none' : 'inline-block';
+      visibilidadeCategorias[nome] = !visivel;
+      canalStatus.postMessage({ nome: nome, visivel: !visivel });
+    }
+
+    canalStatus.onmessage = (event) => {
+      const { nome, visivel } = event.data;
+      const botao = document.querySelector(`button[data-nome="${nome}"]`);
+      if (botao) {
+        botao.style.display = visivel ? 'inline-block' : 'none';
+      }
+    };
+  </script>
 
 </body>
 </html>
