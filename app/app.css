@@ -204,3 +204,9 @@ body {
 .check-btn:hover {
   background-color: #218838;
 }
+
+.category-btn.categoria-desativada {
+    display: none !important;
+    opacity: 0.5;
+    pointer-events: none;
+}

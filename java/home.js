@@ -82,6 +82,9 @@ document.querySelectorAll('#dropdownCardapio button').forEach(btn => {
       desativado: desativadoAgora
     });
 
+    // Salvar config no S3 imediatamente
+    salvarConfiguracaoNoS3();
+
     // Lógica existente de limpeza/recarrega
     if (desativadoAgora) {
       if (categoriaAtiva === categoria) {
@@ -369,7 +372,7 @@ function setupQrCodeGarcons() {
       wrapper.appendChild(label);
       qrCodeContainer.appendChild(wrapper);
 
-      const urlPedido = `https://arcardapio-site.s3.us-east-1.amazonaws.com/app/app.html`;
+      const urlPedido = `https://arcardapio-site.s3.us-east-1.amazonaws.com/app/app.html?v=${Date.now()}`;
 
       new QRCode(qrDiv, {
         text: urlPedido,
@@ -484,11 +487,10 @@ function setupQrCodeGarcons() {
 
 const canalStatus = new BroadcastChannel('estado_cardapio');
 
-// 🔁 Apenas no painel: use esta função ao ocultar o botão
+// 🔁 Apenas no PAINEL: chama essa função para alterar visibilidade
 function alterarVisibilidadeItem(nomeItem, visivel) {
   const botao = document.querySelector(`[data-nome="${nomeItem}"]`);
 
-  // Painel: esconde o botão
   if (botao) {
     if (visivel) {
       botao.classList.remove('desativado');
@@ -499,11 +501,11 @@ function alterarVisibilidadeItem(nomeItem, visivel) {
     }
   }
 
-  // Envia para o app a mudança de estado
+  // Envia para o app
   canalStatus.postMessage({ nome: nomeItem, visivel: visivel });
 }
 
-// 👂 Apenas no app: escuta alterações do painel
+// 👂 Apenas no APP: escuta atualizações em tempo real do painel
 canalStatus.onmessage = (event) => {
   const { nome, visivel } = event.data;
   const botao = document.querySelector(`[data-nome="${nome}"]`);
@@ -512,10 +514,45 @@ canalStatus.onmessage = (event) => {
     if (visivel) {
       botao.style.display = 'inline-block';
     } else {
-      botao.remove(); // Remove completamente do app
+      botao.remove(); // Remove totalmente do DOM
     }
   }
 };
+
+// ==============================
+// SALVAR STATUS NO S3 (JSON de configuração por restaurante)
+// ==============================
+
+function salvarConfiguracaoNoS3() {
+  const botoes = document.querySelectorAll('#dropdownCardapio .btn-categoria');
+  const configuracao = {};
+
+  botoes.forEach(btn => {
+    const categoria = btn.getAttribute('data-categoria');
+    const visivel = !btn.classList.contains('desativado');
+    configuracao[categoria] = visivel;
+  });
+
+  // 🔁 Troque por ID dinâmico do restaurante no futuro
+  const nomeRestaurante = 'restaurante-001';
+  const s3URL = `https://ar-menu-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}.json`;
+
+  fetch(s3URL, {
+    method: 'PUT',
+    body: JSON.stringify(configuracao),
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }).then(res => {
+    if (res.ok) {
+      console.log('✅ Configuração salva com sucesso no S3');
+    } else {
+      console.error('❌ Erro ao salvar no S3:', res.status);
+    }
+  }).catch(err => {
+    console.error('❌ Falha ao conectar com o S3:', err);
+  });
+}
 
 // Chamada das funções
 setupCadastroGarcons();

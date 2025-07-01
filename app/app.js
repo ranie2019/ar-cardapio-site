@@ -5,9 +5,29 @@ const modelCache = {};
 let currentModelPath = '';
 let infoVisible = false;
 
+// ==================== CONFIGURAÇÃO DO RESTAURANTE VIA S3 ====================
+async function aplicarConfiguracaoDoRestaurante() {
+  const url = `https://ar-menu-models.s3.amazonaws.com/configuracoes/restaurante-001.json?v=${Date.now()}`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Erro ao carregar configuração');
+
+    const config = await response.json();
+
+    for (const categoria in config) {
+      const visivel = config[categoria];
+      const botao = document.querySelector(`.category-btn[onclick*="${categoria}"]`);
+      if (botao) {
+        botao.style.display = visivel ? 'block' : 'none';
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ Falha ao aplicar configuração do restaurante:', err);
+  }
+}
 
 // ==================== ATUALIZAÇÕES DE INTERFACE ====================
-
 function formatProductName(path) {
   const file = path.split('/').pop().replace('.glb', '');
   return file.replace(/[_-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -31,9 +51,7 @@ function updateUI(model) {
   }
 }
 
-
 // ==================== CARREGAMENTO DO MODELO 3D ====================
-
 function loadModel(path) {
   const container = document.querySelector("#modelContainer");
   const loadingIndicator = document.getElementById("loadingIndicator");
@@ -89,9 +107,7 @@ function getModelPrice(path) {
   return 0;
 }
 
-
 // ==================== CONTROLE DE MODELOS ====================
-
 function changeModel(dir) {
   const lista = models[currentCategory];
   currentIndex = (currentIndex + dir + lista.length) % lista.length;
@@ -116,13 +132,36 @@ document.getElementById("menuBtn").addEventListener("click", () => {
   el.style.display = el.style.display === "flex" ? "none" : "flex";
 });
 
-window.addEventListener("DOMContentLoaded", () => {
+// ==================== INICIALIZAÇÃO ====================
+window.addEventListener("DOMContentLoaded", async () => {
+  await aplicarConfiguracaoDoRestaurante(); // Aplica categorias antes de carregar
   loadModel(models[currentCategory][0].path);
+  verificarEstadoInicial(); // Verifica QR code com estado customizado
 });
 
+// ==================== VERIFICAÇÃO POR QR CODE ====================
+function verificarEstadoInicial() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const estadoCodificado = urlParams.get('estado');
+  
+  if (estadoCodificado) {
+    try {
+      const estado = JSON.parse(decodeURIComponent(estadoCodificado));
+      if (estado.categorias) {
+        document.querySelectorAll('.category-btn').forEach(btn => {
+          const categoria = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
+          if (estado.categorias[categoria] === false) {
+            btn.style.display = 'none';
+          }
+        });
+      }
+    } catch (e) {
+      console.error('Erro ao decodificar estado inicial:', e);
+    }
+  }
+}
 
 // ==================== ROTAÇÃO AUTOMÁTICA ====================
-
 setInterval(() => {
   const model = document.querySelector("#modelContainer");
   if (!model) return;
@@ -131,11 +170,11 @@ setInterval(() => {
   model.setAttribute("rotation", rotation);
 }, 30);
 
-
-// ==================== ZOOM COM DOIS DEDOS ====================
-
+// ==================== ZOOM E ROTAÇÃO COM TOQUE ====================
 let initialDistance = null;
 let initialScale = 1;
+let startY = null;
+let initialRotationX = 0;
 
 function updateScale(scaleFactor) {
   const model = document.querySelector("#modelContainer");
@@ -150,6 +189,10 @@ window.addEventListener("touchstart", (e) => {
     initialDistance = Math.sqrt(dx * dx + dy * dy);
     const scale = document.querySelector("#modelContainer").getAttribute("scale");
     initialScale = scale.x;
+  } else if (e.touches.length === 1) {
+    startY = e.touches[0].clientY;
+    const model = document.querySelector("#modelContainer");
+    initialRotationX = model.getAttribute("rotation").x;
   }
 });
 
@@ -159,29 +202,7 @@ window.addEventListener("touchmove", (e) => {
     const dy = e.touches[0].clientY - e.touches[1].clientY;
     const currentDistance = Math.sqrt(dx * dx + dy * dy);
     updateScale(currentDistance / initialDistance);
-  }
-});
-
-window.addEventListener("touchend", () => {
-  initialDistance = null;
-});
-
-
-// ==================== ROTAÇÃO VERTICAL COM UM DEDO ====================
-
-let startY = null;
-let initialRotationX = 0;
-
-window.addEventListener("touchstart", (e) => {
-  if (e.touches.length === 1) {
-    startY = e.touches[0].clientY;
-    const model = document.querySelector("#modelContainer");
-    initialRotationX = model.getAttribute("rotation").x;
-  }
-});
-
-window.addEventListener("touchmove", (e) => {
-  if (e.touches.length === 1 && startY !== null) {
+  } else if (e.touches.length === 1 && startY !== null) {
     const deltaY = e.touches[0].clientY - startY;
     const model = document.querySelector("#modelContainer");
     const rotation = model.getAttribute("rotation");
@@ -191,12 +212,11 @@ window.addEventListener("touchmove", (e) => {
 });
 
 window.addEventListener("touchend", () => {
+  initialDistance = null;
   startY = null;
 });
 
-
 // ==================== BOTÃO DE INFORMAÇÕES ====================
-
 document.getElementById("infoBtn").addEventListener("click", () => {
   const panel = document.getElementById("infoPanel");
 
@@ -209,13 +229,10 @@ document.getElementById("infoBtn").addEventListener("click", () => {
   if (!currentModelPath) return;
 
   const filename = currentModelPath.split('/').pop().replace('.glb', '');
-
   loadProductInfoJSON(filename, panel);
 });
 
-
-// ==================== NOVA FUNÇÃO: LER JSON DE INFORMAÇÕES ====================
-
+// ==================== LER JSON DE INFORMAÇÕES ====================
 async function loadProductInfoJSON(filename, panel) {
   try {
     const modelData = getCurrentModelData();
@@ -226,11 +243,9 @@ async function loadProductInfoJSON(filename, panel) {
 
     const data = await response.json();
     let content = "<ul>";
-
     for (let key in data) {
       content += `<li><strong>${key}:</strong> ${data[key]}</li>`;
     }
-
     content += "</ul>";
     document.getElementById("infoContent").innerHTML = content;
     panel.style.display = "block";
@@ -251,52 +266,3 @@ function getCurrentModelData() {
   }
   return null;
 }
-
-
-// ==============================
-// SINCRONIZAÇÃO DE CATEGORIAS (APP AR)
-// ==============================
-const canal = new BroadcastChannel('sincronizacao_categorias');
-
-// A. Ouvinte para mensagens do painel admin
-canal.onmessage = (event) => {
-  const { acao, categoria, desativado } = event.data;
-  
-  if (acao === 'atualizar_botao') {
-    const botaoApp = document.querySelector(`.category-btn[onclick*="selectCategory('${categoria}')"]`);
-    
-    if (botaoApp) {
-      // 1. Atualiza visibilidade
-      botaoApp.style.display = desativado ? 'none' : 'block';
-      
-      // 2. Redireciona se a categoria ativa foi desativada
-      if (currentCategory === categoria && desativado) {
-        const primeiraCategoriaVisivel = document.querySelector('.category-btn[style*="block"], .category-btn:not([style])');
-        if (primeiraCategoriaVisivel) {
-          const novaCategoria = primeiraCategoriaVisivel.getAttribute('onclick').match(/'([^']+)'/)[1];
-          selectCategory(novaCategoria);
-        } else {
-          selectCategory('inicio');
-        }
-      }
-    }
-  }
-};
-
-// B. Sincronização inicial ao carregar
-window.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.category-btn').forEach(btn => {
-    const categoria = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
-    const estaDesativado = localStorage.getItem(`btnEstado_${categoria}`) === 'true';
-    
-    // Esconde botões desativados
-    if (estaDesativado) {
-      btn.style.display = 'none';
-      
-      // Força sincronização se o app iniciar com categoria inválida
-      if (currentCategory === categoria) {
-        selectCategory('inicio');
-      }
-    }
-  });
-});
