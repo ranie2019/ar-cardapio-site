@@ -75,21 +75,27 @@ async function carregarConfiguracaoDoRestaurante() {
 
 // ==================== FUNÇÃO PRINCIPAL PARA CARREGAR E EXIBIR PRODUTOS ATIVOS ====================
 async function carregarEExibirProdutos() {
-  const statusObjetos = await carregarStatus(); // Assume que essa função está definida em outro script
   const configuracao = await carregarConfiguracaoDoRestaurante();
+  const statusObjetos = await carregarStatus(); // <- agora definida corretamente
 
   for (const categoria in models) {
+    // Verifica se a categoria está ativa
     if (configuracao && configuracao[categoria] === false) continue;
 
     const produtos = models[categoria];
 
     for (const produto of produtos) {
-      const relativePath = produto.path.replace(modelBaseURL + '/', '');
-      const ativo = statusObjetos.hasOwnProperty(relativePath) ? statusObjetos[relativePath] : true;
+      const relativePath = produto.path.replace(modelBaseURL + '/', '').toLowerCase();
+
+      // Verifica se o produto está desativado no statusObjetos
+      const ativo = statusObjetos[relativePath] !== false; // false = desativado, true = ativo
 
       if (!ativo) continue;
 
+      // Carrega informações nutricionais se houver
       produto.infoData = await carregarInfoProduto(produto.info);
+
+      // Exibe o produto na interface
       exibirProdutoNaTela(produto, categoria);
     }
   }

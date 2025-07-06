@@ -89,7 +89,7 @@ function loadModel(path) {
     updateUI({ path, price: getModelPrice(path) });
   } else {
     const xhr = new XMLHttpRequest();
-    xhr.open("GET", path + "?v=" + Date.now(), true);
+    xhr.open("GET", path + "?v=1.0", true);
     xhr.responseType = "blob";
 
     xhr.onprogress = (e) => {
@@ -295,3 +295,41 @@ function getCurrentModelData() {
   }
   return null;
 }
+
+// ==================== PRÉ-CARREGAMENTO AUTOMÁTICO DE MODELOS ATIVOS ====================
+setTimeout(() => {
+  for (let cat in models) {
+    // pula categorias ocultas
+    if (itensOcultos && itensOcultos[cat]) {
+      const visiveis = models[cat].filter(item => {
+        const nome = item.path.split('/').pop().replace('.glb', '').toLowerCase();
+        return !itensOcultos[cat].includes(nome);
+      });
+
+      for (const item of visiveis) {
+        if (!modelCache[item.path]) {
+          const xhr = new XMLHttpRequest();
+          xhr.open("GET", item.path + "?v=1.0", true); // versão fixa p/ cache
+          xhr.responseType = "blob";
+          xhr.onload = () => {
+            modelCache[item.path] = URL.createObjectURL(xhr.response);
+          };
+          xhr.send();
+        }
+      }
+    } else {
+      // se categoria não tem itens ocultos
+      for (const item of models[cat]) {
+        if (!modelCache[item.path]) {
+          const xhr = new XMLHttpRequest();
+          xhr.open("GET", item.path + "?v=1.0", true);
+          xhr.responseType = "blob";
+          xhr.onload = () => {
+            modelCache[item.path] = URL.createObjectURL(xhr.response);
+          };
+          xhr.send();
+        }
+      }
+    }
+  }
+}, 3000); // começa 3 segundos após o carregamento inicial
