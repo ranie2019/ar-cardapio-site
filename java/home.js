@@ -142,6 +142,9 @@ function mostrarItens(categoria) {
       box.classList.toggle('desativado');
       const desativadoAgora = box.classList.contains('desativado');
       localStorage.setItem(idItem, desativadoAgora.toString());
+
+      // ✅ SALVA NO S3 APÓS ALTERAR ESTADO DO ITEM
+      salvarConfiguracaoNoS3();
     });
 
     container.appendChild(box);
@@ -525,34 +528,69 @@ canalStatus.onmessage = (event) => {
 
 function salvarConfiguracaoNoS3() {
   const botoes = document.querySelectorAll('#dropdownCardapio .btn-categoria');
-  const configuracao = {};
+  const configuracaoCategorias = {};
 
   botoes.forEach(btn => {
     const categoria = btn.getAttribute('data-categoria');
     const visivel = !btn.classList.contains('desativado');
-    configuracao[categoria] = visivel;
+    configuracaoCategorias[categoria] = visivel;
   });
 
-  // 🔁 Troque por ID dinâmico do restaurante no futuro
-  const nomeRestaurante = 'restaurante-001';
-  const s3URL = `https://ar-menu-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}.json`;
-
-  fetch(s3URL, {
+  // SALVAR CONFIGURAÇÃO DE CATEGORIAS
+  fetch(`https://ar-menu-models.s3.amazonaws.com/configuracoes/restaurante-001.json`, {
     method: 'PUT',
-    body: JSON.stringify(configuracao),
-    headers: {
-      'Content-Type': 'application/json'
-    }
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(configuracaoCategorias)
   }).then(res => {
-    if (res.ok) {
-      console.log('✅ Configuração salva com sucesso no S3');
-    } else {
-      console.error('❌ Erro ao salvar no S3:', res.status);
-    }
+    if (res.ok) console.log('✅ Categorias salvas no S3');
+    else console.error('❌ Erro ao salvar categorias:', res.status);
   }).catch(err => {
-    console.error('❌ Falha ao conectar com o S3:', err);
+    console.error('❌ Erro ao salvar categorias no S3:', err);
   });
+
+  // SALVAR CONFIGURAÇÃO DE ITENS DESATIVADOS (sem sobrescrever as outras categorias)
+  fetch(`https://ar-menu-models.s3.amazonaws.com/configuracoes/restaurante-001-itens.json?v=${Date.now()}`)
+    .then(res => res.ok ? res.json() : {})
+    .catch(() => ({}))
+    .then(jsonExistente => {
+      const itensDesativados = { ...jsonExistente };
+
+      // Adiciona os itens atualmente desativados no painel
+      document.querySelectorAll('.item-box.desativado').forEach(box => {
+        const categoria = box.getAttribute('data-categoria');
+        const nome = box.textContent.trim().toLowerCase().replace(/\s+/g, '_');
+        if (!itensDesativados[categoria]) itensDesativados[categoria] = [];
+        if (!itensDesativados[categoria].includes(nome)) {
+          itensDesativados[categoria].push(nome);
+        }
+      });
+
+      // Remove os itens que foram reativados
+      document.querySelectorAll('.item-box:not(.desativado)').forEach(box => {
+        const categoria = box.getAttribute('data-categoria');
+        const nome = box.textContent.trim().toLowerCase().replace(/\s+/g, '_');
+        if (itensDesativados[categoria]) {
+          itensDesativados[categoria] = itensDesativados[categoria].filter(n => n !== nome);
+          if (itensDesativados[categoria].length === 0) {
+            delete itensDesativados[categoria]; // remove categoria se estiver vazia
+          }
+        }
+      });
+
+      // Salva JSON completo atualizado no S3
+      fetch(`https://ar-menu-models.s3.amazonaws.com/configuracoes/restaurante-001-itens.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(itensDesativados)
+      }).then(res => {
+        if (res.ok) console.log('✅ Itens ocultos salvos no S3');
+        else console.error('❌ Erro ao salvar itens ocultos:', res.status);
+      }).catch(err => {
+        console.error('❌ Erro ao salvar itens ocultos no S3:', err);
+      });
+    });
 }
+
 
 // Chamada das funções
 setupCadastroGarcons();
