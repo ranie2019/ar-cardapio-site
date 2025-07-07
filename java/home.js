@@ -1,6 +1,45 @@
 // ==============================
 // home.js - Menu de perfil, cardápio e preview 3D
 // ==============================
+// ——— 3) Abre o modal e carrega dados do S3 ———
+async function abrirModalConfiguracao(categoria, nome) {
+  itemConfiguracao = `${categoria}/${nome.toLowerCase().replace(/\s+/g, '_')}`;
+  const arquivo = itemConfiguracao.split('/')[1] + '.json';
+  modal.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
+
+  try {
+    const res  = await fetch(
+      `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}?v=${Date.now()}`
+    );
+    if (res.ok) dadosRestaurante[itemConfiguracao] = await res.json();
+  } catch {}
+
+  const dados = dadosRestaurante[itemConfiguracao] || {};
+  modal.querySelector('#inputValor').value     = dados.preco != null
+    ? dados.preco.toLocaleString('pt-BR',{ minimumFractionDigits:2 })
+    : '';
+  modal.querySelector('#inputDescricao').value = dados.descricao || '';
+  modal.style.display = 'flex';
+}
+
+// ——— 4) Salva a configuração no S3 ———
+async function salvarConfiguracao() {
+  if (!itemConfiguracao) return;
+  const raw = modal.querySelector('#inputValor').value;
+  const preco = parseFloat(raw.replace(/\./g,'').replace(',', '.')) || 0;
+  const desc  = modal.querySelector('#inputDescricao').value.trim();
+  dadosRestaurante[itemConfiguracao] = { preco, descricao: desc };
+
+  const arquivo = itemConfiguracao.split('/')[1] + '.json';
+  await fetch(
+    `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dadosRestaurante[itemConfiguracao])
+    }
+  );
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   // Botões e containers principais
@@ -11,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let categoriaAtiva = null;
 
+  
   // ==============================
   // PERFIL - Redirecionamento
   // ==============================
@@ -45,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ==============================
+// ==============================
 // CARDÁPIO - Clique e Hover nos botões de categoria (COM SINCRONIZAÇÃO)
 // ==============================
 document.querySelectorAll('#dropdownCardapio button').forEach(btn => {
@@ -114,44 +154,290 @@ document.querySelectorAll('#dropdownCardapio button').forEach(btn => {
 });
 
 // ==============================
-// Função para exibir itens da categoria com animação e controle de estado
+// Função para exibir itens da categoria com animação,
+// controle de estado, botão de configuração e modal embutido
 // ==============================
 function mostrarItens(categoria) {
   const container = document.getElementById('itensContainer');
   if (!container || !objetos3D[categoria]) return;
 
+  // ----- 1) Cria o modal (se ainda não existir) -----
+  let modal = document.getElementById('modalConfiguracaoProduto');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modalConfiguracaoProduto';
+    modal.className = 'modal-edicao';
+    modal.innerHTML = `
+      <div class="modal-content-edicao">
+        <span class="close-edicao">&times;</span>
+        <h3 class="modal-titulo"></h3>
+        <label>Valor (R$):</label>
+        <input type="text" id="inputValor" /><br>
+        <label>Descrição:</label>
+        <textarea id="inputDescricao" rows="4"></textarea><br>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Fecha ao clicar no X
+    modal.querySelector('.close-edicao')
+         .addEventListener('click', () => modal.style.display = 'none');
+
+    // Fecha ao clicar fora do conteúdo
+    window.addEventListener('click', e => {
+      if (e.target === modal) modal.style.display = 'none';
+    });
+
+// Formatação e salvamento ao digitar no Valor
+const inputValor = modal.querySelector('#inputValor');
+const inputDesc  = modal.querySelector('#inputDescricao');
+
+inputValor.addEventListener('input', e => {
+  // remove tudo que não for dígito
+  let v = e.target.value.replace(/\D/g, '');
+  // converte em centavos e formata com duas casas decimais
+  v = (parseFloat(v) / 100).toFixed(2);
+  // coloca vírgula decimal
+  v = v.replace('.', ',');
+  // coloca pontos de milhar
+  v = v.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  // finalmente, devolve ao campo
+  e.target.value = v;
+  // só então grava no S3
+  salvarConfiguracao();
+});
+
+// mantém o listener da descrição
+inputDesc.addEventListener('input', salvarConfiguracao);
+
+  }
+
+  // ----- 2) Limpa e monta os itens -----
   container.innerHTML = '';
   container.style.display = 'flex';
 
   objetos3D[categoria].forEach((nome, i) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'item-wrapper';
+
     const box = document.createElement('div');
     box.className = 'item-box';
     box.textContent = nome;
     box.setAttribute('data-categoria', categoria);
-    box.style.animationDelay = `${i * 0.1}s`; // delay em cascata para animação
+    box.style.animationDelay = `${i * 0.1}s`;
 
-    // Verifica se o item está desativado no localStorage
     const idItem = `itemEstado_${categoria}_${nome}`;
-    const estaDesativado = localStorage.getItem(idItem) === 'true';
-    if (estaDesativado) {
+    if (localStorage.getItem(idItem) === 'true') {
       box.classList.add('desativado');
     }
-
-    // Clique no item alterna o estado de ativado/desativado
     box.addEventListener('click', () => {
       box.classList.toggle('desativado');
-      const desativadoAgora = box.classList.contains('desativado');
-      localStorage.setItem(idItem, desativadoAgora.toString());
-
-      // ✅ SALVA NO S3 APÓS ALTERAR ESTADO DO ITEM
+      localStorage.setItem(idItem, box.classList.contains('desativado'));
       salvarConfiguracaoNoS3();
     });
 
-    container.appendChild(box);
+    const btnConfig = document.createElement('button');
+    btnConfig.className = 'btn-configurar-produto';
+    btnConfig.textContent = 'Configuração';
+    btnConfig.addEventListener('click', e => {
+      e.stopPropagation();
+
+      // prepara modal com título, valor e descrição já salvos
+      const chave = `${categoria}/${nome.toLowerCase().replace(/\s+/g,'_')}`;
+      const dados = dadosRestaurante[chave] || {};
+
+      modal.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
+      modal.querySelector('#inputValor').value = 
+        dados.preco != null
+          ? dados.preco.toLocaleString('pt-BR',{ minimumFractionDigits:2, maximumFractionDigits:2 })
+          : '';
+      modal.querySelector('#inputDescricao').value = dados.descricao || '';
+
+      modal.style.display = 'flex';
+    });
+
+    wrapper.appendChild(box);
+    wrapper.appendChild(btnConfig);
+    container.appendChild(wrapper);
   });
 
-  // Após renderizar todos os itens, ativa os previews 3D nos hovers
+  // ----- 3) Reativa o preview 3D nos itens -----
   requestAnimationFrame(() => adicionarPreview3D());
+}
+
+// ==============================
+// Função que grava no objeto e no S3
+// ==============================
+function salvarConfiguracao() {
+  const modal = document.getElementById('modalConfiguracaoProduto');
+  const titulo = modal.querySelector('.modal-titulo').textContent;
+  // extrai nome e categoria da chave salva anteriormente
+  // (você já setou itemConfiguracao em abrirModalConfiguracao)
+  if (!itemConfiguracao) return;
+
+  // converte "1.234,56" => 1234.56
+  const raw = modal.querySelector('#inputValor').value;
+  const preco = parseFloat( raw.replace(/\./g,'').replace(',', '.') ) || 0;
+  const descricao = modal.querySelector('#inputDescricao').value.trim();
+
+  dadosRestaurante[itemConfiguracao] = { preco, descricao };
+
+  // PUT no S3
+  fetch(`https://ar-menu-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}-dados.json`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(dadosRestaurante)
+  });
+}
+
+
+// ==============================
+// Variáveis globais
+// ==============================
+// ——— 1) Variáveis globais ———
+const nomeRestaurante = 'restaurante-001';
+let itemConfiguracao = null;      // ex: "bebidas/absolut_vodka_1l"
+const dadosRestaurante = {};      // cache local
+
+// ——— 2) Criação única do modal ———
+const modal = document.createElement('div');
+modal.id = 'modalConfiguracaoProduto';
+modal.className = 'modal-edicao';
+modal.innerHTML = `
+  <div class="modal-content-edicao">
+    <span class="close-edicao">&times;</span>
+    <h3 class="modal-titulo"></h3>
+    <label>Valor (R$):</label>
+    <input type="text" id="inputValor" placeholder="0,00"><br>
+    <label>Descrição:</label>
+    <textarea id="inputDescricao" rows="4"></textarea><br>
+  </div>
+`;
+document.body.appendChild(modal);
+
+// fecha ao clicar no X
+// fecha ao clicar no X
+modal.querySelector('.close-edicao').onclick = () => modal.style.display = 'none';
+// fecha ao clicar fora
+window.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+
+// pega referências aos inputs
+const inputValor = modal.querySelector('#inputValor');
+const inputDesc  = modal.querySelector('#inputDescricao');
+
+// listener para formatar valor em tempo real
+inputValor.addEventListener('input', e => {
+  // remove tudo que não for dígito
+  let v = e.target.value.replace(/\D/g, '');
+  // converte em centavos e formata com duas casas decimais
+  v = (parseFloat(v) / 100).toFixed(2);
+  // vírgula decimal
+  v = v.replace('.', ',');
+  // pontos de milhar
+  v = v.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  // devolve ao campo formatado
+  e.target.value = v;
+  // só então grava no S3
+  salvarConfiguracao();
+});
+
+// mantém o listener da descrição
+inputDesc.addEventListener('input', salvarConfiguracao);
+
+
+// ==============================
+// Função que salva a configuração no S3
+// ==============================
+async function salvarConfiguracao() {
+  if (!itemConfiguracao) return;
+
+  // lê e formata o valor do input
+  const raw    = document.getElementById('inputValor').value;
+  const preco  = parseFloat(raw.replace(/\./g,'').replace(',', '.')) || 0;
+  const desc   = document.getElementById('inputDescricao').value.trim();
+
+  // monta objeto a ser salvo
+  dadosRestaurante[itemConfiguracao] = { preco, descricao: desc };
+
+  // determina o arquivo JSON destino
+  const arquivo = itemConfiguracao.split('/')[1] + '.json';
+
+  // envia PUT para o S3
+  try {
+    const res = await fetch(
+      `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dadosRestaurante[itemConfiguracao])
+      }
+    );
+    if (!res.ok) {
+      console.error('Erro ao salvar configuração:', res.status);
+    }
+  } catch (err) {
+    console.error('Erro de rede ao salvar configuração:', err);
+  }
+}
+
+// ==============================
+// Função que abre o modal e carrega os dados do S3
+// ==============================
+async function abrirModalConfiguracao(categoria, nome) {
+  // monta a chave e o nome do arquivo JSON
+  itemConfiguracao = `${categoria}/${nome.toLowerCase().replace(/\s+/g, '_')}`;
+  const arquivo = itemConfiguracao.split('/')[1] + '.json';
+
+  // preenche o título do modal dinamicamente
+  const titulo = modal.querySelector('h3');
+  titulo.textContent = `Configurar ${nome}`;
+
+  // tenta buscar dados no S3
+  try {
+    const res = await fetch(
+      `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}?v=${Date.now()}`
+    );
+    if (res.ok) {
+      const json = await res.json();
+      dadosRestaurante[itemConfiguracao] = json;
+    }
+  } catch (e) {
+    console.warn('Não há dados prévios para esse produto.', e);
+  }
+
+  // preenche inputs com cache (ou vazio)
+  const dados = dadosRestaurante[itemConfiguracao] || {};
+  document.getElementById('inputValor').value     = dados.preco !== undefined
+    ? dados.preco.toLocaleString('pt-BR',{minimumFractionDigits:2})
+    : '';
+  document.getElementById('inputDescricao').value = dados.descricao || '';
+
+  // exibe o modal
+  modal.style.display = 'flex';
+}
+
+
+function abrirModalConfiguracao(categoria, nome) {
+  itemConfiguracao = `${categoria}/${nome.toLowerCase().replace(/\s+/g,'_')}`;
+  const dados = dadosRestaurante[itemConfiguracao] || {};
+  document.getElementById('inputValor').value = dados.preco || '';
+  document.getElementById('inputDescricao').value = dados.descricao || '';
+}
+
+function salvarConfiguracao() {
+  if (!itemConfiguracao) return;
+  const raw = modal.querySelector('#inputValor').value;
+  const preco = parseFloat(raw.replace(/\./g,'').replace(',', '.')) || 0;
+  const descricao = modal.querySelector('#inputDescricao').value.trim();
+
+  dadosRestaurante[itemConfiguracao] = { preco, descricao };
+
+  // salva no S3
+  fetch(`https://ar-menu-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}-dados.json`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(dadosRestaurante)
+  });
 }
 
 
@@ -590,7 +876,6 @@ function salvarConfiguracaoNoS3() {
       });
     });
 }
-
 
 // Chamada das funções
 setupCadastroGarcons();
