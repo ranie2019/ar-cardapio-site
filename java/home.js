@@ -1,28 +1,55 @@
+const DOM = {
+  cardapioBtn: document.getElementById('cardapio-btn'),
+  dropdownCardapio: document.getElementById('dropdownCardapio'),
+  itensContainer: document.getElementById('itensContainer'),
+  modal: document.getElementById('modalConfiguracaoProduto'),
+  inputValor: document.getElementById('inputValor'),
+  inputDescricao: document.getElementById('inputDescricao'),
+  fecharModalBtn: document.querySelector('#modalConfiguracaoProduto .close-edicao'),
+  modelPreview: document.querySelector('.model-preview-modal'),
+  // … tudo o mais que você usar
+};
+
+
+// ==============================
+// Abre o modal e carrega dados do S3
+// ==============================
+async function abrirModalConfiguracao(categoria, nome) {
+  // chave interna e nome do arquivo JSON
+  itemConfiguracao = `${categoria}/${nome.toLowerCase().replace(/\s+/g, '_')}`;
+  const arquivo = itemConfiguracao.split('/')[1] + '.json';
+
+  // ajusta título
+  DOM.modal.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
+
+  // tenta buscar dados já salvos
+  try {
+    const res = await fetch(
+      `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}?v=${Date.now()}`
+    );
+    if (res.ok) {
+      dadosRestaurante[itemConfiguracao] = await res.json();
+    }
+  } catch {
+    // ignore — sem dados prévios
+  }
+
+  // preenche os inputs (cache ou vazio)
+  const dados = dadosRestaurante[itemConfiguracao] || {};
+  DOM.inputValor.value = dados.preco != null
+    ? dados.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+    : '';
+  DOM.inputDescricao.value = dados.descricao || '';
+
+  // exibe modal
+  DOM.modal.style.display = 'flex';
+}
+
 // ==============================
 // home.js - Menu de perfil, cardápio e preview 3D
 // ==============================
-// ——— 3) Abre o modal e carrega dados do S3 ———
-async function abrirModalConfiguracao(categoria, nome) {
-  itemConfiguracao = `${categoria}/${nome.toLowerCase().replace(/\s+/g, '_')}`;
-  const arquivo = itemConfiguracao.split('/')[1] + '.json';
-  modal.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
 
-  try {
-    const res  = await fetch(
-      `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}?v=${Date.now()}`
-    );
-    if (res.ok) dadosRestaurante[itemConfiguracao] = await res.json();
-  } catch {}
-
-  const dados = dadosRestaurante[itemConfiguracao] || {};
-  modal.querySelector('#inputValor').value     = dados.preco != null
-    ? dados.preco.toLocaleString('pt-BR',{ minimumFractionDigits:2 })
-    : '';
-  modal.querySelector('#inputDescricao').value = dados.descricao || '';
-  modal.style.display = 'flex';
-}
-
-// ——— 4) Salva a configuração no S3 ———
+// Salva a configuração no S3
 async function salvarConfiguracao() {
   if (!itemConfiguracao) return;
   const raw = modal.querySelector('#inputValor').value;
@@ -41,7 +68,7 @@ async function salvarConfiguracao() {
   );
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () =>{
   // Botões e containers principais
   const profileBtn = document.getElementById('profile-btn');
   const cardapioBtn = document.getElementById('cardapio-btn');
@@ -50,7 +77,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let categoriaAtiva = null;
 
-  
   // ==============================
   // PERFIL - Redirecionamento
   // ==============================
@@ -64,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // CARDÁPIO - Botão abre/fecha dropdown
   // ==============================
   if (cardapioBtn && dropdownCardapio) {
-    cardapioBtn.addEventListener('click', () => {
+    DOM.cardapioBtn.addEventListener('click', () => {
       dropdownCardapio.classList.toggle('show');
 
       if (!dropdownCardapio.classList.contains('show')) {
@@ -106,7 +132,7 @@ document.querySelectorAll('#dropdownCardapio button').forEach(btn => {
     });
   }
 
-  // 2. Clique no botão (COM SINCRONIZAÇÃO)
+  // Clique no botão (COM SINCRONIZAÇÃO)
   btn.addEventListener('click', () => {
     const desativadoAgora = !btn.classList.contains('desativado');
     
@@ -145,7 +171,7 @@ document.querySelectorAll('#dropdownCardapio button').forEach(btn => {
     }
   });
 
-  // 3. Hover (mantido original)
+  // Hover (mantido original)
   btn.addEventListener('mouseenter', () => {
     if (!btn.classList.contains('desativado') && categoriaAtiva !== categoria) {
       mostrarItens(categoria);
@@ -161,7 +187,7 @@ function mostrarItens(categoria) {
   const container = document.getElementById('itensContainer');
   if (!container || !objetos3D[categoria]) return;
 
-  // ----- 1) Cria o modal (se ainda não existir) -----
+  // Cria o modal (se ainda não existir)
   let modal = document.getElementById('modalConfiguracaoProduto');
   if (!modal) {
     modal = document.createElement('div');
@@ -209,10 +235,9 @@ inputValor.addEventListener('input', e => {
 
 // mantém o listener da descrição
 inputDesc.addEventListener('input', salvarConfiguracao);
+}
 
-  }
-
-  // ----- 2) Limpa e monta os itens -----
+  // Limpa e monta os itens
   container.innerHTML = '';
   container.style.display = 'flex';
 
@@ -246,14 +271,13 @@ inputDesc.addEventListener('input', salvarConfiguracao);
       const chave = `${categoria}/${nome.toLowerCase().replace(/\s+/g,'_')}`;
       const dados = dadosRestaurante[chave] || {};
 
-      modal.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
-      modal.querySelector('#inputValor').value = 
-        dados.preco != null
+      DOM.modal.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
+      DOM.inputValor.value     = dados.preco != null
           ? dados.preco.toLocaleString('pt-BR',{ minimumFractionDigits:2, maximumFractionDigits:2 })
           : '';
-      modal.querySelector('#inputDescricao').value = dados.descricao || '';
+      DOM.inputDescricao.value = dados.descricao || '';
 
-      modal.style.display = 'flex';
+      DOM.modal.style.display = 'flex';
     });
 
     wrapper.appendChild(box);
@@ -261,7 +285,7 @@ inputDesc.addEventListener('input', salvarConfiguracao);
     container.appendChild(wrapper);
   });
 
-  // ----- 3) Reativa o preview 3D nos itens -----
+  // Reativa o preview 3D nos itens
   requestAnimationFrame(() => adicionarPreview3D());
 }
 
@@ -290,16 +314,14 @@ function salvarConfiguracao() {
   });
 }
 
-
 // ==============================
 // Variáveis globais
 // ==============================
-// ——— 1) Variáveis globais ———
 const nomeRestaurante = 'restaurante-001';
 let itemConfiguracao = null;      // ex: "bebidas/absolut_vodka_1l"
 const dadosRestaurante = {};      // cache local
 
-// ——— 2) Criação única do modal ———
+// Criação única do modal 
 const modal = document.createElement('div');
 modal.id = 'modalConfiguracaoProduto';
 modal.className = 'modal-edicao';
@@ -315,7 +337,6 @@ modal.innerHTML = `
 `;
 document.body.appendChild(modal);
 
-// fecha ao clicar no X
 // fecha ao clicar no X
 modal.querySelector('.close-edicao').onclick = () => modal.style.display = 'none';
 // fecha ao clicar fora
@@ -344,86 +365,9 @@ inputValor.addEventListener('input', e => {
 // mantém o listener da descrição
 inputDesc.addEventListener('input', salvarConfiguracao);
 
-
-// ==============================
-// Função que salva a configuração no S3
-// ==============================
-async function salvarConfiguracao() {
-  if (!itemConfiguracao) return;
-
-  // lê e formata o valor do input
-  const raw    = document.getElementById('inputValor').value;
-  const preco  = parseFloat(raw.replace(/\./g,'').replace(',', '.')) || 0;
-  const desc   = document.getElementById('inputDescricao').value.trim();
-
-  // monta objeto a ser salvo
-  dadosRestaurante[itemConfiguracao] = { preco, descricao: desc };
-
-  // determina o arquivo JSON destino
-  const arquivo = itemConfiguracao.split('/')[1] + '.json';
-
-  // envia PUT para o S3
-  try {
-    const res = await fetch(
-      `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}`,
-      {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dadosRestaurante[itemConfiguracao])
-      }
-    );
-    if (!res.ok) {
-      console.error('Erro ao salvar configuração:', res.status);
-    }
-  } catch (err) {
-    console.error('Erro de rede ao salvar configuração:', err);
-  }
-}
-
 // ==============================
 // Função que abre o modal e carrega os dados do S3
 // ==============================
-async function abrirModalConfiguracao(categoria, nome) {
-  // monta a chave e o nome do arquivo JSON
-  itemConfiguracao = `${categoria}/${nome.toLowerCase().replace(/\s+/g, '_')}`;
-  const arquivo = itemConfiguracao.split('/')[1] + '.json';
-
-  // preenche o título do modal dinamicamente
-  const titulo = modal.querySelector('h3');
-  titulo.textContent = `Configurar ${nome}`;
-
-  // tenta buscar dados no S3
-  try {
-    const res = await fetch(
-      `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}?v=${Date.now()}`
-    );
-    if (res.ok) {
-      const json = await res.json();
-      dadosRestaurante[itemConfiguracao] = json;
-    }
-  } catch (e) {
-    console.warn('Não há dados prévios para esse produto.', e);
-  }
-
-  // preenche inputs com cache (ou vazio)
-  const dados = dadosRestaurante[itemConfiguracao] || {};
-  document.getElementById('inputValor').value     = dados.preco !== undefined
-    ? dados.preco.toLocaleString('pt-BR',{minimumFractionDigits:2})
-    : '';
-  document.getElementById('inputDescricao').value = dados.descricao || '';
-
-  // exibe o modal
-  modal.style.display = 'flex';
-}
-
-
-function abrirModalConfiguracao(categoria, nome) {
-  itemConfiguracao = `${categoria}/${nome.toLowerCase().replace(/\s+/g,'_')}`;
-  const dados = dadosRestaurante[itemConfiguracao] || {};
-  document.getElementById('inputValor').value = dados.preco || '';
-  document.getElementById('inputDescricao').value = dados.descricao || '';
-}
-
 function salvarConfiguracao() {
   if (!itemConfiguracao) return;
   const raw = modal.querySelector('#inputValor').value;
@@ -440,21 +384,20 @@ function salvarConfiguracao() {
   });
 }
 
+// ==============================
+// PREVIEW 3D - HOVER NOS ITENS
+// ==============================
 
-  // ==============================
-  // PREVIEW 3D - HOVER NOS ITENS
-  // ==============================
+const MODEL_BASE_URL = 'https://ar-menu-models.s3.amazonaws.com/';
+const modelModal = document.createElement('div');
+modelModal.className = 'model-preview-modal';
+modelModal.style.display = 'none';
+document.body.appendChild(modelModal);
 
-  const MODEL_BASE_URL = 'https://ar-menu-models.s3.amazonaws.com/';
-  const modelModal = document.createElement('div');
-  modelModal.className = 'model-preview-modal';
-  modelModal.style.display = 'none';
-  document.body.appendChild(modelModal);
-
-  // Converte o nome do item para o nome de arquivo .glb
-  function nomeParaArquivo(nome) {
-    return nome.trim().toLowerCase().replace(/\s+/g, '_') + '.glb';
-  }
+// Converte o nome do item para o nome de arquivo .glb
+function nomeParaArquivo(nome) {
+  return nome.trim().toLowerCase().replace(/\s+/g, '_') + '.glb';
+}
 
   // Adiciona a pré-visualização 3D com animação no item em hover
   function adicionarPreview3D() {
@@ -571,7 +514,6 @@ function setupCadastroGarcons() {
     validarCampos(form);
   });
 }
-
 
   function gerarFormulariosGarcons(qtd) {
     const dadosAtuais = {};
