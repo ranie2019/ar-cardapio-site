@@ -1,55 +1,28 @@
-const DOM = {
-  cardapioBtn: document.getElementById('cardapio-btn'),
-  dropdownCardapio: document.getElementById('dropdownCardapio'),
-  itensContainer: document.getElementById('itensContainer'),
-  modal: document.getElementById('modalConfiguracaoProduto'),
-  inputValor: document.getElementById('inputValor'),
-  inputDescricao: document.getElementById('inputDescricao'),
-  fecharModalBtn: document.querySelector('#modalConfiguracaoProduto .close-edicao'),
-  modelPreview: document.querySelector('.model-preview-modal'),
-  // … tudo o mais que você usar
-};
-
-
-// ==============================
-// Abre o modal e carrega dados do S3
-// ==============================
-async function abrirModalConfiguracao(categoria, nome) {
-  // chave interna e nome do arquivo JSON
-  itemConfiguracao = `${categoria}/${nome.toLowerCase().replace(/\s+/g, '_')}`;
-  const arquivo = itemConfiguracao.split('/')[1] + '.json';
-
-  // ajusta título
-  DOM.modal.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
-
-  // tenta buscar dados já salvos
-  try {
-    const res = await fetch(
-      `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}?v=${Date.now()}`
-    );
-    if (res.ok) {
-      dadosRestaurante[itemConfiguracao] = await res.json();
-    }
-  } catch {
-    // ignore — sem dados prévios
-  }
-
-  // preenche os inputs (cache ou vazio)
-  const dados = dadosRestaurante[itemConfiguracao] || {};
-  DOM.inputValor.value = dados.preco != null
-    ? dados.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-    : '';
-  DOM.inputDescricao.value = dados.descricao || '';
-
-  // exibe modal
-  DOM.modal.style.display = 'flex';
-}
-
 // ==============================
 // home.js - Menu de perfil, cardápio e preview 3D
 // ==============================
+// ——— 3) Abre o modal e carrega dados do S3 ———
+async function abrirModalConfiguracao(categoria, nome) {
+  itemConfiguracao = `${categoria}/${nome.toLowerCase().replace(/\s+/g, '_')}`;
+  const arquivo = itemConfiguracao.split('/')[1] + '.json';
+  modal.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
 
-// Salva a configuração no S3
+  try {
+    const res  = await fetch(
+      `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}?v=${Date.now()}`
+    );
+    if (res.ok) dadosRestaurante[itemConfiguracao] = await res.json();
+  } catch {}
+
+  const dados = dadosRestaurante[itemConfiguracao] || {};
+  modal.querySelector('#inputValor').value     = dados.preco != null
+    ? dados.preco.toLocaleString('pt-BR',{ minimumFractionDigits:2 })
+    : '';
+  modal.querySelector('#inputDescricao').value = dados.descricao || '';
+  modal.style.display = 'flex';
+}
+
+// ——— 4) Salva a configuração no S3 ———
 async function salvarConfiguracao() {
   if (!itemConfiguracao) return;
   const raw = modal.querySelector('#inputValor').value;
@@ -68,7 +41,7 @@ async function salvarConfiguracao() {
   );
 }
 
-document.addEventListener('DOMContentLoaded', () =>{
+document.addEventListener('DOMContentLoaded', () => {
   // Botões e containers principais
   const profileBtn = document.getElementById('profile-btn');
   const cardapioBtn = document.getElementById('cardapio-btn');
@@ -77,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () =>{
 
   let categoriaAtiva = null;
 
+  
   // ==============================
   // PERFIL - Redirecionamento
   // ==============================
@@ -90,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () =>{
   // CARDÁPIO - Botão abre/fecha dropdown
   // ==============================
   if (cardapioBtn && dropdownCardapio) {
-    DOM.cardapioBtn.addEventListener('click', () => {
+    cardapioBtn.addEventListener('click', () => {
       dropdownCardapio.classList.toggle('show');
 
       if (!dropdownCardapio.classList.contains('show')) {
@@ -132,7 +106,7 @@ document.querySelectorAll('#dropdownCardapio button').forEach(btn => {
     });
   }
 
-  // Clique no botão (COM SINCRONIZAÇÃO)
+  // 2. Clique no botão (COM SINCRONIZAÇÃO)
   btn.addEventListener('click', () => {
     const desativadoAgora = !btn.classList.contains('desativado');
     
@@ -171,7 +145,7 @@ document.querySelectorAll('#dropdownCardapio button').forEach(btn => {
     }
   });
 
-  // Hover (mantido original)
+  // 3. Hover (mantido original)
   btn.addEventListener('mouseenter', () => {
     if (!btn.classList.contains('desativado') && categoriaAtiva !== categoria) {
       mostrarItens(categoria);
@@ -187,7 +161,7 @@ function mostrarItens(categoria) {
   const container = document.getElementById('itensContainer');
   if (!container || !objetos3D[categoria]) return;
 
-  // Cria o modal (se ainda não existir)
+  // ----- 1) Cria o modal (se ainda não existir) -----
   let modal = document.getElementById('modalConfiguracaoProduto');
   if (!modal) {
     modal = document.createElement('div');
@@ -235,9 +209,10 @@ inputValor.addEventListener('input', e => {
 
 // mantém o listener da descrição
 inputDesc.addEventListener('input', salvarConfiguracao);
-}
 
-  // Limpa e monta os itens
+  }
+
+  // ----- 2) Limpa e monta os itens -----
   container.innerHTML = '';
   container.style.display = 'flex';
 
@@ -271,13 +246,14 @@ inputDesc.addEventListener('input', salvarConfiguracao);
       const chave = `${categoria}/${nome.toLowerCase().replace(/\s+/g,'_')}`;
       const dados = dadosRestaurante[chave] || {};
 
-      DOM.modal.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
-      DOM.inputValor.value     = dados.preco != null
+      modal.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
+      modal.querySelector('#inputValor').value = 
+        dados.preco != null
           ? dados.preco.toLocaleString('pt-BR',{ minimumFractionDigits:2, maximumFractionDigits:2 })
           : '';
-      DOM.inputDescricao.value = dados.descricao || '';
+      modal.querySelector('#inputDescricao').value = dados.descricao || '';
 
-      DOM.modal.style.display = 'flex';
+      modal.style.display = 'flex';
     });
 
     wrapper.appendChild(box);
@@ -285,7 +261,7 @@ inputDesc.addEventListener('input', salvarConfiguracao);
     container.appendChild(wrapper);
   });
 
-  // Reativa o preview 3D nos itens
+  // ----- 3) Reativa o preview 3D nos itens -----
   requestAnimationFrame(() => adicionarPreview3D());
 }
 
@@ -314,14 +290,16 @@ function salvarConfiguracao() {
   });
 }
 
+
 // ==============================
 // Variáveis globais
 // ==============================
+// ——— 1) Variáveis globais ———
 const nomeRestaurante = 'restaurante-001';
 let itemConfiguracao = null;      // ex: "bebidas/absolut_vodka_1l"
 const dadosRestaurante = {};      // cache local
 
-// Criação única do modal 
+// ——— 2) Criação única do modal ———
 const modal = document.createElement('div');
 modal.id = 'modalConfiguracaoProduto';
 modal.className = 'modal-edicao';
@@ -337,6 +315,7 @@ modal.innerHTML = `
 `;
 document.body.appendChild(modal);
 
+// fecha ao clicar no X
 // fecha ao clicar no X
 modal.querySelector('.close-edicao').onclick = () => modal.style.display = 'none';
 // fecha ao clicar fora
@@ -365,9 +344,86 @@ inputValor.addEventListener('input', e => {
 // mantém o listener da descrição
 inputDesc.addEventListener('input', salvarConfiguracao);
 
+
+// ==============================
+// Função que salva a configuração no S3
+// ==============================
+async function salvarConfiguracao() {
+  if (!itemConfiguracao) return;
+
+  // lê e formata o valor do input
+  const raw    = document.getElementById('inputValor').value;
+  const preco  = parseFloat(raw.replace(/\./g,'').replace(',', '.')) || 0;
+  const desc   = document.getElementById('inputDescricao').value.trim();
+
+  // monta objeto a ser salvo
+  dadosRestaurante[itemConfiguracao] = { preco, descricao: desc };
+
+  // determina o arquivo JSON destino
+  const arquivo = itemConfiguracao.split('/')[1] + '.json';
+
+  // envia PUT para o S3
+  try {
+    const res = await fetch(
+      `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dadosRestaurante[itemConfiguracao])
+      }
+    );
+    if (!res.ok) {
+      console.error('Erro ao salvar configuração:', res.status);
+    }
+  } catch (err) {
+    console.error('Erro de rede ao salvar configuração:', err);
+  }
+}
+
 // ==============================
 // Função que abre o modal e carrega os dados do S3
 // ==============================
+async function abrirModalConfiguracao(categoria, nome) {
+  // monta a chave e o nome do arquivo JSON
+  itemConfiguracao = `${categoria}/${nome.toLowerCase().replace(/\s+/g, '_')}`;
+  const arquivo = itemConfiguracao.split('/')[1] + '.json';
+
+  // preenche o título do modal dinamicamente
+  const titulo = modal.querySelector('h3');
+  titulo.textContent = `Configurar ${nome}`;
+
+  // tenta buscar dados no S3
+  try {
+    const res = await fetch(
+      `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}?v=${Date.now()}`
+    );
+    if (res.ok) {
+      const json = await res.json();
+      dadosRestaurante[itemConfiguracao] = json;
+    }
+  } catch (e) {
+    console.warn('Não há dados prévios para esse produto.', e);
+  }
+
+  // preenche inputs com cache (ou vazio)
+  const dados = dadosRestaurante[itemConfiguracao] || {};
+  document.getElementById('inputValor').value     = dados.preco !== undefined
+    ? dados.preco.toLocaleString('pt-BR',{minimumFractionDigits:2})
+    : '';
+  document.getElementById('inputDescricao').value = dados.descricao || '';
+
+  // exibe o modal
+  modal.style.display = 'flex';
+}
+
+
+function abrirModalConfiguracao(categoria, nome) {
+  itemConfiguracao = `${categoria}/${nome.toLowerCase().replace(/\s+/g,'_')}`;
+  const dados = dadosRestaurante[itemConfiguracao] || {};
+  document.getElementById('inputValor').value = dados.preco || '';
+  document.getElementById('inputDescricao').value = dados.descricao || '';
+}
+
 function salvarConfiguracao() {
   if (!itemConfiguracao) return;
   const raw = modal.querySelector('#inputValor').value;
@@ -384,20 +440,21 @@ function salvarConfiguracao() {
   });
 }
 
-// ==============================
-// PREVIEW 3D - HOVER NOS ITENS
-// ==============================
 
-const MODEL_BASE_URL = 'https://ar-menu-models.s3.amazonaws.com/';
-const modelModal = document.createElement('div');
-modelModal.className = 'model-preview-modal';
-modelModal.style.display = 'none';
-document.body.appendChild(modelModal);
+  // ==============================
+  // PREVIEW 3D - HOVER NOS ITENS
+  // ==============================
 
-// Converte o nome do item para o nome de arquivo .glb
-function nomeParaArquivo(nome) {
-  return nome.trim().toLowerCase().replace(/\s+/g, '_') + '.glb';
-}
+  const MODEL_BASE_URL = 'https://ar-menu-models.s3.amazonaws.com/';
+  const modelModal = document.createElement('div');
+  modelModal.className = 'model-preview-modal';
+  modelModal.style.display = 'none';
+  document.body.appendChild(modelModal);
+
+  // Converte o nome do item para o nome de arquivo .glb
+  function nomeParaArquivo(nome) {
+    return nome.trim().toLowerCase().replace(/\s+/g, '_') + '.glb';
+  }
 
   // Adiciona a pré-visualização 3D com animação no item em hover
   function adicionarPreview3D() {
@@ -460,68 +517,89 @@ function nomeParaArquivo(nome) {
 // ==============================
 // GARÇONS - Cadastro
 // ==============================
-
 function setupCadastroGarcons() {
-  const inputQuantidade = document.getElementById('quantidadeGarcons');
-  const btnMais = document.getElementById('btnMaisGarcom');
-  const btnMenos = document.getElementById('btnMenosGarcom');
+  const inputQuantidade   = document.getElementById('quantidadeGarcons');
+  const btnMais           = document.getElementById('btnMaisGarcom');
+  const btnMenos          = document.getElementById('btnMenosGarcom');
   const containerFormularios = document.getElementById('formularioGarcons');
 
-  function formatarCelular(value) {
-    value = value.replace(/\D/g, '');
-    value = value.substring(0, 11);
-    if (value.length > 6) {
-      value = value.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, '($1) $2-$3');
-    } else if (value.length > 2) {
-      value = value.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
-    } else if (value.length > 0) {
-      value = value.replace(/^(\d{0,2})/, '($1');
+  // Guarda o número "cru" da iteração anterior para detectar deleção
+  let prevRawNumber = "";
+
+  // Formata só dígitos num telefone (XX) XXXXX-XXXX
+  function formatarCelular(raw) {
+    let v = raw.replace(/\D/g, '').slice(0, 11);
+    if (v.length > 2) {
+      v = `(${v.slice(0,2)}) ${v.slice(2)}`;
     }
-    return value;
+    if (v.replace(/\D/g, '').length > 7) {
+      // insere o traço depois de 9 caracteres incluindo máscara
+      const digits = v.replace(/\D/g, '');
+      v = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+    }
+    return v;
   }
 
+  // Adiciona listener de input com detecção de inserção / deleção
   function adicionarEventoFormatacao(input) {
-    input.addEventListener('input', (e) => {
-      const posicaoCursor = input.selectionStart;
-      const valorAnterior = input.value;
-      input.value = formatarCelular(input.value);
-      const novaPosicaoCursor = posicaoCursor + (input.value.length - valorAnterior.length);
-      input.setSelectionRange(novaPosicaoCursor, novaPosicaoCursor);
-      const form = input.closest('.form-garcom');
-      const inputNome = form.querySelector('.nome-garcom');
-      if (input.value.trim() === '') {
-        inputNome.value = '';
+    input.addEventListener('input', e => {
+      const el = e.target;
+      const cursorPos = el.selectionStart;
+      const raw     = el.value.replace(/\D/g, '');
+      const isDeleting = raw.length < prevRawNumber.length;
+      prevRawNumber = raw;
+
+      // se ficou vazio, limpa tudo
+      if (raw === "") {
+        el.value = "";
+        return;
       }
+
+      // formata
+      const formatted = formatarCelular(el.value);
+
+      // reaplica sempre (mas em deleção ele não “segura” o traço)
+      el.value = formatted;
+
+      // reposiciona o cursor
+      let newPos = cursorPos;
+      if (!isDeleting) {
+        // ao digitar, avança sobre os símbolos
+        if (raw.length === 1)      newPos += 1; // depois do "("
+        else if (raw.length === 3) newPos += 2; // depois de ") "
+        else if (raw.length === 7) newPos += 1; // depois do "-"
+      }
+      el.setSelectionRange(newPos, newPos);
     });
   }
 
+  // Valida se nome e telefone estão preenchidos para habilitar o QR
   function validarCampos(form) {
     const inputNome = form.querySelector('.nome-garcom');
-    const inputTel = form.querySelector('.tel-garcom');
-    const btnQr = form.querySelector('.btn-qr');
+    const inputTel  = form.querySelector('.tel-garcom');
+    const btnQr     = form.querySelector('.btn-qr');
     const nomeValido = inputNome.value.trim().length > 0;
-    const telValido = inputTel.value.trim().length >= 14;
-    btnQr.disabled = !(nomeValido && telValido);
+    const telValido  = inputTel.value.replace(/\D/g, '').length === 11;
+    btnQr.disabled   = !(nomeValido && telValido);
   }
 
+  // Adiciona listeners de validação em cada formulário
   function adicionarEventosValidacao(form) {
-  const inputNome = form.querySelector('.nome-garcom');
-  const inputTel = form.querySelector('.tel-garcom');
+    const inputNome = form.querySelector('.nome-garcom');
+    const inputTel  = form.querySelector('.tel-garcom');
+    inputNome.addEventListener('input', () => validarCampos(form));
+    inputTel .addEventListener('input', () => validarCampos(form));
+  }
 
-  inputNome.addEventListener('input', () => validarCampos(form));
-  inputTel.addEventListener('input', () => {
-    inputTel.value = formatarCelular(inputTel.value);
-    validarCampos(form);
-  });
-}
-
+  // (Re)Gera os formulários de garçons conforme quantidade
   function gerarFormulariosGarcons(qtd) {
-    const dadosAtuais = {};
-    containerFormularios.querySelectorAll('.form-garcom').forEach(form => {
-      const id = form.querySelector('.nome-garcom').getAttribute('data-id');
-      dadosAtuais[id] = {
-        nome: form.querySelector('.nome-garcom').value,
-        tel: form.querySelector('.tel-garcom').value
+    // salva valores atuais pra não perder
+    const backup = {};
+    containerFormularios.querySelectorAll('.form-garcom').forEach(f => {
+      const id = f.querySelector('.nome-garcom').dataset.id;
+      backup[id] = {
+        nome: f.querySelector('.nome-garcom').value,
+        tel:  f.querySelector('.tel-garcom').value
       };
     });
 
@@ -529,15 +607,16 @@ function setupCadastroGarcons() {
     for (let i = 1; i <= qtd; i++) {
       const form = document.createElement('div');
       form.className = 'form-garcom';
-      const nomeSalvo = dadosAtuais[i]?.nome || '';
-      const telSalvo = dadosAtuais[i]?.tel || '';
+      const nomeSalvo = backup[i]?.nome || '';
+      const telSalvo  = backup[i]?.tel  || '';
       form.innerHTML = `
         <label>Garçom ${i}:</label><br>
         <input type="text" placeholder="Nome" class="nome-garcom" data-id="${i}" value="${nomeSalvo}">
-        <input type="tel" placeholder="Telefone" class="tel-garcom" data-id="${i}" maxlength="15" value="${telSalvo}">
+        <input type="tel"  placeholder="Telefone" class="tel-garcom" data-id="${i}" maxlength="15" value="${telSalvo}">
         <button class="btn-qr" data-id="${i}" disabled>Gerar QR Code</button>
       `;
       containerFormularios.appendChild(form);
+
       const inputTel = form.querySelector('.tel-garcom');
       adicionarEventoFormatacao(inputTel);
       adicionarEventosValidacao(form);
@@ -545,24 +624,26 @@ function setupCadastroGarcons() {
     }
   }
 
+  // Listeners do controle de quantidade
   inputQuantidade.addEventListener('change', () => {
-    let val = parseInt(inputQuantidade.value);
+    let val = parseInt(inputQuantidade.value) || 1;
     if (val < 1) val = 1;
+    inputQuantidade.value = val;
     gerarFormulariosGarcons(val);
   });
-
   btnMais.addEventListener('click', () => {
-    inputQuantidade.value = parseInt(inputQuantidade.value) + 1;
+    inputQuantidade.value = (parseInt(inputQuantidade.value) || 1) + 1;
     inputQuantidade.dispatchEvent(new Event('change'));
   });
-
   btnMenos.addEventListener('click', () => {
-    inputQuantidade.value = Math.max(1, parseInt(inputQuantidade.value) - 1);
+    inputQuantidade.value = Math.max(1, (parseInt(inputQuantidade.value) || 1) - 1);
     inputQuantidade.dispatchEvent(new Event('change'));
   });
 
+  // inicializa com 1 formulário
   gerarFormulariosGarcons(1);
 }
+
 
 // ==============================
 // QR Code local (sem limite)
