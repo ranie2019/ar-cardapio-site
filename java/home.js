@@ -161,55 +161,63 @@ function mostrarItens(categoria) {
   const container = document.getElementById('itensContainer');
   if (!container || !objetos3D[categoria]) return;
 
-  // ----- 1) Cria o modal (se ainda não existir) -----
+  // ----- 1) Verifica se o modal já existe globalmente -----
   let modal = document.getElementById('modalConfiguracaoProduto');
+  
+  // Se não existir, cria (isso só deve acontecer uma vez)
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'modalConfiguracaoProduto';
     modal.className = 'modal-edicao';
+    modal.style.display = 'none';
     modal.innerHTML = `
       <div class="modal-content-edicao">
         <span class="close-edicao">&times;</span>
-        <h3 class="modal-titulo"></h3>
+        <h3 class="modal-titulo">Configurar Produto</h3>
         <label>Valor (R$):</label>
-        <input type="text" id="inputValor" /><br>
+        <input type="text" id="inputValor" placeholder="0,00"><br>
         <label>Descrição:</label>
         <textarea id="inputDescricao" rows="4"></textarea><br>
       </div>
     `;
     document.body.appendChild(modal);
 
+    // ----- Eventos do modal (configurados uma única vez) -----
     // Fecha ao clicar no X
-    modal.querySelector('.close-edicao')
-         .addEventListener('click', () => modal.style.display = 'none');
-
-    // Fecha ao clicar fora do conteúdo
-    window.addEventListener('click', e => {
-      if (e.target === modal) modal.style.display = 'none';
+    modal.querySelector('.close-edicao').addEventListener('click', () => {
+      modal.style.display = 'none';
     });
 
-// Formatação e salvamento ao digitar no Valor
-const inputValor = modal.querySelector('#inputValor');
-const inputDesc  = modal.querySelector('#inputDescricao');
+    // Fecha ao clicar fora do conteúdo
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
 
-inputValor.addEventListener('input', e => {
-  // remove tudo que não for dígito
-  let v = e.target.value.replace(/\D/g, '');
-  // converte em centavos e formata com duas casas decimais
-  v = (parseFloat(v) / 100).toFixed(2);
-  // coloca vírgula decimal
-  v = v.replace('.', ',');
-  // coloca pontos de milhar
-  v = v.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  // finalmente, devolve ao campo
-  e.target.value = v;
-  // só então grava no S3
-  salvarConfiguracao();
-});
+    // Impede que clique dentro do modal feche
+    modal.querySelector('.modal-content-edicao').addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
 
-// mantém o listener da descrição
-inputDesc.addEventListener('input', salvarConfiguracao);
+    // Formatação automática do valor monetário
+    const inputValor = modal.querySelector('#inputValor');
+    const inputDesc = modal.querySelector('#inputDescricao');
 
+    inputValor.addEventListener('input', (e) => {
+      // Formatação do valor
+      let v = e.target.value.replace(/\D/g, '');
+      v = (parseFloat(v) / 100).toFixed(2);
+      v = v.replace('.', ',');
+      v = v.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      e.target.value = v;
+      
+      // Salva automaticamente
+      salvarConfiguracao();
+    });
+
+    // Salva ao modificar descrição
+    inputDesc.addEventListener('input', salvarConfiguracao);
   }
 
   // ----- 2) Limpa e monta os itens -----
@@ -226,33 +234,44 @@ inputDesc.addEventListener('input', salvarConfiguracao);
     box.setAttribute('data-categoria', categoria);
     box.style.animationDelay = `${i * 0.1}s`;
 
+    // Verifica estado no localStorage
     const idItem = `itemEstado_${categoria}_${nome}`;
     if (localStorage.getItem(idItem) === 'true') {
       box.classList.add('desativado');
     }
+
+    // Click para ativar/desativar item
     box.addEventListener('click', () => {
       box.classList.toggle('desativado');
       localStorage.setItem(idItem, box.classList.contains('desativado'));
       salvarConfiguracaoNoS3();
     });
 
+    // Botão de configuração
     const btnConfig = document.createElement('button');
     btnConfig.className = 'btn-configurar-produto';
     btnConfig.textContent = 'Configuração';
-    btnConfig.addEventListener('click', e => {
+    btnConfig.addEventListener('click', (e) => {
       e.stopPropagation();
-
-      // prepara modal com título, valor e descrição já salvos
-      const chave = `${categoria}/${nome.toLowerCase().replace(/\s+/g,'_')}`;
+      
+      // Prepara dados do item
+      const chave = `${categoria}/${nome.toLowerCase().replace(/\s+/g, '_')}`;
       const dados = dadosRestaurante[chave] || {};
-
+      
+      // Atualiza o modal global
       modal.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
-      modal.querySelector('#inputValor').value = 
-        dados.preco != null
-          ? dados.preco.toLocaleString('pt-BR',{ minimumFractionDigits:2, maximumFractionDigits:2 })
-          : '';
+      modal.querySelector('#inputValor').value = dados.preco != null 
+        ? dados.preco.toLocaleString('pt-BR', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+          }) 
+        : '0,00';
       modal.querySelector('#inputDescricao').value = dados.descricao || '';
-
+      
+      // Define o item atual sendo configurado
+      itemConfiguracao = chave;
+      
+      // Exibe o modal
       modal.style.display = 'flex';
     });
 
@@ -261,7 +280,7 @@ inputDesc.addEventListener('input', salvarConfiguracao);
     container.appendChild(wrapper);
   });
 
-  // ----- 3) Reativa o preview 3D nos itens -----
+  // Reativa o preview 3D nos itens
   requestAnimationFrame(() => adicionarPreview3D());
 }
 
@@ -517,89 +536,69 @@ function salvarConfiguracao() {
 // ==============================
 // GARÇONS - Cadastro
 // ==============================
+
 function setupCadastroGarcons() {
-  const inputQuantidade   = document.getElementById('quantidadeGarcons');
-  const btnMais           = document.getElementById('btnMaisGarcom');
-  const btnMenos          = document.getElementById('btnMenosGarcom');
+  const inputQuantidade = document.getElementById('quantidadeGarcons');
+  const btnMais = document.getElementById('btnMaisGarcom');
+  const btnMenos = document.getElementById('btnMenosGarcom');
   const containerFormularios = document.getElementById('formularioGarcons');
 
-  // Guarda o número "cru" da iteração anterior para detectar deleção
-  let prevRawNumber = "";
-
-  // Formata só dígitos num telefone (XX) XXXXX-XXXX
-  function formatarCelular(raw) {
-    let v = raw.replace(/\D/g, '').slice(0, 11);
-    if (v.length > 2) {
-      v = `(${v.slice(0,2)}) ${v.slice(2)}`;
+  function formatarCelular(value) {
+    value = value.replace(/\D/g, '');
+    value = value.substring(0, 11);
+    if (value.length > 6) {
+      value = value.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, '($1) $2-$3');
+    } else if (value.length > 2) {
+      value = value.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
+    } else if (value.length > 0) {
+      value = value.replace(/^(\d{0,2})/, '($1');
     }
-    if (v.replace(/\D/g, '').length > 7) {
-      // insere o traço depois de 9 caracteres incluindo máscara
-      const digits = v.replace(/\D/g, '');
-      v = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-    }
-    return v;
+    return value;
   }
 
-  // Adiciona listener de input com detecção de inserção / deleção
   function adicionarEventoFormatacao(input) {
-    input.addEventListener('input', e => {
-      const el = e.target;
-      const cursorPos = el.selectionStart;
-      const raw     = el.value.replace(/\D/g, '');
-      const isDeleting = raw.length < prevRawNumber.length;
-      prevRawNumber = raw;
-
-      // se ficou vazio, limpa tudo
-      if (raw === "") {
-        el.value = "";
-        return;
+    input.addEventListener('input', (e) => {
+      const posicaoCursor = input.selectionStart;
+      const valorAnterior = input.value;
+      input.value = formatarCelular(input.value);
+      const novaPosicaoCursor = posicaoCursor + (input.value.length - valorAnterior.length);
+      input.setSelectionRange(novaPosicaoCursor, novaPosicaoCursor);
+      const form = input.closest('.form-garcom');
+      const inputNome = form.querySelector('.nome-garcom');
+      if (input.value.trim() === '') {
+        inputNome.value = '';
       }
-
-      // formata
-      const formatted = formatarCelular(el.value);
-
-      // reaplica sempre (mas em deleção ele não “segura” o traço)
-      el.value = formatted;
-
-      // reposiciona o cursor
-      let newPos = cursorPos;
-      if (!isDeleting) {
-        // ao digitar, avança sobre os símbolos
-        if (raw.length === 1)      newPos += 1; // depois do "("
-        else if (raw.length === 3) newPos += 2; // depois de ") "
-        else if (raw.length === 7) newPos += 1; // depois do "-"
-      }
-      el.setSelectionRange(newPos, newPos);
     });
   }
 
-  // Valida se nome e telefone estão preenchidos para habilitar o QR
   function validarCampos(form) {
     const inputNome = form.querySelector('.nome-garcom');
-    const inputTel  = form.querySelector('.tel-garcom');
-    const btnQr     = form.querySelector('.btn-qr');
+    const inputTel = form.querySelector('.tel-garcom');
+    const btnQr = form.querySelector('.btn-qr');
     const nomeValido = inputNome.value.trim().length > 0;
-    const telValido  = inputTel.value.replace(/\D/g, '').length === 11;
-    btnQr.disabled   = !(nomeValido && telValido);
+    const telValido = inputTel.value.trim().length >= 14;
+    btnQr.disabled = !(nomeValido && telValido);
   }
 
-  // Adiciona listeners de validação em cada formulário
   function adicionarEventosValidacao(form) {
-    const inputNome = form.querySelector('.nome-garcom');
-    const inputTel  = form.querySelector('.tel-garcom');
-    inputNome.addEventListener('input', () => validarCampos(form));
-    inputTel .addEventListener('input', () => validarCampos(form));
-  }
+  const inputNome = form.querySelector('.nome-garcom');
+  const inputTel = form.querySelector('.tel-garcom');
 
-  // (Re)Gera os formulários de garçons conforme quantidade
+  inputNome.addEventListener('input', () => validarCampos(form));
+  inputTel.addEventListener('input', () => {
+    inputTel.value = formatarCelular(inputTel.value);
+    validarCampos(form);
+  });
+}
+
+
   function gerarFormulariosGarcons(qtd) {
-    // salva valores atuais pra não perder
-    const backup = {};
-    containerFormularios.querySelectorAll('.form-garcom').forEach(f => {
-      const id = f.querySelector('.nome-garcom').dataset.id;
-      backup[id] = {
-        nome: f.querySelector('.nome-garcom').value,
-        tel:  f.querySelector('.tel-garcom').value
+    const dadosAtuais = {};
+    containerFormularios.querySelectorAll('.form-garcom').forEach(form => {
+      const id = form.querySelector('.nome-garcom').getAttribute('data-id');
+      dadosAtuais[id] = {
+        nome: form.querySelector('.nome-garcom').value,
+        tel: form.querySelector('.tel-garcom').value
       };
     });
 
@@ -607,16 +606,15 @@ function setupCadastroGarcons() {
     for (let i = 1; i <= qtd; i++) {
       const form = document.createElement('div');
       form.className = 'form-garcom';
-      const nomeSalvo = backup[i]?.nome || '';
-      const telSalvo  = backup[i]?.tel  || '';
+      const nomeSalvo = dadosAtuais[i]?.nome || '';
+      const telSalvo = dadosAtuais[i]?.tel || '';
       form.innerHTML = `
         <label>Garçom ${i}:</label><br>
         <input type="text" placeholder="Nome" class="nome-garcom" data-id="${i}" value="${nomeSalvo}">
-        <input type="tel"  placeholder="Telefone" class="tel-garcom" data-id="${i}" maxlength="15" value="${telSalvo}">
+        <input type="tel" placeholder="Telefone" class="tel-garcom" data-id="${i}" maxlength="15" value="${telSalvo}">
         <button class="btn-qr" data-id="${i}" disabled>Gerar QR Code</button>
       `;
       containerFormularios.appendChild(form);
-
       const inputTel = form.querySelector('.tel-garcom');
       adicionarEventoFormatacao(inputTel);
       adicionarEventosValidacao(form);
@@ -624,26 +622,24 @@ function setupCadastroGarcons() {
     }
   }
 
-  // Listeners do controle de quantidade
   inputQuantidade.addEventListener('change', () => {
-    let val = parseInt(inputQuantidade.value) || 1;
+    let val = parseInt(inputQuantidade.value);
     if (val < 1) val = 1;
-    inputQuantidade.value = val;
     gerarFormulariosGarcons(val);
   });
+
   btnMais.addEventListener('click', () => {
-    inputQuantidade.value = (parseInt(inputQuantidade.value) || 1) + 1;
-    inputQuantidade.dispatchEvent(new Event('change'));
-  });
-  btnMenos.addEventListener('click', () => {
-    inputQuantidade.value = Math.max(1, (parseInt(inputQuantidade.value) || 1) - 1);
+    inputQuantidade.value = parseInt(inputQuantidade.value) + 1;
     inputQuantidade.dispatchEvent(new Event('change'));
   });
 
-  // inicializa com 1 formulário
+  btnMenos.addEventListener('click', () => {
+    inputQuantidade.value = Math.max(1, parseInt(inputQuantidade.value) - 1);
+    inputQuantidade.dispatchEvent(new Event('change'));
+  });
+
   gerarFormulariosGarcons(1);
 }
-
 
 // ==============================
 // QR Code local (sem limite)
