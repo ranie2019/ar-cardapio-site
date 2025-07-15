@@ -22,7 +22,7 @@ async function abrirModalConfiguracao(categoria, nome) {
   modal.style.display = 'flex';
 }
 
-// ——— 4) Salva a configuração no S3 ———
+// Salva a configuração no S3 
 async function salvarConfiguracao() {
   if (!itemConfiguracao) return;
   const raw = modal.querySelector('#inputValor').value;
@@ -106,7 +106,7 @@ document.querySelectorAll('#dropdownCardapio button').forEach(btn => {
     });
   }
 
-  // 2. Clique no botão (COM SINCRONIZAÇÃO)
+  // Clique no botão (COM SINCRONIZAÇÃO)
   btn.addEventListener('click', () => {
     const desativadoAgora = !btn.classList.contains('desativado');
     
@@ -145,7 +145,7 @@ document.querySelectorAll('#dropdownCardapio button').forEach(btn => {
     }
   });
 
-  // 3. Hover (mantido original)
+  //  Hover (mantido original)
   btn.addEventListener('mouseenter', () => {
     if (!btn.classList.contains('desativado') && categoriaAtiva !== categoria) {
       mostrarItens(categoria);
@@ -285,28 +285,38 @@ function mostrarItens(categoria) {
 }
 
 // ==============================
-// Função que grava no objeto e no S3
+// Função única que salva a configuração no S3
 // ==============================
-function salvarConfiguracao() {
-  const modal = document.getElementById('modalConfiguracaoProduto');
-  const titulo = modal.querySelector('.modal-titulo').textContent;
-  // extrai nome e categoria da chave salva anteriormente
-  // (você já setou itemConfiguracao em abrirModalConfiguracao)
+async function salvarConfiguracao() {
   if (!itemConfiguracao) return;
 
-  // converte "1.234,56" => 1234.56
-  const raw = modal.querySelector('#inputValor').value;
-  const preco = parseFloat( raw.replace(/\./g,'').replace(',', '.') ) || 0;
-  const descricao = modal.querySelector('#inputDescricao').value.trim();
+  // lê e formata o valor do input
+  const raw   = document.getElementById('inputValor').value;
+  const preco = parseFloat(raw.replace(/\./g, '').replace(',', '.')) || 0;
+  const desc  = document.getElementById('inputDescricao').value.trim();
 
-  dadosRestaurante[itemConfiguracao] = { preco, descricao };
+  // monta objeto a ser salvo no cache local
+  dadosRestaurante[itemConfiguracao] = { preco, descricao: desc };
 
-  // PUT no S3
-  fetch(`https://ar-menu-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}-dados.json`, {
-    method: 'PUT',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(dadosRestaurante)
-  });
+  // determina o nome do arquivo JSON
+  const arquivo = itemConfiguracao.split('/')[1] + '.json';
+
+  // envia PUT para o S3
+  try {
+    const res = await fetch(
+      `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dadosRestaurante[itemConfiguracao])
+      }
+    );
+    if (!res.ok) {
+      console.error('❌ Erro ao salvar configuração:', res.status);
+    }
+  } catch (err) {
+    console.error('❌ Erro de rede ao salvar configuração:', err);
+  }
 }
 
 
@@ -363,41 +373,6 @@ inputValor.addEventListener('input', e => {
 // mantém o listener da descrição
 inputDesc.addEventListener('input', salvarConfiguracao);
 
-
-// ==============================
-// Função que salva a configuração no S3
-// ==============================
-async function salvarConfiguracao() {
-  if (!itemConfiguracao) return;
-
-  // lê e formata o valor do input
-  const raw    = document.getElementById('inputValor').value;
-  const preco  = parseFloat(raw.replace(/\./g,'').replace(',', '.')) || 0;
-  const desc   = document.getElementById('inputDescricao').value.trim();
-
-  // monta objeto a ser salvo
-  dadosRestaurante[itemConfiguracao] = { preco, descricao: desc };
-
-  // determina o arquivo JSON destino
-  const arquivo = itemConfiguracao.split('/')[1] + '.json';
-
-  // envia PUT para o S3
-  try {
-    const res = await fetch(
-      `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}`,
-      {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dadosRestaurante[itemConfiguracao])
-      }
-    );
-    if (!res.ok) {
-      console.error('Erro ao salvar configuração:', res.status);
-    }
-  } catch (err) {
-    console.error('Erro de rede ao salvar configuração:', err);
-  }
-}
 
 // ==============================
 // Função que abre o modal e carrega os dados do S3
@@ -530,7 +505,6 @@ function salvarConfiguracao() {
     }
     loop();
   }
-
 });
 
 // ==============================

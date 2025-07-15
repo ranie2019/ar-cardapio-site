@@ -10,6 +10,73 @@
 
   <!-- A-Frame para preview 3D dos modelos GLB -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  
+  <style>
+    /* Estilos adicionais para o modal de configuração */
+    .modal-configuracao {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+    }
+    
+    .modal-conteudo-config {
+      background-color: #fefefe;
+      margin: 5% auto;
+      padding: 25px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .modal-cabecalho {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .fechar-modal-config {
+      color: #aaa;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    
+    .fechar-modal-config:hover {
+      color: #333;
+    }
+    
+    .grupo-input {
+      margin-bottom: 20px;
+    }
+    
+    .grupo-input label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    
+    .grupo-input input,
+    .grupo-input textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    
+    .grupo-input textarea {
+      min-height: 100px;
+      resize: vertical;
+      max-height: 200px;
+    }
+  </style>
 </head>
 <body>
 
@@ -62,6 +129,28 @@
     <div id="formularioGarcons"></div>
   </section>
 
+<!-- MODAL PARA CONFIGURAÇÃO DE ITENS -->
+<div id="modalConfiguracao" class="modal-configuracao">
+  <div class="modal-conteudo-config">
+    <div class="modal-cabecalho">
+      <h3>Configurar Heineken</h3>
+      <span class="fechar-modal-config">&times;</span>
+    </div>
+    
+    <div class="grupo-input">
+      <label>Valor (R$):</label>
+      <input type="text" value="0,00">
+    </div>
+    
+    <div class="grupo-input">
+      <label>Descrição:</label>
+      <div class="descricao-container">
+        <textarea></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
   <!-- MODAL PARA QR CODES -->
   <div id="modalQrCode" class="modal hidden">
     <div class="conteudo-modal">
@@ -90,6 +179,7 @@
   <!-- SINCRONIZAÇÃO DE VISIBILIDADE EM TEMPO REAL -->
   <script>
     const visibilidadeCategorias = {};
+    const canalStatus = new BroadcastChannel('estado_cardapio');
 
     function alternarVisibilidade(nome) {
       const botao = document.querySelector(`button[data-nome="${nome}"]`);
@@ -100,6 +190,22 @@
       visibilidadeCategorias[nome] = !visivel;
       canalStatus.postMessage({ nome: nome, visivel: !visivel });
     }
+
+    // Configuração do modal de configuração
+    document.addEventListener('DOMContentLoaded', () => {
+      const modalConfig = document.getElementById('modalConfiguracao');
+      const btnFecharModal = modalConfig.querySelector('.fechar-modal-config');
+      
+      btnFecharModal.addEventListener('click', () => {
+        modalConfig.style.display = 'none';
+      });
+      
+      window.addEventListener('click', (e) => {
+        if (e.target === modalConfig) {
+          modalConfig.style.display = 'none';
+        }
+      });
+    });
 
     canalStatus.onmessage = (event) => {
       const { nome, visivel } = event.data;
