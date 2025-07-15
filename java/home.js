@@ -1,7 +1,7 @@
 // ==============================
 // home.js - Menu de perfil, cardápio e preview 3D
 // ==============================
-// ——— 3) Abre o modal e carrega dados do S3 ———
+// Abre o modal e carrega dados do S3
 async function abrirModalConfiguracao(categoria, nome) {
   itemConfiguracao = `${categoria}/${nome.toLowerCase().replace(/\s+/g, '_')}`;
   const arquivo = itemConfiguracao.split('/')[1] + '.json';
@@ -161,7 +161,7 @@ function mostrarItens(categoria) {
   const container = document.getElementById('itensContainer');
   if (!container || !objetos3D[categoria]) return;
 
-  // ----- 1) Verifica se o modal já existe globalmente -----
+  // Verifica se o modal já existe globalmente
   let modal = document.getElementById('modalConfiguracaoProduto');
   
   // Se não existir, cria (isso só deve acontecer uma vez)
@@ -220,7 +220,7 @@ function mostrarItens(categoria) {
     inputDesc.addEventListener('input', salvarConfiguracao);
   }
 
-  // ----- 2) Limpa e monta os itens -----
+  // Limpa e monta os itens
   container.innerHTML = '';
   container.style.display = 'flex';
 
@@ -323,32 +323,46 @@ async function salvarConfiguracao() {
 // ==============================
 // Variáveis globais
 // ==============================
-// ——— 1) Variáveis globais ———
+// Variáveis globais
 const nomeRestaurante = 'restaurante-001';
 let itemConfiguracao = null;      // ex: "bebidas/absolut_vodka_1l"
 const dadosRestaurante = {};      // cache local
 
-// ——— 2) Criação única do modal ———
+// Criação única do modal
 const modal = document.createElement('div');
 modal.id = 'modalConfiguracaoProduto';
 modal.className = 'modal-edicao';
+modal.style.display = 'none';   // começa fechado
 modal.innerHTML = `
   <div class="modal-content-edicao">
     <span class="close-edicao">&times;</span>
     <h3 class="modal-titulo"></h3>
-    <label>Valor (R$):</label>
-    <input type="text" id="inputValor" placeholder="0,00"><br>
-    <label>Descrição:</label>
-    <textarea id="inputDescricao" rows="4"></textarea><br>
+
+    <label for="inputValor">Valor (R$):</label>
+    <input type="text" id="inputValor" placeholder="0,00"><br><br>
+
+    <label for="inputDescricao">Descrição:</label><br>
+    <textarea id="inputDescricao" rows="4"></textarea><br><br>
+
+    <div style="text-align: right;">
+      <button id="btnSalvarModal">Salvar</button>
+    </div>
   </div>
 `;
 document.body.appendChild(modal);
 
-// fecha ao clicar no X
-// fecha ao clicar no X
+// Fecha ao clicar no X
 modal.querySelector('.close-edicao').onclick = () => modal.style.display = 'none';
-// fecha ao clicar fora
-window.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+// Fecha clicando fora do conteúdo
+modal.addEventListener('click', e => {
+  if (e.target === modal) modal.style.display = 'none';
+});
+
+// Atacha o listener do botão Salvar
+modal.querySelector('#btnSalvarModal').addEventListener('click', async () => {
+  await salvarConfiguracao();      // sua função já existente
+  modal.style.display = 'none';    // fecha o modal
+});
 
 // pega referências aos inputs
 const inputValor = modal.querySelector('#inputValor');

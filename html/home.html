@@ -92,24 +92,12 @@
   <div class="cardapio-menu">
     <button id="cardapio-btn">Cardápio ▼</button>
     <div id="dropdownCardapio" class="dropdown-cardapio hidden">
-      <div class="categoria-control">
-        <button data-categoria="bebidas" data-nome="bebidas" class="btn-categoria">Bebidas</button>
-      </div>
-      <div class="categoria-control">
-        <button data-categoria="carnes" data-nome="carnes" class="btn-categoria">Carnes</button>
-      </div>
-      <div class="categoria-control">
-        <button data-categoria="pizzas" data-nome="pizzas" class="btn-categoria">Pizzas</button>
-      </div>
-      <div class="categoria-control">
-        <button data-categoria="lanches" data-nome="lanches" class="btn-categoria">Lanches</button>
-      </div>
-      <div class="categoria-control">
-        <button data-categoria="sobremesas" data-nome="sobremesas" class="btn-categoria">Sobremesas</button>
-      </div>
-      <div class="categoria-control">
-        <button data-categoria="porcoes" data-nome="porcoes" class="btn-categoria">Porções</button>
-      </div>
+      <button data-categoria="bebidas"  class="btn-categoria">Bebidas</button>
+      <button data-categoria="carnes"   class="btn-categoria">Carnes</button>
+      <button data-categoria="pizzas"   class="btn-categoria">Pizzas</button>
+      <button data-categoria="lanches"  class="btn-categoria">Lanches</button>
+      <button data-categoria="sobremesas"class="btn-categoria">Sobremesas</button>
+      <button data-categoria="porcoes"  class="btn-categoria">Porções</button>
     </div>
   </div>
 
@@ -129,27 +117,30 @@
     <div id="formularioGarcons"></div>
   </section>
 
-<!-- MODAL PARA CONFIGURAÇÃO DE ITENS -->
-<div id="modalConfiguracao" class="modal-configuracao">
-  <div class="modal-conteudo-config">
-    <div class="modal-cabecalho">
-      <h3>Configurar Heineken</h3>
-      <span class="fechar-modal-config">&times;</span>
-    </div>
-    
-    <div class="grupo-input">
-      <label>Valor (R$):</label>
-      <input type="text" value="0,00">
-    </div>
-    
-    <div class="grupo-input">
-      <label>Descrição:</label>
-      <div class="descricao-container">
-        <textarea></textarea>
+  <!-- MODAL PARA CONFIGURAÇÃO DE ITENS -->
+  <div id="modalConfiguracao" class="modal-configuracao">
+    <div class="modal-conteudo-config">
+      <div class="modal-cabecalho">
+        <h3 id="modalTitulo">Configurar Item</h3>
+        <span class="fechar-modal-config">&times;</span>
+      </div>
+
+      <div class="grupo-input">
+        <label for="inputValorConfig">Valor (R$):</label>
+        <input type="text" id="inputValorConfig" placeholder="0,00">
+      </div>
+
+      <div class="grupo-input">
+        <label for="inputDescConfig">Descrição:</label>
+        <textarea id="inputDescConfig"></textarea>
+      </div>
+
+      <!-- BOTÃO SALVAR -->
+      <div style="text-align: right; margin-top: 1em;">
+        <button id="btnSalvarConfig" class="btn-salvar-config">Salvar</button>
       </div>
     </div>
   </div>
-</div>
 
   <!-- MODAL PARA QR CODES -->
   <div id="modalQrCode" class="modal hidden">
@@ -172,47 +163,50 @@
   <!-- Biblioteca QR Code -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <!-- Scripts -->
+  <!-- Scripts principais -->
   <script src="../java/home.js"></script>
   <script src="../java/cardapio.js"></script>
 
-  <!-- SINCRONIZAÇÃO DE VISIBILIDADE EM TEMPO REAL -->
   <script>
-    const visibilidadeCategorias = {};
-    const canalStatus = new BroadcastChannel('estado_cardapio');
-
-    function alternarVisibilidade(nome) {
-      const botao = document.querySelector(`button[data-nome="${nome}"]`);
-      if (!botao) return;
-
-      const visivel = botao.style.display !== 'none';
-      botao.style.display = visivel ? 'none' : 'inline-block';
-      visibilidadeCategorias[nome] = !visivel;
-      canalStatus.postMessage({ nome: nome, visivel: !visivel });
-    }
-
-    // Configuração do modal de configuração
     document.addEventListener('DOMContentLoaded', () => {
-      const modalConfig = document.getElementById('modalConfiguracao');
-      const btnFecharModal = modalConfig.querySelector('.fechar-modal-config');
-      
-      btnFecharModal.addEventListener('click', () => {
+      // referências do modal config
+      const modalConfig     = document.getElementById('modalConfiguracao');
+      const btnFecharConfig = modalConfig.querySelector('.fechar-modal-config');
+      const btnSalvarConfig = document.getElementById('btnSalvarConfig');
+      const tituloModal     = document.getElementById('modalTitulo');
+      const inputValor      = document.getElementById('inputValorConfig');
+      const inputDesc       = document.getElementById('inputDescConfig');
+
+      // fecha ao clicar no X
+      btnFecharConfig.addEventListener('click', () => {
         modalConfig.style.display = 'none';
       });
-      
-      window.addEventListener('click', (e) => {
+
+      // fecha clicando fora
+      window.addEventListener('click', e => {
         if (e.target === modalConfig) {
           modalConfig.style.display = 'none';
         }
       });
-    });
 
-    canalStatus.onmessage = (event) => {
-      const { nome, visivel } = event.data;
-      const botao = document.querySelector(`button[data-nome="${nome}"]`);
-      if (botao) {
-        botao.style.display = visivel ? 'inline-block' : 'none';
-      }
+      // salva e fecha ao clicar em Salvar
+      btnSalvarConfig.addEventListener('click', async () => {
+        // atualiza os campos do modal sobre o objeto atual
+        modal.querySelector('#inputValor').value     = inputValor.value;
+        modal.querySelector('#inputDescricao').value = inputDesc.value;
+        // chama a rotina já existente em home.js
+        await salvarConfiguracao();
+        modalConfig.style.display = 'none';
+      });
+    });
+  </script>
+
+  <!-- SINCRONIZAÇÃO DE VISIBILIDADE EM TEMPO REAL -->
+  <script>
+    const canalStatus = new BroadcastChannel('estado_cardapio');
+    canalStatus.onmessage = ({ data }) => {
+      const btn = document.querySelector(`button[data-nome="${data.nome}"]`);
+      if (btn) btn.style.display = data.visivel ? 'inline-block' : 'none';
     };
   </script>
 

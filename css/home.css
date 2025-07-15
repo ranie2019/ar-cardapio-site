@@ -504,28 +504,102 @@ input[type=number]::-webkit-outer-spin-button {
    MODAL DE CONFIGURAÇÃO
    ============================== */
 .modal-edicao {
-  display: none;                 /* escondido por padrão */
+  display: none;               /* escondido por padrão */
   position: fixed;
-  top: 0; left: 0;
-  width: 100vw;  height: 100vh;
+  inset: 0;                    /* shorthand para top/right/bottom/left = 0 */
   background-color: rgba(0, 0, 0, 0.5);
   justify-content: center;
   align-items: center;
   z-index: 10000;
+  padding: 1rem;               /* garante espaçamento em telas pequenas */
 }
 
 .modal-edicao.show {
-  display: flex;                 /* fica visível quando tiver .show */
+  display: flex;               /* fica visível quando tiver .show */
 }
 
 .modal-content-edicao {
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  width: 90%;
+  background-color: #fff;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  width: 100%;
   max-width: 400px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-/* MODAL DE CONFIGURAÇÃO - VERSÃO COM REDIMENSIONAMENTO MANUAL CONTROLADO */
+/* Botão de fechar (X) no canto superior */
+.modal-content-edicao .close-edicao {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  font-size: 1.25rem;
+  color: #666;
+  cursor: pointer;
+}
+.modal-content-edicao .close-edicao:hover {
+  color: #000;
+}
+
+/* Título */
+.modal-titulo {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* Rótulos e campos */
+.modal-content-edicao label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.modal-content-edicao input[type="text"],
+.modal-content-edicao textarea {
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 0.25rem;
+  box-sizing: border-box;
+}
+
+.modal-content-edicao textarea {
+  resize: vertical;
+  min-height: 80px;
+  max-height: 200px;
+}
+
+/* ==============================
+   Container do botão Salvar
+   ============================== */
+/* Seleciona o elemento que contém as ações (botões) dentro do modal de edição */
+.modal-content-edicao .actions {
+  display: flex;              /* Transforma o container em flexbox para posicionar os botões em linha */
+  justify-content: flex-end;  /* Alinha os botões à extremidade direita do container */
+  gap: 0.5rem;                /* Espaçamento de meio rem (aprox. 8px) entre cada botão */
+}
+
+/* ==============================
+   Botão “Salvar”
+   ============================== */
+/* Seletor para o botão de salvar, batendo com a classe usada no HTML */
+.btn-salvar-config {
+  background-color: #d81b60;  /* Cor de fundo rosa-avermelhado */
+  color: #832e2e;             /* Cor do texto dentro do botão (tom escuro) */
+  border: none;               /* Remove qualquer borda padrão */
+  padding: 0.5rem 1rem;       /* Espaçamento interno de 0.5rem vertical e 1rem horizontal */
+  font-size: 1rem;          /* Tamanho da fonte ligeiramente menor que o padrão */
+  border-radius: 0.25rem;     /* Cantos levemente arredondados */
+  cursor: pointer;            /* Muda o cursor para “mãozinha” ao passar por cima */
+}
+
+.btn-salvar-config:hover {
+  background-color: #b21853;  /* Cor de fundo mais escura ao passar o mouse (hover) */
+}
+
