@@ -125,29 +125,27 @@
     <div id="formularioGarcons"></div>
   </section>
 
-  <!-- MODAL DE CONFIGURAÇÃO -->
-  <div id="modalConfiguracao" class="modal-configuracao">
-    <div class="modal-conteudo-config">
-      <div class="modal-cabecalho">
-        <h3 id="modalTitulo">Configurar Item</h3>
-        <span class="fechar-modal-config">&times;</span>
-      </div>
-
-      <div class="grupo-input">
-        <label for="inputValorConfig">Valor (R$):</label>
-        <input type="text" id="inputValorConfig" placeholder="0,00" inputmode="decimal">
-      </div>
-
-      <div class="grupo-input">
-        <label for="inputDescConfig">Descrição:</label>
-        <textarea id="inputDescConfig"></textarea>
-      </div>
-
-      <div class="actions">
-        <button id="btnSalvarConfig" class="btn-salvar-config">Salvar</button>
+<!-- MODAL PARA CONFIGURAÇÃO DE ITENS -->
+<div id="modalConfiguracao" class="modal-configuracao">
+  <div class="modal-conteudo-config">
+    <div class="modal-cabecalho">
+      <h3>Configurar Heineken</h3>
+      <span class="fechar-modal-config">&times;</span>
+    </div>
+    
+    <div class="grupo-input">
+      <label>Valor (R$):</label>
+      <input type="text" value="0,00">
+    </div>
+    
+    <div class="grupo-input">
+      <label>Descrição:</label>
+      <div class="descricao-container">
+        <textarea></textarea>
       </div>
     </div>
   </div>
+</div>
 
   <!-- MODAL QR CODE -->
   <div id="modalQrCode" class="modal hidden">
@@ -160,63 +158,34 @@
 
   <!-- BIBLIOTECAS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- Scripts -->
   <script src="../java/home.js"></script>
   <script src="../java/cardapio.js"></script>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const modalConfig     = document.getElementById('modalConfiguracao');
-      const btnFecharConfig = modalConfig.querySelector('.fechar-modal-config');
-      const btnSalvarConfig = document.getElementById('btnSalvarConfig');
-      const modalTitulo     = document.getElementById('modalTitulo');
-      const inputValor      = document.getElementById('inputValorConfig');
-      const inputDesc       = document.getElementById('inputDescConfig');
-
-      // Fecha ao clicar no X
-      btnFecharConfig.addEventListener('click', () => {
-        modalConfig.classList.remove('active');
+      const modalConfig = document.getElementById('modalConfiguracao');
+      const btnFecharModal = modalConfig.querySelector('.fechar-modal-config');
+      
+      btnFecharModal.addEventListener('click', () => {
+        modalConfig.style.display = 'none';
       });
-
-      // Fecha clicando fora do content
-      modalConfig.addEventListener('click', e => {
+      
+      window.addEventListener('click', (e) => {
         if (e.target === modalConfig) {
           modalConfig.classList.remove('active');
         }
       });
-
-      // Formatação e restrição numérica ao digitar
-      inputValor.addEventListener('input', e => {
-        let v = e.target.value.replace(/\D/g, '');
-        v = v.padStart(3,'0');
-        const inteiro  = v.slice(0,-2);
-        const centavos = v.slice(-2);
-        e.target.value = 
-          parseInt(inteiro,10).toLocaleString('pt-BR') +
-          ',' + centavos;
-      });
-
-      // Salva e fecha
-      btnSalvarConfig.addEventListener('click', async () => {
-        // injeta nos inputs originais do modal de home.js
-        document.querySelector('#modalConfiguracaoProduto #inputValor').value     = inputValor.value;
-        document.querySelector('#modalConfiguracaoProduto #inputDescricao').value = inputDesc.value.trim();
-        await salvarConfiguracao();                 // função existente em home.js
-        modalConfig.classList.remove('active');
-      });
-
-      // Expondo função para abrir este modal customizado
-      window.abrirModalConfiguracao = (categoria, nome) => {
-        modalTitulo.textContent = `Configurar ${nome}`;
-        const chave = `${categoria}/${nome.toLowerCase().replace(/\s+/g,'_')}`;
-        const dados = window.dadosRestaurante?.[chave] || {};
-        inputValor.value = dados.preco != null
-          ? dados.preco.toLocaleString('pt-BR',{ minimumFractionDigits:2 })
-          : '0,00';
-        inputDesc.value = dados.descricao || '';
-        window.itemConfiguracao = chave;
-        modalConfig.classList.add('active');
-      };
     });
+
+    canalStatus.onmessage = (event) => {
+      const { nome, visivel } = event.data;
+      const botao = document.querySelector(`button[data-nome="${nome}"]`);
+      if (botao) {
+        botao.style.display = visivel ? 'inline-block' : 'none';
+      }
+    };
   </script>
 </body>
 </html>

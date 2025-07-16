@@ -4,39 +4,22 @@ let currentIndex = 0;
 const modelCache = {};
 let currentModelPath = '';
 let infoVisible = false;
-let itensOcultos = {}; // <- itens desativados lidos do S3
 
 // ==================== CONFIGURAÇÃO DO RESTAURANTE VIA S3 ====================
 async function aplicarConfiguracaoDoRestaurante() {
-  const urlCategorias = `https://ar-menu-models.s3.amazonaws.com/configuracoes/restaurante-001.json?v=${Date.now()}`;
-  const urlItens = `https://ar-menu-models.s3.amazonaws.com/configuracoes/restaurante-001-itens.json?v=${Date.now()}`;
+  const url = `https://ar-menu-models.s3.amazonaws.com/configuracoes/restaurante-001.json?v=${Date.now()}`;
 
   try {
-    // Categoria
-    const response = await fetch(urlCategorias);
-    if (!response.ok) throw new Error('Erro ao carregar categorias');
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Erro ao carregar configuração');
+
     const config = await response.json();
 
     for (const categoria in config) {
-      if (typeof config[categoria] === 'boolean') {
-        const visivel = config[categoria];
-        const botao = document.querySelector(`.category-btn[onclick*="${categoria}"]`);
-        if (botao) {
-          botao.style.display = visivel ? 'block' : 'none';
-        }
-      }
-    }
-
-    // Itens desativados
-    const itensResp = await fetch(urlItens);
-    if (itensResp.ok) {
-      const json = await itensResp.json();
-      // Converte os nomes do JSON para o mesmo formato de arquivo
-      itensOcultos = {};
-      for (const categoria in json) {
-        itensOcultos[categoria] = json[categoria].map(nome =>
-          nome.trim().toLowerCase().replace(/\s+/g, '_')
-        );
+      const visivel = config[categoria];
+      const botao = document.querySelector(`.category-btn[onclick*="${categoria}"]`);
+      if (botao) {
+        botao.style.display = visivel ? 'block' : 'none';
       }
     }
   } catch (err) {
@@ -89,7 +72,7 @@ function loadModel(path) {
     updateUI({ path, price: getModelPrice(path) });
   } else {
     const xhr = new XMLHttpRequest();
-    xhr.open("GET", path + "?v=1.0", true);
+    xhr.open("GET", path + "?v=" + Date.now(), true);
     xhr.responseType = "blob";
 
     xhr.onprogress = (e) => {
@@ -126,11 +109,7 @@ function getModelPrice(path) {
 
 // ==================== CONTROLE DE MODELOS ====================
 function changeModel(dir) {
-  const lista = models[currentCategory].filter(item => {
-    const nome = item.path.split('/').pop().replace('.glb', '').toLowerCase();
-    return !(itensOcultos[currentCategory]?.includes(nome));
-  });
-
+  const lista = models[currentCategory];
   currentIndex = (currentIndex + dir + lista.length) % lista.length;
   loadModel(lista[currentIndex].path);
 
@@ -145,11 +124,7 @@ function selectCategory(category) {
   if (!models[category]) return;
   currentCategory = category;
   currentIndex = 0;
-  const lista = models[category].filter(item => {
-    const nome = item.path.split('/').pop().replace('.glb', '').toLowerCase();
-    return !(itensOcultos[category]?.includes(nome));
-  });
-  if (lista.length > 0) loadModel(lista[0].path);
+  loadModel(models[category][0].path);
 }
 
 document.getElementById("menuBtn").addEventListener("click", () => {
@@ -159,20 +134,16 @@ document.getElementById("menuBtn").addEventListener("click", () => {
 
 // ==================== INICIALIZAÇÃO ====================
 window.addEventListener("DOMContentLoaded", async () => {
-  await aplicarConfiguracaoDoRestaurante();
-  const lista = models[currentCategory].filter(item => {
-    const nome = item.path.split('/').pop().replace('.glb', '').toLowerCase();
-    return !(itensOcultos[currentCategory]?.includes(nome));
-  });
-  if (lista.length > 0) loadModel(lista[0].path);
-  verificarEstadoInicial();
+  await aplicarConfiguracaoDoRestaurante(); // Aplica categorias antes de carregar
+  loadModel(models[currentCategory][0].path);
+  verificarEstadoInicial(); // Verifica QR code com estado customizado
 });
 
 // ==================== VERIFICAÇÃO POR QR CODE ====================
 function verificarEstadoInicial() {
   const urlParams = new URLSearchParams(window.location.search);
   const estadoCodificado = urlParams.get('estado');
-
+  
   if (estadoCodificado) {
     try {
       const estado = JSON.parse(decodeURIComponent(estadoCodificado));
@@ -295,41 +266,3 @@ function getCurrentModelData() {
   }
   return null;
 }
-
-// ==================== PRÉ-CARREGAMENTO AUTOMÁTICO DE MODELOS ATIVOS ====================
-setTimeout(() => {
-  for (let cat in models) {
-    // pula categorias ocultas
-    if (itensOcultos && itensOcultos[cat]) {
-      const visiveis = models[cat].filter(item => {
-        const nome = item.path.split('/').pop().replace('.glb', '').toLowerCase();
-        return !itensOcultos[cat].includes(nome);
-      });
-
-      for (const item of visiveis) {
-        if (!modelCache[item.path]) {
-          const xhr = new XMLHttpRequest();
-          xhr.open("GET", item.path + "?v=1.0", true); // versão fixa p/ cache
-          xhr.responseType = "blob";
-          xhr.onload = () => {
-            modelCache[item.path] = URL.createObjectURL(xhr.response);
-          };
-          xhr.send();
-        }
-      }
-    } else {
-      // se categoria não tem itens ocultos
-      for (const item of models[cat]) {
-        if (!modelCache[item.path]) {
-          const xhr = new XMLHttpRequest();
-          xhr.open("GET", item.path + "?v=1.0", true);
-          xhr.responseType = "blob";
-          xhr.onload = () => {
-            modelCache[item.path] = URL.createObjectURL(xhr.response);
-          };
-          xhr.send();
-        }
-      }
-    }
-  }
-}, 3000); // começa 3 segundos após o carregamento inicial
