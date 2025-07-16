@@ -18,64 +18,77 @@
     .modal-configuracao {
       display: none;
       position: fixed;
-      inset: 0;                     /* top/right/bottom/left = 0 */
+      inset: 0;                     /* atalho para top/left/right/bottom = 0 */
       background-color: rgba(0,0,0,0.5);
       z-index: 1000;
+      display: flex;
       justify-content: center;
       align-items: center;
     }
+
     .modal-configuracao.active {
-      display: flex;               /* visível quando .active */
+      display: flex;               /* fica visível quando adicionar .active */
     }
+
     .modal-conteudo-config {
       background-color: #fff;
-      padding: 1rem;               /* reduzido */
+      padding: 1rem;               /* reduzido de 1.5rem */
       border-radius: 8px;
       width: 90%;
       max-width: 500px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
+
     .modal-cabecalho {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 0.5rem;       /* gap menor */
+      margin-bottom: 0.5rem;       /* reduzido de 1rem */
     }
+
     .fechar-modal-config {
-      font-size: 1.25rem;
+      font-size: 1.25rem;          /* tamanho do “×” */
       cursor: pointer;
     }
 
-    /* Campos agrupados */
+    /* ==============================
+       Campos agrupados
+       ============================== */
     .grupo-input {
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.5rem;       /* reduzido de 1rem */
     }
+
     .grupo-input label {
       display: block;
-      margin-bottom: 0.25rem;
+      margin-bottom: 0.25rem;      /* reduzido de 0.5rem */
       font-weight: 600;
     }
+
     .grupo-input input,
     .grupo-input textarea {
       width: 100%;
-      padding: 0.5rem;
+      padding: 0.5rem;             /* reduzido de 1rem */
       border: 1px solid #ddd;
       border-radius: 4px;
       box-sizing: border-box;
     }
+
     .grupo-input textarea {
-      min-height: 80px;
-      max-height: 150px;
+      min-height: 80px;            /* reduzido de 100px */
+      max-height: 150px;           /* limita altura */
       resize: vertical;
     }
 
-    /* Ações (botões) do modal */
+    /* ==============================
+       Ações (botões) do modal
+       ============================== */
     .modal-conteudo-config .actions {
       display: flex;
       justify-content: flex-end;
       gap: 0.5rem;
-      margin-top: 0.5rem;
+      margin-top: 0.5rem;          /* espaço acima dos botões */
     }
+
     .btn-salvar-config {
       background-color: #d81b60;
       color: #fff;
@@ -85,6 +98,7 @@
       border-radius: 4px;
       cursor: pointer;
     }
+
     .btn-salvar-config:hover {
       background-color: #b21853;
     }
@@ -92,29 +106,29 @@
 </head>
 <body>
 
-  <!-- CABEÇALHO -->
+  <!-- cabeçalho -->
   <header class="header">
     <h1 class="titulo">Bem-vindo(a) ao Sistema</h1>
     <button id="profile-btn">Perfil ▼</button>
   </header>
 
-  <!-- CARDÁPIO -->
+  <!-- cardápio -->
   <div class="cardapio-menu">
     <button id="cardapio-btn">Cardápio ▼</button>
     <div id="dropdownCardapio" class="dropdown-cardapio hidden">
-      <button data-categoria="bebidas"  class="btn-categoria">Bebidas</button>
+      <button data-categoria="bebidas" class="btn-categoria">Bebidas</button>
       <button data-categoria="carnes"   class="btn-categoria">Carnes</button>
       <button data-categoria="pizzas"   class="btn-categoria">Pizzas</button>
       <button data-categoria="lanches"  class="btn-categoria">Lanches</button>
-      <button data-categoria="sobremesas"class="btn-categoria">Sobremesas</button>
+      <button data-categoria="sobremesas" class="btn-categoria">Sobremesas</button>
       <button data-categoria="porcoes"  class="btn-categoria">Porções</button>
     </div>
   </div>
 
-  <!-- CONTAINER DE ITENS -->
+  <!-- container de itens do cardápio -->
   <div id="itensContainer" class="itens-container"></div>
 
-  <!-- SEÇÃO DE GARÇONS -->
+  <!-- seção de garçons -->
   <section id="garconsSection">
     <h2>Adicionar Garçons</h2>
     <div id="controleGarcons">
@@ -125,7 +139,7 @@
     <div id="formularioGarcons"></div>
   </section>
 
-  <!-- MODAL DE CONFIGURAÇÃO -->
+  <!-- modal de configuração -->
   <div id="modalConfiguracao" class="modal-configuracao">
     <div class="modal-conteudo-config">
       <div class="modal-cabecalho">
@@ -135,7 +149,7 @@
 
       <div class="grupo-input">
         <label for="inputValorConfig">Valor (R$):</label>
-        <input type="text" id="inputValorConfig" placeholder="0,00" inputmode="decimal">
+        <input type="text" id="inputValorConfig" placeholder="0,00">
       </div>
 
       <div class="grupo-input">
@@ -149,17 +163,9 @@
     </div>
   </div>
 
-  <!-- MODAL QR CODE -->
-  <div id="modalQrCode" class="modal hidden">
-    <div class="conteudo-modal">
-      <span class="fechar-modal" id="fecharModal">&times;</span>
-      <h3>QR Code do Garçom</h3>
-      <!-- ... resto do QR Code ... -->
-    </div>
-  </div>
-
-  <!-- BIBLIOTECAS -->
+  <!-- biblioteca QRCode -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- seus scripts -->
   <script src="../java/home.js"></script>
   <script src="../java/cardapio.js"></script>
 
@@ -168,53 +174,46 @@
       const modalConfig     = document.getElementById('modalConfiguracao');
       const btnFecharConfig = modalConfig.querySelector('.fechar-modal-config');
       const btnSalvarConfig = document.getElementById('btnSalvarConfig');
-      const modalTitulo     = document.getElementById('modalTitulo');
       const inputValor      = document.getElementById('inputValorConfig');
       const inputDesc       = document.getElementById('inputDescConfig');
 
-      // Fecha ao clicar no X
+      // fecha ao clicar no X
       btnFecharConfig.addEventListener('click', () => {
         modalConfig.classList.remove('active');
       });
 
-      // Fecha clicando fora do content
-      modalConfig.addEventListener('click', e => {
+      // fecha clicando fora
+      window.addEventListener('click', e => {
         if (e.target === modalConfig) {
           modalConfig.classList.remove('active');
         }
       });
 
-      // Formatação e restrição numérica ao digitar
-      inputValor.addEventListener('input', e => {
-        let v = e.target.value.replace(/\D/g, '');
-        v = v.padStart(3,'0');
-        const inteiro  = v.slice(0,-2);
-        const centavos = v.slice(-2);
-        e.target.value = 
-          parseInt(inteiro,10).toLocaleString('pt-BR') +
-          ',' + centavos;
-      });
-
-      // Salva e fecha
+      // salva as alterações e fecha
       btnSalvarConfig.addEventListener('click', async () => {
-        // injeta nos inputs originais do modal de home.js
+        // injeta os valores nos inputs do modal “oficial” criado pelo home.js
         document.querySelector('#modalConfiguracaoProduto #inputValor').value     = inputValor.value;
-        document.querySelector('#modalConfiguracaoProduto #inputDescricao').value = inputDesc.value.trim();
-        await salvarConfiguracao();                 // função existente em home.js
+        document.querySelector('#modalConfiguracaoProduto #inputDescricao').value = inputDesc.value;
+        // chama a função de salvar do home.js
+        await salvarConfiguracao();
         modalConfig.classList.remove('active');
       });
 
-      // Expondo função para abrir este modal customizado
+      // expõe a função de abrir modal para home.js
       window.abrirModalConfiguracao = (categoria, nome) => {
-        modalTitulo.textContent = `Configurar ${nome}`;
+        // preenche título
+        document.getElementById('modalTitulo').textContent = `Configurar ${nome}`;
+        // obtém dados do cache (home.js)
         const chave = `${categoria}/${nome.toLowerCase().replace(/\s+/g,'_')}`;
         const dados = window.dadosRestaurante?.[chave] || {};
         inputValor.value = dados.preco != null
           ? dados.preco.toLocaleString('pt-BR',{ minimumFractionDigits:2 })
-          : '0,00';
+          : '';
         inputDesc.value = dados.descricao || '';
-        window.itemConfiguracao = chave;
+        // mostra o modal
         modalConfig.classList.add('active');
+        // também armazena a chave em home.js
+        window.itemConfiguracao = chave;
       };
     });
   </script>
