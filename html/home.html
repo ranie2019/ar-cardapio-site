@@ -125,34 +125,43 @@
     <div id="formularioGarcons"></div>
   </section>
 
-<!-- MODAL PARA CONFIGURAÇÃO DE ITENS -->
-<div id="modalConfiguracao" class="modal-configuracao">
-  <div class="modal-conteudo-config">
-    <div class="modal-cabecalho">
-      <h3>Configurar Heineken</h3>
-      <span class="fechar-modal-config">&times;</span>
-    </div>
-    
-    <div class="grupo-input">
-      <label>Valor (R$):</label>
-      <input type="text" value="0,00">
-    </div>
-    
-    <div class="grupo-input">
-      <label>Descrição:</label>
-      <div class="descricao-container">
-        <textarea></textarea>
+  <!-- MODAL PARA CONFIGURAÇÃO DE ITENS -->
+  <div id="modalConfiguracao" class="modal-configuracao">
+    <div class="modal-conteudo-config">
+      <div class="modal-cabecalho">
+        <h3 id="modalTituloItem">Configurar Item</h3>
+        <span class="fechar-modal-config">&times;</span>
+      </div>
+      
+      <div class="grupo-input">
+        <label for="inputValorItem">Valor (R$):</label>
+        <input type="text" id="inputValorItem" value="0,00">
+      </div>
+      
+      <div class="grupo-input">
+        <label for="inputDescricaoItem">Descrição:</label>
+        <textarea id="inputDescricaoItem"></textarea>
+      </div>
+
+      <div class="actions">
+        <button id="btnSalvarItem" class="btn-salvar-config">Salvar</button>
       </div>
     </div>
   </div>
-</div>
 
   <!-- MODAL QR CODE -->
   <div id="modalQrCode" class="modal hidden">
     <div class="conteudo-modal">
       <span class="fechar-modal" id="fecharModal">&times;</span>
       <h3>QR Code do Garçom</h3>
-      <!-- ... resto do QR Code ... -->
+      <div id="qrcodeContainer"></div>
+      <div class="controles-qrcode">
+        <label for="qtdQr">Quantidade:</label>
+        <input type="number" id="qtdQr" value="1" min="1">
+        <button id="diminuirQr">-</button>
+        <button id="aumentarQr">+</button>
+        <button id="imprimirQr">Imprimir</button>
+      </div>
     </div>
   </div>
 
@@ -165,11 +174,12 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      // Controle do modal de configuração
       const modalConfig = document.getElementById('modalConfiguracao');
       const btnFecharModal = modalConfig.querySelector('.fechar-modal-config');
       
       btnFecharModal.addEventListener('click', () => {
-        modalConfig.style.display = 'none';
+        modalConfig.classList.remove('active');
       });
       
       window.addEventListener('click', (e) => {
@@ -177,15 +187,34 @@
           modalConfig.classList.remove('active');
         }
       });
-    });
 
-    canalStatus.onmessage = (event) => {
-      const { nome, visivel } = event.data;
-      const botao = document.querySelector(`button[data-nome="${nome}"]`);
-      if (botao) {
-        botao.style.display = visivel ? 'inline-block' : 'none';
+      // Controle do modal de QR Code
+      const modalQr = document.getElementById('modalQrCode');
+      const btnFecharQr = modalQr.querySelector('.fechar-modal');
+      
+      btnFecharQr.addEventListener('click', () => {
+        modalQr.classList.add('hidden');
+      });
+      
+      window.addEventListener('click', (e) => {
+        if (e.target === modalQr) {
+          modalQr.classList.add('hidden');
+        }
+      });
+
+      // Canal de comunicação
+      if (typeof BroadcastChannel !== 'undefined') {
+        window.canalStatus = new BroadcastChannel('cardapio_channel');
+        
+        canalStatus.onmessage = (event) => {
+          const { nome, visivel } = event.data;
+          const botao = document.querySelector(`button[data-nome="${nome}"]`);
+          if (botao) {
+            botao.style.display = visivel ? 'inline-block' : 'none';
+          }
+        };
       }
-    };
+    });
   </script>
 </body>
 </html>
