@@ -54,8 +54,8 @@ class SistemaCardapio {
           <input type="text" id="inputValor" placeholder="0,00">
         </div>
         <div class="grupo-input">
-          <label for="inputDescricao">Descrição:</label>
-          <textarea id="inputDescricao" rows="4"></textarea>
+          <label for="inputDescricao">Descrição Completa:</label>
+          <textarea id="inputDescricao" rows="10"></textarea>
         </div>
         <div class="actions">
           <button id="btnSalvarModal" class="btn-salvar-config">Salvar</button>
@@ -313,26 +313,38 @@ class SistemaCardapio {
     this.modalConfig.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
 
     try {
-      const res = await fetch(
-        `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}?v=${Date.now()}`
-      );
-      if (res.ok) {
-        this.dadosRestaurante[this.itemConfiguracao] = await res.json();
-      }
+        const res = await fetch(
+            `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}?v=${Date.now()}`
+        );
+        
+        if (res.ok) {
+            const dados = await res.json();
+            this.dadosRestaurante[this.itemConfiguracao] = dados;
+            
+            // Preenche o valor
+            const inputValor = this.modalConfig.querySelector('#inputValor');
+            inputValor.value = dados.preco != null ? 
+                dados.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00';
+            
+            // Converte o objeto JSON em texto formatado para exibição
+            let descricaoCompleta = '';
+            for (const [chave, valor] of Object.entries(dados)) {
+                if (chave !== 'preco') { // Ignora o preço que já tem campo próprio
+                    const chaveFormatada = chave.replace(/_/g, ' ')
+                                        .replace(/\b\w/g, l => l.toUpperCase());
+                    descricaoCompleta += `${chaveFormatada}: ${valor}\n\n`;
+                }
+            }
+            
+            this.modalConfig.querySelector('#inputDescricao').value = descricaoCompleta.trim();
+        }
     } catch (error) {
-      console.warn('Erro ao carregar configuração:', error);
+        console.warn('Erro ao carregar configuração:', error);
+        this.modalConfig.querySelector('#inputDescricao').value = '';
     }
 
-    // Preenche os campos
-    const dados = this.dadosRestaurante[this.itemConfiguracao] || {};
-    this.modalConfig.querySelector('#inputValor').value = dados.preco != null
-      ? dados.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-      : '0,00';
-    this.modalConfig.querySelector('#inputDescricao').value = dados.descricao || '';
-
-    // Mostra o modal
     this.modalConfig.style.display = 'flex';
-  }
+}
 
   /**
    * Salva a configuração do item atual
@@ -343,26 +355,47 @@ class SistemaCardapio {
     // Formata o valor
     const raw = this.modalConfig.querySelector('#inputValor').value;
     const preco = parseFloat(raw.replace(/\./g, '').replace(',', '.')) || 0;
-    const descricao = this.modalConfig.querySelector('#inputDescricao').value.trim();
+    
+    // Processa a descrição completa de volta para o objeto JSON
+    const descricaoText = this.modalConfig.querySelector('#inputDescricao').value;
+    const dadosAtualizados = { preco };
+    
+    // Converte o texto formatado de volta para objeto JSON
+    const linhas = descricaoText.split('\n\n');
+    linhas.forEach(linha => {
+        if (linha.trim()) {
+            const separador = linha.indexOf(':');
+            if (separador > 0) {
+                const chave = linha.substring(0, separador).trim().toLowerCase().replace(/\s+/g, '_');
+                const valor = linha.substring(separador + 1).trim();
+                dadosAtualizados[chave] = valor;
+            }
+        }
+    });
 
     // Atualiza cache local
-    this.dadosRestaurante[this.itemConfiguracao] = { preco, descricao };
+    this.dadosRestaurante[this.itemConfiguracao] = dadosAtualizados;
 
     // Salva no S3
     const arquivo = this.itemConfiguracao.split('/')[1] + '.json';
     try {
-      await fetch(
-        `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(this.dadosRestaurante[this.itemConfiguracao])
+        const response = await fetch(
+            `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}`,
+            {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dadosAtualizados)
+            }
+        );
+        
+        if (!response.ok) {
+            throw new Error('Falha ao salvar configuração');
         }
-      );
     } catch (error) {
-      console.error('Erro ao salvar configuração:', error);
+        console.error('Erro ao salvar configuração:', error);
+        alert('Erro ao salvar as alterações. Por favor, tente novamente.');
     }
-  }
+}
 
   // ==============================
   // FUNÇÕES AUXILIARES
