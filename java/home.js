@@ -26,7 +26,7 @@ class SistemaCardapio {
     this.setupQrCodeGarcons();
     
     // Canal de sincronização
-    this.canalStatus = new BroadcastChannel('estado_cardapio');
+    this.canalStatus = new BroadcastChannel('cardapio_channel');
     this.configurarSincronizacao();
     
     // Carrega configurações iniciais
@@ -216,6 +216,7 @@ class SistemaCardapio {
       box.textContent = nome;
       box.setAttribute('data-categoria', categoria);
       box.style.animationDelay = `${i * 0.1}s`;
+      box.setAttribute('data-nome', nome.toLowerCase().replace(/\s+/g,'_'));
 
       // Verifica estado no localStorage
       const idItem = `itemEstado_${categoria}_${nome}`;
@@ -223,12 +224,21 @@ class SistemaCardapio {
         box.classList.add('desativado');
       }
 
-      // Click para ativar/desativar item
+      // Click para ativar/desativar item e notificar o app AR
       box.addEventListener('click', () => {
-        box.classList.toggle('desativado');
-        localStorage.setItem(idItem, box.classList.contains('desativado'));
+        // alterna estado visual
+        const desativadoAgora = box.classList.toggle('desativado');
+        // grava no localStorage
+        localStorage.setItem(idItem, desativadoAgora);
+        // persiste no S3
         this.salvarConfiguracaoNoS3();
+        // **nova linha**: notifica o canal para sincronizar no app AR
+        this.canalStatus.postMessage({
+          nome: nome,                // deve ser exatamente o mesmo nome usado como data-nome
+          visivel: !desativadoAgora  // se acabou de desativar, envia visivel=false
+        });
       });
+
 
       // Botão de configuração
       const btnConfig = document.createElement('button');
@@ -660,79 +670,88 @@ class SistemaCardapio {
    */
   configurarSincronizacao() {
     // Envia para o app
+    // dentro de configurarSincronizacao()
     this.canalStatus.onmessage = (event) => {
       const { nome, visivel } = event.data;
-      const botao = document.querySelector(`[data-nome="${nome}"]`);
-      if (botao) {
-        if (visivel) {
-          botao.style.display = 'inline-block';
-        } else {
-          botao.remove();
-        }
+      // agora vai achar o elemento que você marcou acima:
+      const el = document.querySelector(`[data-nome="${nome}"]`);
+      if (!el) return;
+      if (visivel) {
+        el.style.display = '';    // ou inline-block/flex, que for o caso
+      } else {
+        el.style.display = 'none';
       }
     };
   }
 
   /**
-   * Salva as configurações no S3
+   * Salva as configurações de categorias e itens no S3
    */
   async salvarConfiguracaoNoS3() {
-    // Configurações de categorias
-    const botoes = document.querySelectorAll('#dropdownCardapio .btn-categoria');
-    const configuracaoCategorias = {};
+    // 1) Configurações de categorias
+    // --------------------------------------------------
+    // Seleciona todos os botões de categoria
+    const botoesDeCategoria = document.querySelectorAll('#dropdownCardapio .btn-categoria');
+    // Prepara um objeto para armazenar visibilidade de cada categoria
+    const configuracaoDeCategorias = {};
 
-    botoes.forEach(btn => {
-      const categoria = btn.getAttribute('data-categoria');
-      const visivel = !btn.classList.contains('desativado');
-      configuracaoCategorias[categoria] = visivel;
+    botoesDeCategoria.forEach(botao => {
+      // nome da categoria (ex: "bebidas", "carnes", etc)
+      const nomeDaCategoria = botao.getAttribute('data-categoria');
+      // se não tiver a classe 'desativado', então está visível
+      const estaVisivel = !botao.classList.contains('desativado');
+      configuracaoDeCategorias[nomeDaCategoria] = estaVisivel;
     });
 
     try {
+      // envia via PUT o JSON de categorias ao S3
       await fetch(this.ARQUIVO_CONFIG_CATEGORIAS, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(configuracaoCategorias)
+        method:  'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(configuracaoDeCategorias)
       });
-    } catch (error) {
-      console.error('Erro ao salvar categorias:', error);
+    } catch (erro) {
+      console.error('Erro ao salvar configurações de categorias:', erro);
     }
 
-    // Configurações de itens
+    // 2) Configurações de itens (apenas os desativados)
+    // --------------------------------------------------
     try {
-      const res = await fetch(`${this.ARQUIVO_CONFIG_ITENS}?v=${Date.now()}`);
-      const jsonExistente = res.ok ? await res.json() : {};
+      // objeto que vai agrupar, por categoria, os nomes dos itens desativados
+      const itensDesativadosPorCategoria = {};
 
-      const itensDesativados = { ...jsonExistente };
-
+      // percorre cada .item-box que estiver com a classe 'desativado'
       document.querySelectorAll('.item-box.desativado').forEach(box => {
-        const categoria = box.getAttribute('data-categoria');
-        const nome = box.textContent.trim().toLowerCase().replace(/\s+/g, '_');
-        if (!itensDesativados[categoria]) itensDesativados[categoria] = [];
-        if (!itensDesativados[categoria].includes(nome)) {
-          itensDesativados[categoria].push(nome);
+        // recupera a categoria e formata o nome do item
+        const categoriaDoItem = box.getAttribute('data-categoria');
+        const textoDoNome    = box.textContent.trim();
+        const nomeDoItem     = textoDoNome.toLowerCase().replace(/\s+/g, '_');
+
+        // cria o array daquela categoria, se ainda não existir
+        if (!itensDesativadosPorCategoria[categoriaDoItem]) {
+          itensDesativadosPorCategoria[categoriaDoItem] = [];
         }
+
+        // adiciona o nome do item desativado
+        itensDesativadosPorCategoria[categoriaDoItem].push(nomeDoItem);
       });
 
-      document.querySelectorAll('.item-box:not(.desativado)').forEach(box => {
-        const categoria = box.getAttribute('data-categoria');
-        const nome = box.textContent.trim().toLowerCase().replace(/\s+/g, '_');
-        if (itensDesativados[categoria]) {
-          itensDesativados[categoria] = itensDesativados[categoria].filter(n => n !== nome);
-          if (itensDesativados[categoria].length === 0) {
-            delete itensDesativados[categoria];
-          }
-        }
-      });
-
+      // envia via PUT o JSON de itens desativados ao S3
       await fetch(this.ARQUIVO_CONFIG_ITENS, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(itensDesativados)
+        method:  'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(itensDesativadosPorCategoria)
       });
-    } catch (error) {
-      console.error('Erro ao salvar itens:', error);
+    } catch (erro) {
+      console.error('Erro ao salvar configurações de itens:', erro);
     }
   }
+
+
 
   /**
    * Carrega as configurações iniciais

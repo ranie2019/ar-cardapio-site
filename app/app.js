@@ -7,25 +7,71 @@ let infoVisible = false;
 
 // ==================== CONFIGURAÇÃO DO RESTAURANTE VIA S3 ====================
 async function aplicarConfiguracaoDoRestaurante() {
-  const url = `https://ar-menu-models.s3.amazonaws.com/configuracoes/restaurante-001.json?v=${Date.now()}`;
+  const urlCategorias = `https://ar-menu-models.s3.amazonaws.com/configuracoes/restaurante-001.json?v=${Date.now()}`;
+  const urlItens = `https://ar-menu-models.s3.amazonaws.com/configuracoes/restaurante-001-itens.json?v=${Date.now()}`;
 
   try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Erro ao carregar configuração');
+    // Carrega configurações de categorias
+    const responseCategorias = await fetch(urlCategorias);
+    if (!responseCategorias.ok) throw new Error('Erro ao carregar configuração de categorias');
+    const configCategorias = await responseCategorias.json();
 
-    const config = await response.json();
-
-    for (const categoria in config) {
-      const visivel = config[categoria];
+    // Aplica visibilidade das categorias
+    for (const categoria in configCategorias) {
+      const visivel = configCategorias[categoria];
       const botao = document.querySelector(`.category-btn[onclick*="${categoria}"]`);
       if (botao) {
         botao.style.display = visivel ? 'block' : 'none';
       }
     }
+
+    // Carrega configurações de itens desativados
+    const responseItens = await fetch(urlItens);
+    if (!responseItens.ok) throw new Error('Erro ao carregar configuração de itens');
+    const configItens = await responseItens.json();
+
+    // Aplica visibilidade dos itens
+    for (const categoria in configItens) {
+      if (models[categoria]) {
+        models[categoria].forEach(model => {
+          const modelName = model.path.split('/').pop().replace('.glb', '');
+          if (configItens[categoria].includes(modelName)) {
+            model.visible = false;
+          }
+        });
+      }
+    }
+
   } catch (err) {
     console.warn('⚠️ Falha ao aplicar configuração do restaurante:', err);
   }
 }
+
+// ==================== SINCRONIZAÇÃO EM TEMPO REAL ====================
+const canalCardapio = new BroadcastChannel('cardapio_channel');
+
+canalCardapio.onmessage = (event) => {
+  const { nome, visivel } = event.data;
+  const nomeFormatado = nome.toLowerCase().replace(/\s+/g, '_');
+  
+  // Atualiza o estado nos modelos
+  for (const categoria in models) {
+    const itemIndex = models[categoria].findIndex(model => {
+      const modelName = model.path.split('/').pop().replace('.glb', '');
+      return modelName === nomeFormatado;
+    });
+    
+    if (itemIndex !== -1) {
+      models[categoria][itemIndex].visible = visivel;
+      
+      // Se o item atual ficou invisível, muda para o próximo
+      if (!visivel && currentModelPath === models[categoria][itemIndex].path) {
+        changeModel(1);
+      }
+      break;
+    }
+  }
+};
 
 // ==================== ATUALIZAÇÕES DE INTERFACE ====================
 function formatProductName(path) {
@@ -53,6 +99,13 @@ function updateUI(model) {
 
 // ==================== CARREGAMENTO DO MODELO 3D ====================
 function loadModel(path) {
+  // Verifica se o modelo está visível
+  const modelData = getCurrentModelData();
+  if (modelData && modelData.visible === false) {
+    changeModel(1); // Pula para o próximo modelo se este estiver invisível
+    return;
+  }
+
   const container = document.querySelector("#modelContainer");
   const loadingIndicator = document.getElementById("loadingIndicator");
 
@@ -109,9 +162,20 @@ function getModelPrice(path) {
 
 // ==================== CONTROLE DE MODELOS ====================
 function changeModel(dir) {
-  const lista = models[currentCategory];
-  currentIndex = (currentIndex + dir + lista.length) % lista.length;
-  loadModel(lista[currentIndex].path);
+  let tentativas = 0;
+  const maxTentativas = models[currentCategory].length * 2; // Prevenção de loop infinito
+  
+  do {
+    currentIndex = (currentIndex + dir + models[currentCategory].length) % models[currentCategory].length;
+    tentativas++;
+    
+    // Para se encontrou um item visível ou excedeu o número máximo de tentativas
+    if (models[currentCategory][currentIndex].visible !== false || tentativas >= maxTentativas) {
+      break;
+    }
+  } while (true);
+
+  loadModel(models[currentCategory][currentIndex].path);
 
   const infoPanel = document.getElementById('infoPanel');
   if (infoPanel.style.display === 'block') {
@@ -122,9 +186,21 @@ function changeModel(dir) {
 
 function selectCategory(category) {
   if (!models[category]) return;
+  
   currentCategory = category;
   currentIndex = 0;
-  loadModel(models[category][0].path);
+  
+  // Encontra o primeiro item visível na categoria
+  while (currentIndex < models[category].length && models[category][currentIndex].visible === false) {
+    currentIndex++;
+  }
+  
+  // Se todos estiverem invisíveis, mostra o primeiro (como fallback)
+  if (currentIndex >= models[category].length) {
+    currentIndex = 0;
+  }
+  
+  loadModel(models[category][currentIndex].path);
 }
 
 document.getElementById("menuBtn").addEventListener("click", () => {
@@ -134,9 +210,20 @@ document.getElementById("menuBtn").addEventListener("click", () => {
 
 // ==================== INICIALIZAÇÃO ====================
 window.addEventListener("DOMContentLoaded", async () => {
-  await aplicarConfiguracaoDoRestaurante(); // Aplica categorias antes de carregar
-  loadModel(models[currentCategory][0].path);
-  verificarEstadoInicial(); // Verifica QR code com estado customizado
+  // Inicializa todos os modelos como visíveis por padrão
+  for (const categoria in models) {
+    models[categoria].forEach(model => {
+      if (model.visible === undefined) {
+        model.visible = true;
+      }
+    });
+  }
+
+  await aplicarConfiguracaoDoRestaurante();
+  verificarEstadoInicial();
+  
+  // Carrega o primeiro modelo visível
+  selectCategory(currentCategory);
 });
 
 // ==================== VERIFICAÇÃO POR QR CODE ====================
@@ -147,6 +234,8 @@ function verificarEstadoInicial() {
   if (estadoCodificado) {
     try {
       const estado = JSON.parse(decodeURIComponent(estadoCodificado));
+      
+      // Aplica configurações de categorias
       if (estado.categorias) {
         document.querySelectorAll('.category-btn').forEach(btn => {
           const categoria = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
@@ -155,6 +244,24 @@ function verificarEstadoInicial() {
           }
         });
       }
+      
+      // Aplica configurações de itens
+      if (estado.itens) {
+        for (const categoria in estado.itens) {
+          if (models[categoria]) {
+            estado.itens[categoria].forEach(itemNome => {
+              const itemIndex = models[categoria].findIndex(model => {
+                const modelName = model.path.split('/').pop().replace('.glb', '');
+                return modelName === itemNome;
+              });
+              
+              if (itemIndex !== -1) {
+                models[categoria][itemIndex].visible = false;
+              }
+            });
+          }
+        }
+      }
     } catch (e) {
       console.error('Erro ao decodificar estado inicial:', e);
     }
@@ -162,11 +269,12 @@ function verificarEstadoInicial() {
 }
 
 // ==================== ROTAÇÃO AUTOMÁTICA ====================
-setInterval(() => {
+let rotationInterval = setInterval(() => {
   const model = document.querySelector("#modelContainer");
-  if (!model) return;
+  if (!model || !model.getAttribute("gltf-model")) return;
+  
   const rotation = model.getAttribute("rotation");
-  rotation.y += 0.5;
+  rotation.y = (rotation.y + 0.5) % 360;
   model.setAttribute("rotation", rotation);
 }, 30);
 
@@ -178,6 +286,8 @@ let initialRotationX = 0;
 
 function updateScale(scaleFactor) {
   const model = document.querySelector("#modelContainer");
+  if (!model) return;
+  
   const newScale = Math.min(Math.max(initialScale * scaleFactor, 0.1), 10);
   model.setAttribute("scale", `${newScale} ${newScale} ${newScale}`);
 }
@@ -187,12 +297,18 @@ window.addEventListener("touchstart", (e) => {
     const dx = e.touches[0].clientX - e.touches[1].clientX;
     const dy = e.touches[0].clientY - e.touches[1].clientY;
     initialDistance = Math.sqrt(dx * dx + dy * dy);
-    const scale = document.querySelector("#modelContainer").getAttribute("scale");
-    initialScale = scale.x;
+    const model = document.querySelector("#modelContainer");
+    if (model) {
+      const scale = model.getAttribute("scale");
+      initialScale = scale ? scale.x : 1;
+    }
   } else if (e.touches.length === 1) {
     startY = e.touches[0].clientY;
     const model = document.querySelector("#modelContainer");
-    initialRotationX = model.getAttribute("rotation").x;
+    if (model) {
+      const rotation = model.getAttribute("rotation");
+      initialRotationX = rotation ? rotation.x : 0;
+    }
   }
 });
 
@@ -205,9 +321,13 @@ window.addEventListener("touchmove", (e) => {
   } else if (e.touches.length === 1 && startY !== null) {
     const deltaY = e.touches[0].clientY - startY;
     const model = document.querySelector("#modelContainer");
-    const rotation = model.getAttribute("rotation");
-    const newX = Math.min(Math.max(initialRotationX - deltaY * 0.2, -90), 90);
-    model.setAttribute("rotation", `${newX} ${rotation.y} ${rotation.z}`);
+    if (model) {
+      const rotation = model.getAttribute("rotation");
+      if (rotation) {
+        const newX = Math.min(Math.max(initialRotationX - deltaY * 0.2, -90), 90);
+        model.setAttribute("rotation", `${newX} ${rotation.y} ${rotation.z}`);
+      }
+    }
   }
 });
 
