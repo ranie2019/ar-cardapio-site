@@ -4,6 +4,7 @@ let currentIndex = 0;
 const modelCache = {};
 let currentModelPath = '';
 let infoVisible = false;
+const modelIndex = {}; // Novo: Índice para busca rápida de modelos
 
 // ==================== CONFIGURAÇÃO DO RESTAURANTE VIA S3 ====================
 async function aplicarConfiguracaoDoRestaurante() {
@@ -34,9 +35,13 @@ async function aplicarConfiguracaoDoRestaurante() {
     for (const categoria in configItens) {
       if (models[categoria]) {
         models[categoria].forEach(model => {
-          const modelName = model.path.split('/').pop().replace('.glb', '');
+          const modelName = extrairNomeModelo(model.path);
           if (configItens[categoria].includes(modelName)) {
             model.visible = false;
+            // Atualiza o índice
+            if (modelIndex[modelName]) {
+              modelIndex[modelName].visible = false;
+            }
           }
         });
       }
@@ -51,27 +56,57 @@ async function aplicarConfiguracaoDoRestaurante() {
 const canalCardapio = new BroadcastChannel('cardapio_channel');
 
 canalCardapio.onmessage = (event) => {
-  const { nome, visivel } = event.data;
-  const nomeFormatado = nome.toLowerCase().replace(/\s+/g, '_');
+  const { tipo, nome, categoria, visivel } = event.data;
   
-  // Atualiza o estado nos modelos
-  for (const categoria in models) {
-    const itemIndex = models[categoria].findIndex(model => {
-      const modelName = model.path.split('/').pop().replace('.glb', '');
-      return modelName === nomeFormatado;
-    });
+  // Sincronização de itens
+  if (tipo === 'item') {
+    const nomeFormatado = nome.toLowerCase().replace(/\s+/g, '_');
     
-    if (itemIndex !== -1) {
-      models[categoria][itemIndex].visible = visivel;
+    // Busca rápida usando o índice
+    if (modelIndex[nomeFormatado]) {
+      const modelData = modelIndex[nomeFormatado];
+      modelData.visible = visivel;
       
-      // Se o item atual ficou invisível, muda para o próximo
-      if (!visivel && currentModelPath === models[categoria][itemIndex].path) {
+      // Atualiza o modelo se estiver visível
+      if (visivel && currentModelPath === modelData.path) {
+        loadModel(modelData.path);
+      } 
+      // Muda para o próximo se o atual foi desativado
+      else if (!visivel && currentModelPath === modelData.path) {
         changeModel(1);
       }
-      break;
+      
+      console.log(`Item atualizado: ${nomeFormatado} - Visível: ${visivel}`);
+    }
+  }
+  // Sincronização de categorias
+  else if (tipo === 'categoria') {
+    const botao = document.querySelector(`.category-btn[onclick*="${categoria}"]`);
+    if (botao) {
+      botao.style.display = visivel ? 'block' : 'none';
+      console.log(`Categoria atualizada: ${categoria} - Visível: ${visivel}`);
     }
   }
 };
+
+// ==================== FUNÇÕES AUXILIARES ====================
+function extrairNomeModelo(path) {
+  return path
+    .split('/').pop()
+    .replace('.glb','')
+    .replace(/[-\s]+/g, '_')   // converte hífen ou espaços em underline
+    .toLowerCase();
+}
+
+function criarModelIndex() {
+  for (const categoria in models) {
+    models[categoria].forEach(model => {
+      const nomeModelo = extrairNomeModelo(model.path);
+      modelIndex[nomeModelo] = model;
+      modelIndex[nomeModelo].categoria = categoria;
+    });
+  }
+}
 
 // ==================== ATUALIZAÇÕES DE INTERFACE ====================
 function formatProductName(path) {
@@ -100,8 +135,8 @@ function updateUI(model) {
 // ==================== CARREGAMENTO DO MODELO 3D ====================
 function loadModel(path) {
   // Verifica se o modelo está visível
-  const modelData = getCurrentModelData();
-  if (modelData && modelData.visible === false) {
+  const nomeModelo = extrairNomeModelo(path);
+  if (modelIndex[nomeModelo] && modelIndex[nomeModelo].visible === false) {
     changeModel(1); // Pula para o próximo modelo se este estiver invisível
     return;
   }
@@ -152,24 +187,19 @@ function loadModel(path) {
 }
 
 function getModelPrice(path) {
-  for (let cat in models) {
-    for (let model of models[cat]) {
-      if (model.path === path) return model.price;
-    }
-  }
-  return 0;
+  const nomeModelo = extrairNomeModelo(path);
+  return modelIndex[nomeModelo]?.price || 0;
 }
 
 // ==================== CONTROLE DE MODELOS ====================
 function changeModel(dir) {
   let tentativas = 0;
-  const maxTentativas = models[currentCategory].length * 2; // Prevenção de loop infinito
+  const maxTentativas = models[currentCategory].length * 2;
   
   do {
     currentIndex = (currentIndex + dir + models[currentCategory].length) % models[currentCategory].length;
     tentativas++;
     
-    // Para se encontrou um item visível ou excedeu o número máximo de tentativas
     if (models[currentCategory][currentIndex].visible !== false || tentativas >= maxTentativas) {
       break;
     }
@@ -195,7 +225,6 @@ function selectCategory(category) {
     currentIndex++;
   }
   
-  // Se todos estiverem invisíveis, mostra o primeiro (como fallback)
   if (currentIndex >= models[category].length) {
     currentIndex = 0;
   }
@@ -219,6 +248,9 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  // Cria índice para busca rápida
+  criarModelIndex();
+  
   await aplicarConfiguracaoDoRestaurante();
   verificarEstadoInicial();
   

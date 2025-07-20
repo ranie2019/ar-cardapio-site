@@ -10,7 +10,7 @@ const models = {
     { path: `${modelBaseURL}/inicio/tabua_de_carne.glb`, price: 0.00, info: null }
   ],
   bebidas: [
-    { path: `${modelBaseURL}/bebidas/absolut_vodka_1l.glb`, price: 79.90, info: `${modelBaseURL}/informacao/absolut_vodka_1l.json` },
+    { path: `${modelBaseURL}/bebidas/absolut_vodka.glb`, price: 79.90, info: `${modelBaseURL}/informacao/absolut_vodka.json` },
     { path: `${modelBaseURL}/bebidas/champagne.glb`, price: 98.50, info: `${modelBaseURL}/informacao/champagne.json` },
     { path: `${modelBaseURL}/bebidas/champagne_Lorem.glb`, price: 120.00, info: `${modelBaseURL}/informacao/champagne_Lorem.json` },
     { path: `${modelBaseURL}/bebidas/heineken.glb`, price: 12.90, info: `${modelBaseURL}/informacao/heineken.json` },

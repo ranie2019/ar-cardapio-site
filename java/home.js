@@ -54,8 +54,8 @@ class SistemaCardapio {
           <input type="text" id="inputValor" placeholder="0,00">
         </div>
         <div class="grupo-input">
-          <label for="inputDescricao">Descrição Completa:</label>
-          <textarea id="inputDescricao" rows="10"></textarea>
+          <label for="inputDescricao">Descrição:</label>
+          <textarea id="inputDescricao" rows="4"></textarea>
         </div>
         <div class="actions">
           <button id="btnSalvarModal" class="btn-salvar-config">Salvar</button>
@@ -234,8 +234,10 @@ class SistemaCardapio {
         this.salvarConfiguracaoNoS3();
         // **nova linha**: notifica o canal para sincronizar no app AR
         this.canalStatus.postMessage({
-          nome: nome,                // deve ser exatamente o mesmo nome usado como data-nome
-          visivel: !desativadoAgora  // se acabou de desativar, envia visivel=false
+          tipo:      'item',         // << informa que é um item
+          categoria: categoria,      // << opcional, se você quiser
+          nome:      nome.toLowerCase(),          
+          visivel:   !desativadoAgora
         });
       });
 
@@ -313,38 +315,26 @@ class SistemaCardapio {
     this.modalConfig.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
 
     try {
-        const res = await fetch(
-            `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}?v=${Date.now()}`
-        );
-        
-        if (res.ok) {
-            const dados = await res.json();
-            this.dadosRestaurante[this.itemConfiguracao] = dados;
-            
-            // Preenche o valor
-            const inputValor = this.modalConfig.querySelector('#inputValor');
-            inputValor.value = dados.preco != null ? 
-                dados.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00';
-            
-            // Converte o objeto JSON em texto formatado para exibição
-            let descricaoCompleta = '';
-            for (const [chave, valor] of Object.entries(dados)) {
-                if (chave !== 'preco') { // Ignora o preço que já tem campo próprio
-                    const chaveFormatada = chave.replace(/_/g, ' ')
-                                        .replace(/\b\w/g, l => l.toUpperCase());
-                    descricaoCompleta += `${chaveFormatada}: ${valor}\n\n`;
-                }
-            }
-            
-            this.modalConfig.querySelector('#inputDescricao').value = descricaoCompleta.trim();
-        }
+      const res = await fetch(
+        `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}?v=${Date.now()}`
+      );
+      if (res.ok) {
+        this.dadosRestaurante[this.itemConfiguracao] = await res.json();
+      }
     } catch (error) {
-        console.warn('Erro ao carregar configuração:', error);
-        this.modalConfig.querySelector('#inputDescricao').value = '';
+      console.warn('Erro ao carregar configuração:', error);
     }
 
+    // Preenche os campos
+    const dados = this.dadosRestaurante[this.itemConfiguracao] || {};
+    this.modalConfig.querySelector('#inputValor').value = dados.preco != null
+      ? dados.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+      : '0,00';
+    this.modalConfig.querySelector('#inputDescricao').value = dados.descricao || '';
+
+    // Mostra o modal
     this.modalConfig.style.display = 'flex';
-}
+  }
 
   /**
    * Salva a configuração do item atual
@@ -355,47 +345,26 @@ class SistemaCardapio {
     // Formata o valor
     const raw = this.modalConfig.querySelector('#inputValor').value;
     const preco = parseFloat(raw.replace(/\./g, '').replace(',', '.')) || 0;
-    
-    // Processa a descrição completa de volta para o objeto JSON
-    const descricaoText = this.modalConfig.querySelector('#inputDescricao').value;
-    const dadosAtualizados = { preco };
-    
-    // Converte o texto formatado de volta para objeto JSON
-    const linhas = descricaoText.split('\n\n');
-    linhas.forEach(linha => {
-        if (linha.trim()) {
-            const separador = linha.indexOf(':');
-            if (separador > 0) {
-                const chave = linha.substring(0, separador).trim().toLowerCase().replace(/\s+/g, '_');
-                const valor = linha.substring(separador + 1).trim();
-                dadosAtualizados[chave] = valor;
-            }
-        }
-    });
+    const descricao = this.modalConfig.querySelector('#inputDescricao').value.trim();
 
     // Atualiza cache local
-    this.dadosRestaurante[this.itemConfiguracao] = dadosAtualizados;
+    this.dadosRestaurante[this.itemConfiguracao] = { preco, descricao };
 
     // Salva no S3
     const arquivo = this.itemConfiguracao.split('/')[1] + '.json';
     try {
-        const response = await fetch(
-            `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}`,
-            {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dadosAtualizados)
-            }
-        );
-        
-        if (!response.ok) {
-            throw new Error('Falha ao salvar configuração');
+      await fetch(
+        `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.dadosRestaurante[this.itemConfiguracao])
         }
+      );
     } catch (error) {
-        console.error('Erro ao salvar configuração:', error);
-        alert('Erro ao salvar as alterações. Por favor, tente novamente.');
+      console.error('Erro ao salvar configuração:', error);
     }
-}
+  }
 
   // ==============================
   // FUNÇÕES AUXILIARES
@@ -718,73 +687,50 @@ class SistemaCardapio {
   }
 
   /**
-   * Salva as configurações de categorias e itens no S3
-   */
-  async salvarConfiguracaoNoS3() {
-    // 1) Configurações de categorias
-    // --------------------------------------------------
-    // Seleciona todos os botões de categoria
-    const botoesDeCategoria = document.querySelectorAll('#dropdownCardapio .btn-categoria');
-    // Prepara um objeto para armazenar visibilidade de cada categoria
-    const configuracaoDeCategorias = {};
+ * Salva as configurações de categorias e itens no S3
+ */
+async salvarConfiguracaoNoS3() {
+  // 1) Configurações de categorias
+  const botoes = document.querySelectorAll('#dropdownCardapio .btn-categoria');
+  const configCats = {};
+  botoes.forEach(b => {
+    const cat = b.getAttribute('data-categoria');
+    configCats[cat] = !b.classList.contains('desativado');
+  });
 
-    botoesDeCategoria.forEach(botao => {
-      // nome da categoria (ex: "bebidas", "carnes", etc)
-      const nomeDaCategoria = botao.getAttribute('data-categoria');
-      // se não tiver a classe 'desativado', então está visível
-      const estaVisivel = !botao.classList.contains('desativado');
-      configuracaoDeCategorias[nomeDaCategoria] = estaVisivel;
+  try {
+    await fetch(this.ARQUIVO_CONFIG_CATEGORIAS, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(configCats)
     });
-
-    try {
-      // envia via PUT o JSON de categorias ao S3
-      await fetch(this.ARQUIVO_CONFIG_CATEGORIAS, {
-        method:  'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(configuracaoDeCategorias)
-      });
-    } catch (erro) {
-      console.error('Erro ao salvar configurações de categorias:', erro);
-    }
-
-    // 2) Configurações de itens (apenas os desativados)
-    // --------------------------------------------------
-    try {
-      // objeto que vai agrupar, por categoria, os nomes dos itens desativados
-      const itensDesativadosPorCategoria = {};
-
-      // percorre cada .item-box que estiver com a classe 'desativado'
-      document.querySelectorAll('.item-box.desativado').forEach(box => {
-        // recupera a categoria e formata o nome do item
-        const categoriaDoItem = box.getAttribute('data-categoria');
-        const textoDoNome    = box.textContent.trim();
-        const nomeDoItem     = textoDoNome.toLowerCase().replace(/\s+/g, '_');
-
-        // cria o array daquela categoria, se ainda não existir
-        if (!itensDesativadosPorCategoria[categoriaDoItem]) {
-          itensDesativadosPorCategoria[categoriaDoItem] = [];
-        }
-
-        // adiciona o nome do item desativado
-        itensDesativadosPorCategoria[categoriaDoItem].push(nomeDoItem);
-      });
-
-      // envia via PUT o JSON de itens desativados ao S3
-      await fetch(this.ARQUIVO_CONFIG_ITENS, {
-        method:  'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(itensDesativadosPorCategoria)
-      });
-    } catch (erro) {
-      console.error('Erro ao salvar configurações de itens:', erro);
-    }
+  } catch (e) {
+    console.error('Erro ao salvar categorias no S3:', e);
   }
 
+  // 2) Configurações de itens (todos os itens desativados)
+  const desat = {};
+  // `objetos3D` deve conter todas as categorias → array de nomes originais
+  Object.keys(objetos3D).forEach(cat => {
+    objetos3D[cat].forEach(nome => {
+      const chaveLS = `itemEstado_${cat}_${nome}`;
+      if (localStorage.getItem(chaveLS) === 'true') {
+        if (!desat[cat]) desat[cat] = [];
+        desat[cat].push(nome.toLowerCase().replace(/\s+/g, '_'));
+      }
+    });
+  });
 
+  try {
+    await fetch(this.ARQUIVO_CONFIG_ITENS, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(desat)
+    });
+  } catch (e) {
+    console.error('Erro ao salvar itens desativados no S3:', e);
+  }
+}
 
   /**
    * Carrega as configurações iniciais

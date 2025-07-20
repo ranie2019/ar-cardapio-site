@@ -11,7 +11,7 @@ const objetos3D = {
   bebidas: [
     'Heineken',
     'Redbull',
-    'Absolut Vodka 1L',
+    'Absolut Vodka',
     'Champagne Lorem',
     'Jack Daniels',
     'Champagne'
