@@ -41,10 +41,13 @@ class SistemaCardapio {
    * Inicializa o modal de configuração de produtos
    */
   inicializarModalConfiguracao() {
+    // Cria o elemento pai do modal
     this.modalConfig = document.createElement('div');
     this.modalConfig.id = 'modalConfiguracaoProduto';
     this.modalConfig.className = 'modal-edicao';
     this.modalConfig.style.display = 'none';
+
+    // Conteúdo interno do modal
     this.modalConfig.innerHTML = `
       <div class="modal-content-edicao">
         <span class="close-edicao">&times;</span>
@@ -62,21 +65,26 @@ class SistemaCardapio {
         </div>
       </div>
     `;
+    // Anexa o modal ao body
     document.body.appendChild(this.modalConfig);
 
-    // Event listeners do modal
-    this.modalConfig.querySelector('.close-edicao').addEventListener('click', () => {
+    // Fecha o modal ao clicar no "×"
+    const botaoFechar = this.modalConfig.querySelector('.close-edicao');
+    botaoFechar.addEventListener('click', () => {
       this.modalConfig.style.display = 'none';
     });
 
-    this.modalConfig.addEventListener('click', (e) => {
-      if (e.target === this.modalConfig) {
-        this.modalConfig.style.display = 'none';
-      }
+    // Impede que cliques dentro do conteúdo fechem o modal
+    const conteudoModal = this.modalConfig.querySelector('.modal-content-edicao');
+    conteudoModal.addEventListener('click', (evento) => {
+      evento.stopPropagation();
     });
 
-    this.modalConfig.querySelector('.modal-content-edicao').addEventListener('click', (e) => {
-      e.stopPropagation();
+    // Formata valor monetário enquanto digita
+    const campoValor = this.modalConfig.querySelector('#inputValor');
+    campoValor.addEventListener('input', (evento) => {
+      this.formatarValorMonetario(evento);
+      this.salvarConfiguracao();
     });
 
     // Formatação do valor monetário
@@ -86,14 +94,15 @@ class SistemaCardapio {
       this.salvarConfiguracao();
     });
 
-    // Salvar ao modificar descrição
-    const inputDesc = this.modalConfig.querySelector('#inputDescricao');
-    inputDesc.addEventListener('input', () => {
+    // Salva configuração ao modificar descrição
+    const campoDescricao = this.modalConfig.querySelector('#inputDescricao');
+    campoDescricao.addEventListener('input', () => {
       this.salvarConfiguracao();
     });
 
-    // Botão salvar
-    this.modalConfig.querySelector('#btnSalvarModal').addEventListener('click', async () => {
+    // Fecha o modal e salva ao clicar em "Salvar"
+    const botaoSalvar = this.modalConfig.querySelector('#btnSalvarModal');
+    botaoSalvar.addEventListener('click', async () => {
       await this.salvarConfiguracao();
       this.modalConfig.style.display = 'none';
     });
@@ -418,43 +427,54 @@ class SistemaCardapio {
     const btnMenos = document.getElementById('btnMenosGarcom');
     const containerFormularios = document.getElementById('formularioGarcons');
 
-    // Função para formatar número de celular
-    const formatarCelular = (value) => {
-      value = value.replace(/\D/g, '');
-      value = value.substring(0, 11);
-      if (value.length > 6) {
-        value = value.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, '($1) $2-$3');
-      } else if (value.length > 2) {
-        value = value.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
-      } else if (value.length > 0) {
-        value = value.replace(/^(\d{0,2})/, '($1');
-      }
-      return value;
-    };
+    // Função de formatação otimizada
+    function formatarCelular(value) {
+      const digits = value.replace(/\D/g, '').substring(0, 11);
+      if (!digits) return '';
+      
+      const size = digits.length;
+      if (size < 3) return `(${digits}`;
+      if (size < 6) return `(${digits.slice(0,2)}) ${digits.slice(2)}`;
+      return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7,11)}`;
+    }
 
-    // Adiciona formatação ao campo de telefone
+
+    // Adiciona formatação com controle de cursor
     const adicionarEventoFormatacao = (input) => {
       input.addEventListener('input', (e) => {
-        const posicaoCursor = input.selectionStart;
-        const valorAnterior = input.value;
-        input.value = formatarCelular(input.value);
-        const novaPosicaoCursor = posicaoCursor + (input.value.length - valorAnterior.length);
-        input.setSelectionRange(novaPosicaoCursor, novaPosicaoCursor);
-        const form = input.closest('.form-garcom');
-        const inputNome = form.querySelector('.nome-garcom');
-        if (input.value.trim() === '') {
-          inputNome.value = '';
+        const target = e.target;
+        const cursorPos = target.selectionStart;
+        const valorOriginal = target.value;
+        
+        // Aplica formatação
+        const valorFormatado = formatarCelular(valorOriginal);
+        target.value = valorFormatado;
+        
+        // Calcula nova posição do cursor
+        let novoCursorPos = cursorPos;
+        const digitosRemovidos = valorOriginal.replace(/\D/g, '').length - 
+                                valorFormatado.replace(/\D/g, '').length;
+        
+        if (digitosRemovidos > 0 && cursorPos > 0) {
+          novoCursorPos = Math.max(0, cursorPos - digitosRemovidos);
+        } else if (valorFormatado.length > valorOriginal.length) {
+          novoCursorPos += (valorFormatado.length - valorOriginal.length);
         }
+        
+        novoCursorPos = Math.min(novoCursorPos, valorFormatado.length);
+        target.setSelectionRange(novoCursorPos, novoCursorPos);
       });
     };
 
-    // Valida os campos do formulário
+    // Validação simplificada
     const validarCampos = (form) => {
       const inputNome = form.querySelector('.nome-garcom');
       const inputTel = form.querySelector('.tel-garcom');
       const btnQr = form.querySelector('.btn-qr');
+      
       const nomeValido = inputNome.value.trim().length > 0;
-      const telValido = inputTel.value.trim().length >= 14;
+      const telValido = inputTel.value.replace(/\D/g, '').length >= 10;
+      
       btnQr.disabled = !(nomeValido && telValido);
     };
 
@@ -464,10 +484,7 @@ class SistemaCardapio {
       const inputTel = form.querySelector('.tel-garcom');
 
       inputNome.addEventListener('input', () => validarCampos(form));
-      inputTel.addEventListener('input', () => {
-        inputTel.value = formatarCelular(inputTel.value);
-        validarCampos(form);
-      });
+      inputTel.addEventListener('input', () => validarCampos(form));
     };
 
     // Gera os formulários de garçons
@@ -629,12 +646,11 @@ class SistemaCardapio {
     });
 
     window.addEventListener('click', (e) => {
-      if (e.target === modalQrCode) {
-        modalQrCode.classList.remove('ativo');
-        qrCodeContainer.innerHTML = '';
-        this.currentGarcomId = null;
+      if (e.target === modalConfig) {
+        modalConfig.classList.remove('active');
       }
     });
+
 
     // Impressão
     btnImprimir.addEventListener('click', () => {
