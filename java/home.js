@@ -2,52 +2,51 @@
 // home.js - Sistema de Cardápio Digital Completo
 // ==============================
 
-/**
- * Classe principal que gerencia o sistema de cardápio
- */
 class SistemaCardapio {
   constructor() {
-    this.nomeRestaurante = 'restaurante-001';
-    this.itemConfiguracao = null;
-    this.dadosRestaurante = {};
-    this.categoriaAtiva = null;
-    this.currentGarcomId = null;
-    
-    // URLs base
-    this.MODEL_BASE_URL = 'https://ar-menu-models.s3.amazonaws.com/';
-    this.ARQUIVO_CONFIG_CATEGORIAS = `https://ar-menu-models.s3.amazonaws.com/configuracoes/${this.nomeRestaurante}.json`;
-    this.ARQUIVO_CONFIG_ITENS = `https://ar-menu-models.s3.amazonaws.com/configuracoes/${this.nomeRestaurante}-itens.json`;
-    
-    // Inicializa componentes
+    // ------------------------------
+    // Propriedades iniciais
+    // ------------------------------
+    this.nomeRestaurante      = 'restaurante-001';
+    this.itemConfiguracao     = null;           // chave do JSON atual ("categoria/nome")
+    this.dadosRestaurante     = {};             // cache local das configurações carregadas
+    this.categoriaAtiva       = null;           // categoria que está aberta
+    this.currentGarcomId      = null;           // id do garçom para QR
+    this.MODEL_BASE_URL       = 'https://ar-menu-models.s3.amazonaws.com/';
+    this.ARQUIVO_CONFIG_CATEGORIAS = `${this.MODEL_BASE_URL}configuracoes/${this.nomeRestaurante}.json`;
+    this.ARQUIVO_CONFIG_ITENS      = `${this.MODEL_BASE_URL}configuracoes/${this.nomeRestaurante}-itens.json`;
+
+    // ------------------------------
+    // Inicialização dos componentes
+    // ------------------------------
     this.inicializarModalConfiguracao();
     this.inicializarModalPreview3D();
     this.configurarEventosCardapio();
     this.setupCadastroGarcons();
     this.setupQrCodeGarcons();
-    
-    // Canal de sincronização
+
+    // ------------------------------
+    // Sincronização com o app AR
+    // ------------------------------
     this.canalStatus = new BroadcastChannel('cardapio_channel');
     this.configurarSincronizacao();
-    
-    // Carrega configurações iniciais
+
+    // ------------------------------
+    // Carregamento inicial de configurações de categorias e itens
+    // ------------------------------
     this.carregarConfiguracoesIniciais();
   }
 
   // ==============================
-  // INICIALIZAÇÃO DOS COMPONENTES
+  // 1. MODAIS
   // ==============================
 
-  /**
-   * Inicializa o modal de configuração de produtos
-   */
   inicializarModalConfiguracao() {
-    // Cria o elemento pai do modal
+    // Cria e injeta o container do modal
     this.modalConfig = document.createElement('div');
     this.modalConfig.id = 'modalConfiguracaoProduto';
     this.modalConfig.className = 'modal-edicao';
     this.modalConfig.style.display = 'none';
-
-    // Conteúdo interno do modal
     this.modalConfig.innerHTML = `
       <div class="modal-content-edicao">
         <span class="close-edicao">&times;</span>
@@ -65,52 +64,45 @@ class SistemaCardapio {
         </div>
       </div>
     `;
-    // Anexa o modal ao body
     document.body.appendChild(this.modalConfig);
 
-    // Fecha o modal ao clicar no "×"
-    const botaoFechar = this.modalConfig.querySelector('.close-edicao');
-    botaoFechar.addEventListener('click', () => {
+    // Fecha ao clicar no “×”
+    this.modalConfig.querySelector('.close-edicao').addEventListener('click', () => {
       this.modalConfig.style.display = 'none';
     });
 
-    // Impede que cliques dentro do conteúdo fechem o modal
-    const conteudoModal = this.modalConfig.querySelector('.modal-content-edicao');
-    conteudoModal.addEventListener('click', (evento) => {
-      evento.stopPropagation();
+    // Fecha ao clicar fora do conteúdo
+    this.modalConfig.addEventListener('click', e => {
+      if (e.target === this.modalConfig) {
+        this.modalConfig.style.display = 'none';
+      }
     });
 
-    // Formata valor monetário enquanto digita
-    const campoValor = this.modalConfig.querySelector('#inputValor');
-    campoValor.addEventListener('input', (evento) => {
-      this.formatarValorMonetario(evento);
-      this.salvarConfiguracao();
-    });
+    // Impede fechamento ao clicar dentro do conteúdo
+    this.modalConfig.querySelector('.modal-content-edicao')
+      .addEventListener('click', e => e.stopPropagation());
 
-    // Formatação do valor monetário
+    // Formatação monetária + auto-save
     const inputValor = this.modalConfig.querySelector('#inputValor');
-    inputValor.addEventListener('input', (e) => {
+    inputValor.addEventListener('input', e => {
       this.formatarValorMonetario(e);
       this.salvarConfiguracao();
     });
 
-    // Salva configuração ao modificar descrição
-    const campoDescricao = this.modalConfig.querySelector('#inputDescricao');
-    campoDescricao.addEventListener('input', () => {
+    // Auto-save ao modificar descrição
+    const inputDesc = this.modalConfig.querySelector('#inputDescricao');
+    inputDesc.addEventListener('input', () => {
       this.salvarConfiguracao();
     });
 
-    // Fecha o modal e salva ao clicar em "Salvar"
-    const botaoSalvar = this.modalConfig.querySelector('#btnSalvarModal');
-    botaoSalvar.addEventListener('click', async () => {
-      await this.salvarConfiguracao();
-      this.modalConfig.style.display = 'none';
-    });
+    // Botão Salvar: salva e fecha
+    this.modalConfig.querySelector('#btnSalvarModal')
+      .addEventListener('click', async () => {
+        await this.salvarConfiguracao();
+        this.modalConfig.style.display = 'none';
+      });
   }
 
-  /**
-   * Inicializa o modal de preview 3D
-   */
   inicializarModalPreview3D() {
     this.modelModal = document.createElement('div');
     this.modelModal.className = 'model-preview-modal';
@@ -118,27 +110,25 @@ class SistemaCardapio {
     document.body.appendChild(this.modelModal);
   }
 
-  /**
-   * Configura os eventos do cardápio
-   */
-  configurarEventosCardapio() {
-    const profileBtn = document.getElementById('profile-btn');
-    const cardapioBtn = document.getElementById('cardapio-btn');
-    const dropdownCardapio = document.getElementById('dropdownCardapio');
-    const container = document.getElementById('itensContainer');
+  // ==============================
+  // 2. EVENTOS DO CARDÁPIO
+  // ==============================
 
-    // Evento do botão de perfil
+  configurarEventosCardapio() {
+    const profileBtn     = document.getElementById('profile-btn');
+    const cardapioBtn    = document.getElementById('cardapio-btn');
+    const dropdownCardapio = document.getElementById('dropdownCardapio');
+    const container      = document.getElementById('itensContainer');
+
+    // Perfil
     if (profileBtn) {
-      profileBtn.addEventListener('click', () => {
-        window.location.href = 'perfil.html';
-      });
+      profileBtn.addEventListener('click', () => window.location.href = 'perfil.html');
     }
 
-    // Evento do botão do cardápio
+    // Toggle do dropdown
     if (cardapioBtn && dropdownCardapio) {
       cardapioBtn.addEventListener('click', () => {
         dropdownCardapio.classList.toggle('show');
-
         if (!dropdownCardapio.classList.contains('show')) {
           container.style.display = 'none';
           container.innerHTML = '';
@@ -152,47 +142,40 @@ class SistemaCardapio {
       });
     }
 
-    // Eventos dos botões de categoria
+    // Botões de categoria
     document.querySelectorAll('#dropdownCardapio button').forEach(btn => {
-      const categoria = btn.getAttribute('data-categoria');
-      const id = 'btnEstado_' + categoria;
+      const categoria = btn.dataset.categoria;
+      const key       = `btnEstado_${categoria}`;
 
-      // Estado inicial do localStorage
-      const estaDesativado = localStorage.getItem(id) === 'true';
-      if (estaDesativado) {
+      // Estado inicial do botão vindo do localStorage
+      if (localStorage.getItem(key) === 'true') {
         btn.classList.add('desativado');
         this.notificarEstadoCategoria(categoria, true);
       }
 
-      // Clique no botão
+      // Clique para ativar/desativar categoria
       btn.addEventListener('click', () => {
-        const desativadoAgora = !btn.classList.contains('desativado');
-        
-        btn.classList.toggle('desativado');
-        localStorage.setItem(id, desativadoAgora);
+        const desativadoAgora = btn.classList.toggle('desativado');
+        localStorage.setItem(key, desativadoAgora);
         this.notificarEstadoCategoria(categoria, desativadoAgora);
         this.salvarConfiguracaoNoS3();
 
-        if (desativadoAgora) {
-          if (this.categoriaAtiva === categoria) {
-            this.categoriaAtiva = null;
-            container.innerHTML = '';
-            container.style.display = 'none';
-            this.modelModal.style.display = 'none';
-            this.modelModal.innerHTML = '';
-          }
-        } else {
+        if (desativadoAgora && this.categoriaAtiva === categoria) {
+          this.categoriaAtiva = null;
+          container.innerHTML = '';
+          container.style.display = 'none';
+          this.modelModal.style.display = 'none';
+          this.modelModal.innerHTML = '';
+        } else if (!desativadoAgora) {
           this.categoriaAtiva = categoria;
           this.mostrarItens(categoria);
           container.style.display = 'flex';
-          
-          document.querySelectorAll(`.item-box[data-categoria="${categoria}"]`).forEach(item => {
-            item.classList.remove('desativado');
-          });
+          document.querySelectorAll(`.item-box[data-categoria="${categoria}"]`)
+            .forEach(item => item.classList.remove('desativado'));
         }
       });
 
-      // Efeito hover
+      // Hover para pré-visualizar
       btn.addEventListener('mouseenter', () => {
         if (!btn.classList.contains('desativado') && this.categoriaAtiva !== categoria) {
           this.mostrarItens(categoria);
@@ -202,17 +185,12 @@ class SistemaCardapio {
   }
 
   // ==============================
-  // FUNÇÕES PRINCIPAIS
+  // 3. EXIBIÇÃO DE ITENS E PREVIEW 3D
   // ==============================
 
-  /**
-   * Mostra os itens de uma categoria
-   * @param {string} categoria - Nome da categoria
-   */
   mostrarItens(categoria) {
     const container = document.getElementById('itensContainer');
     if (!container || !objetos3D[categoria]) return;
-
     container.innerHTML = '';
     container.style.display = 'flex';
 
@@ -223,49 +201,43 @@ class SistemaCardapio {
       const box = document.createElement('div');
       box.className = 'item-box';
       box.textContent = nome;
-      box.setAttribute('data-categoria', categoria);
+      box.dataset.categoria = categoria;
       box.style.animationDelay = `${i * 0.1}s`;
-      box.setAttribute('data-nome', nome.toLowerCase().replace(/\s+/g,'_'));
+      box.dataset.nome = nome.toLowerCase().replace(/\s+/g, '_');
 
-      // Verifica estado no localStorage
-      const idItem = `itemEstado_${categoria}_${nome}`;
-      if (localStorage.getItem(idItem) === 'true') {
+      // Estado já salvo no localStorage
+      const chaveLS = `itemEstado_${categoria}_${nome}`;
+      if (localStorage.getItem(chaveLS) === 'true') {
         box.classList.add('desativado');
       }
 
-      // Click para ativar/desativar item e notificar o app AR
+      // Clique para ativar/desativar item
       box.addEventListener('click', () => {
-        // alterna estado visual
         const desativadoAgora = box.classList.toggle('desativado');
-        // grava no localStorage
-        localStorage.setItem(idItem, desativadoAgora);
-        // persiste no S3
+        localStorage.setItem(chaveLS, desativadoAgora);
         this.salvarConfiguracaoNoS3();
-        // **nova linha**: notifica o canal para sincronizar no app AR
+        // Notifica o app AR
         this.canalStatus.postMessage({
-          tipo:      'item',         // << informa que é um item
-          categoria: categoria,      // << opcional, se você quiser
-          nome:      nome.toLowerCase(),          
-          visivel:   !desativadoAgora
+          nome: nome,
+          visivel: !desativadoAgora
         });
       });
 
-
-      // Botão de configuração
+      // Botão de configuração de cada item
       const btnConfig = document.createElement('button');
       btnConfig.className = 'btn-configurar-produto';
       btnConfig.textContent = 'Configuração';
-      btnConfig.addEventListener('click', (e) => {
+      btnConfig.addEventListener('click', e => {
         e.stopPropagation();
         this.abrirModalConfiguracao(categoria, nome);
       });
 
-      // Preview 3D no hover
+      // Hover para preview 3D
       box.addEventListener('mouseenter', () => {
-        if (box.classList.contains('desativado')) return;
-        this.mostrarPreview3D(box, categoria, nome);
+        if (!box.classList.contains('desativado')) {
+          this.mostrarPreview3D(box, categoria, nome);
+        }
       });
-
       box.addEventListener('mouseleave', () => {
         this.modelModal.style.display = 'none';
         this.modelModal.innerHTML = '';
@@ -275,57 +247,51 @@ class SistemaCardapio {
       wrapper.appendChild(btnConfig);
       container.appendChild(wrapper);
     });
-
-    this.adicionarPreview3D();
   }
 
-  /**
-   * Mostra o preview 3D de um item
-   * @param {HTMLElement} elemento - Elemento DOM do item
-   * @param {string} categoria - Categoria do item
-   * @param {string} nome - Nome do item
-   */
   mostrarPreview3D(elemento, categoria, nome) {
     const rect = elemento.getBoundingClientRect();
     this.modelModal.style.left = `${rect.right + 10}px`;
-    this.modelModal.style.top = `${rect.top}px`;
+    this.modelModal.style.top  = `${rect.top}px`;
     this.modelModal.style.display = 'block';
 
     const nomeArquivo = this.nomeParaArquivo(nome);
-    const modelURL = `${this.MODEL_BASE_URL}${categoria}/${nomeArquivo}`;
+    const modelURL   = `${this.MODEL_BASE_URL}${categoria}/${nomeArquivo}`;
 
     this.modelModal.innerHTML = `
-      <a-scene embedded vr-mode-ui="enabled: false" style="width: 100%; height: 300px;">
+      <a-scene embedded vr-mode-ui="enabled: false" style="width:100%; height:300px">
         <a-light type="ambient" intensity="1.0"></a-light>
         <a-light type="directional" intensity="0.8" position="2 4 1"></a-light>
-        <a-entity position="0 1 -3" rotation="0 0 0">
-          <a-gltf-model 
-            src="${modelURL}" 
-            scale="1 1 1"
-            rotation="0 0 0"
-            animation="property: rotation; to: 0 360 0; loop: true; dur: 5000; easing: linear"
-          ></a-gltf-model>
+        <a-entity position="0 1 -3">
+          <a-gltf-model src="${modelURL}" scale="1 1 1"
+            animation="property: rotation; to: 0 360 0; loop: true; dur: 5000">
+          </a-gltf-model>
         </a-entity>
         <a-camera position="0 2 0"></a-camera>
       </a-scene>
     `;
   }
 
+  // ==============================
+  // 4. CONFIGURAÇÃO DE ITENS (Modal)
+  // ==============================
+
   /**
-   * Abre o modal de configuração para um item
-   * @param {string} categoria - Categoria do item
-   * @param {string} nome - Nome do item
+   * Abre o modal e carrega o JSON de configuração do item
    */
   async abrirModalConfiguracao(categoria, nome) {
+    // 1) Gera o nome do arquivo JSON (minusculas + underlines)
     this.itemConfiguracao = `${categoria}/${nome.toLowerCase().replace(/\s+/g, '_')}`;
     const arquivo = this.itemConfiguracao.split('/')[1] + '.json';
 
-    // Atualiza título do modal
-    this.modalConfig.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
+    // 2) Atualiza o título
+    this.modalConfig.querySelector('.modal-titulo')
+      .textContent = `Configurar ${nome}`;
 
+    // 3) Busca o JSON existente no S3
     try {
       const res = await fetch(
-        `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}?v=${Date.now()}`
+        `${this.MODEL_BASE_URL}informacao/${arquivo}?v=${Date.now()}`
       );
       if (res.ok) {
         this.dadosRestaurante[this.itemConfiguracao] = await res.json();
@@ -334,458 +300,336 @@ class SistemaCardapio {
       console.warn('Erro ao carregar configuração:', error);
     }
 
-    // Preenche os campos
+    // 4) Preenche os campos
     const dados = this.dadosRestaurante[this.itemConfiguracao] || {};
-    this.modalConfig.querySelector('#inputValor').value = dados.preco != null
-      ? dados.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-      : '0,00';
+    this.modalConfig.querySelector('#inputValor').value = 
+      dados.preco != null
+        ? dados.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+        : '0,00';
     this.modalConfig.querySelector('#inputDescricao').value = dados.descricao || '';
 
-    // Mostra o modal
+    // 5) Exibe o modal
     this.modalConfig.style.display = 'flex';
   }
 
   /**
-   * Salva a configuração do item atual
+   * Salva o valor e a descrição atuais de volta no S3
    */
   async salvarConfiguracao() {
     if (!this.itemConfiguracao) return;
 
-    // Formata o valor
-    const raw = this.modalConfig.querySelector('#inputValor').value;
-    const preco = parseFloat(raw.replace(/\./g, '').replace(',', '.')) || 0;
+    // 1) Lê e formata o valor
+    const rawValor = this.modalConfig.querySelector('#inputValor').value;
+    const preco    = parseFloat(rawValor.replace(/\D/g, '').padStart(3, '0'))/100 || 0;
     const descricao = this.modalConfig.querySelector('#inputDescricao').value.trim();
 
-    // Atualiza cache local
+    // 2) Atualiza o cache local
     this.dadosRestaurante[this.itemConfiguracao] = { preco, descricao };
 
-    // Salva no S3
+    // 3) Faz PUT no S3
     const arquivo = this.itemConfiguracao.split('/')[1] + '.json';
     try {
       await fetch(
-        `https://ar-menu-models.s3.amazonaws.com/informacao/${arquivo}`,
+        `${this.MODEL_BASE_URL}informacao/${arquivo}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(this.dadosRestaurante[this.itemConfiguracao])
+          body: JSON.stringify({ preco, descricao })
         }
       );
-    } catch (error) {
-      console.error('Erro ao salvar configuração:', error);
+    } catch (err) {
+      console.error('Erro ao salvar configuração:', err);
     }
   }
 
   // ==============================
-  // FUNÇÕES AUXILIARES
+  // 5. UTILITÁRIOS
   // ==============================
 
-  /**
-   * Formata valor monetário durante a digitação
-   * @param {Event} e - Evento de input
-   */
   formatarValorMonetario(e) {
     let v = e.target.value.replace(/\D/g, '');
-    v = (parseFloat(v) / 100).toFixed(2);
-    v = v.replace('.', ',');
-    v = v.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    e.target.value = v;
+    v = (parseFloat(v) / 100).toFixed(2).replace('.', ',');
+    e.target.value = v.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   }
 
-  /**
-   * Converte nome do item para nome de arquivo
-   * @param {string} nome - Nome do item
-   * @returns {string} Nome do arquivo
-   */
   nomeParaArquivo(nome) {
     return nome.trim().toLowerCase().replace(/\s+/g, '_') + '.glb';
   }
 
-  /**
-   * Notifica o estado de uma categoria
-   * @param {string} categoria - Nome da categoria
-   * @param {boolean} desativado - Se está desativada
-   */
-  notificarEstadoCategoria(categoria, desativado) {
-    const canal = new BroadcastChannel('sincronizacao_categorias');
-    canal.postMessage({
-      acao: 'atualizar_botao',
-      categoria: categoria,
-      desativado: desativado
-    });
-  }
-
   // ==============================
-  // GARÇONS E QR CODES
+  // 6. SINCRONIZAÇÃO COM O APP AR
   // ==============================
 
-  /**
-   * Configura o cadastro de garçons
-   */
-  setupCadastroGarcons() {
-    const inputQuantidade = document.getElementById('quantidadeGarcons');
-    const btnMais = document.getElementById('btnMaisGarcom');
-    const btnMenos = document.getElementById('btnMenosGarcom');
-    const containerFormularios = document.getElementById('formularioGarcons');
-
-    // Função de formatação otimizada
-    function formatarCelular(value) {
-      const digits = value.replace(/\D/g, '').substring(0, 11);
-      if (!digits) return '';
-      
-      const size = digits.length;
-      if (size < 3) return `(${digits}`;
-      if (size < 6) return `(${digits.slice(0,2)}) ${digits.slice(2)}`;
-      return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7,11)}`;
-    }
-
-
-    // Adiciona formatação com controle de cursor
-    const adicionarEventoFormatacao = (input) => {
-      input.addEventListener('input', (e) => {
-        const target = e.target;
-        const cursorPos = target.selectionStart;
-        const valorOriginal = target.value;
-        
-        // Aplica formatação
-        const valorFormatado = formatarCelular(valorOriginal);
-        target.value = valorFormatado;
-        
-        // Calcula nova posição do cursor
-        let novoCursorPos = cursorPos;
-        const digitosRemovidos = valorOriginal.replace(/\D/g, '').length - 
-                                valorFormatado.replace(/\D/g, '').length;
-        
-        if (digitosRemovidos > 0 && cursorPos > 0) {
-          novoCursorPos = Math.max(0, cursorPos - digitosRemovidos);
-        } else if (valorFormatado.length > valorOriginal.length) {
-          novoCursorPos += (valorFormatado.length - valorOriginal.length);
-        }
-        
-        novoCursorPos = Math.min(novoCursorPos, valorFormatado.length);
-        target.setSelectionRange(novoCursorPos, novoCursorPos);
-      });
-    };
-
-    // Validação simplificada
-    const validarCampos = (form) => {
-      const inputNome = form.querySelector('.nome-garcom');
-      const inputTel = form.querySelector('.tel-garcom');
-      const btnQr = form.querySelector('.btn-qr');
-      
-      const nomeValido = inputNome.value.trim().length > 0;
-      const telValido = inputTel.value.replace(/\D/g, '').length >= 10;
-      
-      btnQr.disabled = !(nomeValido && telValido);
-    };
-
-    // Adiciona eventos de validação
-    const adicionarEventosValidacao = (form) => {
-      const inputNome = form.querySelector('.nome-garcom');
-      const inputTel = form.querySelector('.tel-garcom');
-
-      inputNome.addEventListener('input', () => validarCampos(form));
-      inputTel.addEventListener('input', () => validarCampos(form));
-    };
-
-    // Gera os formulários de garçons
-    const gerarFormulariosGarcons = (qtd) => {
-      const dadosAtuais = {};
-      containerFormularios.querySelectorAll('.form-garcom').forEach(form => {
-        const id = form.querySelector('.nome-garcom').getAttribute('data-id');
-        dadosAtuais[id] = {
-          nome: form.querySelector('.nome-garcom').value,
-          tel: form.querySelector('.tel-garcom').value
-        };
-      });
-
-      containerFormularios.innerHTML = '';
-      for (let i = 1; i <= qtd; i++) {
-        const form = document.createElement('div');
-        form.className = 'form-garcom';
-        const nomeSalvo = dadosAtuais[i]?.nome || '';
-        const telSalvo = dadosAtuais[i]?.tel || '';
-        form.innerHTML = `
-          <label>Garçom ${i}:</label><br>
-          <input type="text" placeholder="Nome" class="nome-garcom" data-id="${i}" value="${nomeSalvo}">
-          <input type="tel" placeholder="Telefone" class="tel-garcom" data-id="${i}" maxlength="15" value="${telSalvo}">
-          <button class="btn-qr" data-id="${i}" disabled>Gerar QR Code</button>
-        `;
-        containerFormularios.appendChild(form);
-        const inputTel = form.querySelector('.tel-garcom');
-        adicionarEventoFormatacao(inputTel);
-        adicionarEventosValidacao(form);
-        validarCampos(form);
-      }
-    };
-
-    // Event listeners
-    inputQuantidade.addEventListener('change', () => {
-      let val = parseInt(inputQuantidade.value);
-      if (val < 1) val = 1;
-      gerarFormulariosGarcons(val);
-    });
-
-    btnMais.addEventListener('click', () => {
-      inputQuantidade.value = parseInt(inputQuantidade.value) + 1;
-      inputQuantidade.dispatchEvent(new Event('change'));
-    });
-
-    btnMenos.addEventListener('click', () => {
-      inputQuantidade.value = Math.max(1, parseInt(inputQuantidade.value) - 1);
-      inputQuantidade.dispatchEvent(new Event('change'));
-    });
-
-    // Inicializa com 1 garçom
-    gerarFormulariosGarcons(1);
-  }
-
-  /**
-   * Configura o sistema de QR Codes
-   */
-  setupQrCodeGarcons() {
-    const modalQrCode = document.getElementById('modalQrCode');
-    const qrCodeContainer = document.getElementById('qrcodeContainer');
-    const btnFecharModal = modalQrCode?.querySelector('.fechar-modal');
-    const containerFormularios = document.getElementById('formularioGarcons');
-    const inputQtdQr = document.getElementById('qtdQr');
-    const btnMais = document.getElementById('aumentarQr');
-    const btnMenos = document.getElementById('diminuirQr');
-    const btnImprimir = document.getElementById('imprimirQr');
-
-    if (!modalQrCode || !qrCodeContainer || !btnFecharModal || !containerFormularios || !inputQtdQr || !btnMais || !btnMenos || !btnImprimir) {
-      console.error('Elementos do QR Code não encontrados.');
-      return;
-    }
-
-    // Gera QR Codes
-    const gerarQRCodes = (nome, quantidade, id) => {
-      qrCodeContainer.innerHTML = '';
-
-      for (let i = 1; i <= quantidade; i++) {
-        const wrapper = document.createElement('div');
-        wrapper.classList.add('qrcode-wrapper');
-
-        const qrDiv = document.createElement('div');
-        qrDiv.id = `qr-${id}-${i}`;
-        qrDiv.classList.add('qrcode');
-
-        const label = document.createElement('div');
-        label.classList.add('mesa-label');
-        label.innerText = `Mesa ${i}`;
-
-        wrapper.appendChild(qrDiv);
-        wrapper.appendChild(label);
-        qrCodeContainer.appendChild(wrapper);
-
-        const urlPedido = `https://arcardapio-site.s3.us-east-1.amazonaws.com/app/app.html?v=${Date.now()}`;
-
-        new QRCode(qrDiv, {
-          text: urlPedido,
-          width: 200,
-          height: 200,
-          colorDark: "#000000",
-          colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.H
-        });
-      }
-    };
-
-    // Atualiza QR Codes ativos
-    const atualizarQRCodesAtivos = (id) => {
-      const nomeInput = containerFormularios.querySelector(`.nome-garcom[data-id="${id}"]`);
-      if (!nomeInput) return;
-
-      const nome = nomeInput.value.trim() || `garcom${id}`;
-      const quantidade = parseInt(inputQtdQr.value);
-      if (isNaN(quantidade) || quantidade < 1) return;
-
-      gerarQRCodes(nome, quantidade, id);
-      modalQrCode.classList.add('ativo');
-    };
-
-    // Controles de quantidade
-    btnMais.addEventListener('click', () => {
-      let val = parseInt(inputQtdQr.value);
-      if (isNaN(val)) val = 1;
-      if (val < 99) {
-        inputQtdQr.value = val + 1;
-        if (this.currentGarcomId) atualizarQRCodesAtivos(this.currentGarcomId);
-      }
-    });
-
-    btnMenos.addEventListener('click', () => {
-      let val = parseInt(inputQtdQr.value);
-      if (isNaN(val)) val = 1;
-      if (val > 1) {
-        inputQtdQr.value = val - 1;
-        if (this.currentGarcomId) atualizarQRCodesAtivos(this.currentGarcomId);
-      }
-    });
-
-    inputQtdQr.addEventListener('input', () => {
-      if (this.currentGarcomId) atualizarQRCodesAtivos(this.currentGarcomId);
-    });
-
-    // Geração inicial de QR Code
-    containerFormularios.addEventListener('click', (e) => {
-      const btnQr = e.target.closest('.btn-qr');
-      if (!btnQr || btnQr.disabled) return;
-
-      const id = btnQr.getAttribute('data-id');
-      if (!id) return;
-
-      this.currentGarcomId = id;
-      atualizarQRCodesAtivos(id);
-    });
-
-    // Fechar modal
-    btnFecharModal.addEventListener('click', () => {
-      modalQrCode.classList.remove('ativo');
-      qrCodeContainer.innerHTML = '';
-      this.currentGarcomId = null;
-    });
-
-    window.addEventListener('click', (e) => {
-      if (e.target === modalConfig) {
-        modalConfig.classList.remove('active');
-      }
-    });
-
-
-    // Impressão
-    btnImprimir.addEventListener('click', () => {
-      if (!qrCodeContainer.innerHTML.trim()) return alert('Gere os QR Codes antes de imprimir.');
-
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Imprimir QR Codes</title>
-            <style>
-              body { margin: 20px; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
-              .qrcode-wrapper { text-align: center; margin-bottom: 16px; }
-              .mesa-label { font-weight: bold; margin-top: 8px; font-size: 16px; }
-            </style>
-          </head>
-          <body>
-            ${qrCodeContainer.innerHTML}
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
-      printWindow.close();
-    });
-  }
-
-  // ==============================
-  // SINCRONIZAÇÃO E CONFIGURAÇÕES
-  // ==============================
-
-  /**
-   * Configura a sincronização com o app AR
-   */
   configurarSincronizacao() {
-    // Envia para o app
-    // dentro de configurarSincronizacao()
-    this.canalStatus.onmessage = (event) => {
+    this.canalStatus.onmessage = event => {
       const { nome, visivel } = event.data;
-      // agora vai achar o elemento que você marcou acima:
       const el = document.querySelector(`[data-nome="${nome}"]`);
       if (!el) return;
-      if (visivel) {
-        el.style.display = '';    // ou inline-block/flex, que for o caso
-      } else {
-        el.style.display = 'none';
-      }
+      el.style.display = visivel ? '' : 'none';
     };
   }
 
-  /**
- * Salva as configurações de categorias e itens no S3
- */
-async salvarConfiguracaoNoS3() {
-  // 1) Configurações de categorias
-  const botoes = document.querySelectorAll('#dropdownCardapio .btn-categoria');
-  const configCats = {};
-  botoes.forEach(b => {
-    const cat = b.getAttribute('data-categoria');
-    configCats[cat] = !b.classList.contains('desativado');
-  });
+  // ==============================
+  // 7. CATEGORIAS E ITENS → S3
+  // ==============================
 
-  try {
-    await fetch(this.ARQUIVO_CONFIG_CATEGORIAS, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(configCats)
+  async salvarConfiguracaoNoS3() {
+    // 7.1) Salva visibilidade das categorias
+    const botoes = document.querySelectorAll('#dropdownCardapio .btn-categoria');
+    const configCats = {};
+    botoes.forEach(btn => {
+      // true = visível, false = desativado
+      configCats[btn.dataset.categoria] = !btn.classList.contains('desativado');
     });
-  } catch (e) {
-    console.error('Erro ao salvar categorias no S3:', e);
+
+    try {
+      await fetch(this.ARQUIVO_CONFIG_CATEGORIAS, {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(configCats)
+      });
+      console.log('Categorias salvas com sucesso.');
+    } catch (e) {
+      console.error('Erro ao salvar categorias:', e);
+    }
+
+    // 7.2) Salva itens desativados de todas as categorias
+    //     (monta o JSON completo lendo o estado no localStorage)
+    const desativados = {};
+    // `objetos3D` deve conter todas as categorias → array de nomes originais
+    Object.keys(objetos3D).forEach(categoria => {
+      objetos3D[categoria].forEach(nome => {
+        const chaveLS = `itemEstado_${categoria}_${nome}`;
+        // se no localStorage esse item está marcado como desativado ("true")
+        if (localStorage.getItem(chaveLS) === 'true') {
+          if (!desativados[categoria]) desativados[categoria] = [];
+          // adiciona o nome de arquivo (underscore + lower)
+          desativados[categoria].push(
+            nome.toLowerCase().replace(/\s+/g, '_')
+          );
+        }
+      });
+    });
+
+    try {
+      await fetch(this.ARQUIVO_CONFIG_ITENS, {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(desativados)
+      });
+      console.log('Itens desativados salvos com sucesso.');
+    } catch (e) {
+      console.error('Erro ao salvar itens desativados:', e);
+    }
   }
 
-  // 2) Configurações de itens (todos os itens desativados)
-  const desat = {};
-  // `objetos3D` deve conter todas as categorias → array de nomes originais
-  Object.keys(objetos3D).forEach(cat => {
-    objetos3D[cat].forEach(nome => {
-      const chaveLS = `itemEstado_${cat}_${nome}`;
-      if (localStorage.getItem(chaveLS) === 'true') {
-        if (!desat[cat]) desat[cat] = [];
-        desat[cat].push(nome.toLowerCase().replace(/\s+/g, '_'));
-      }
-    });
-  });
 
-  try {
-    await fetch(this.ARQUIVO_CONFIG_ITENS, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(desat)
-    });
-  } catch (e) {
-    console.error('Erro ao salvar itens desativados no S3:', e);
-  }
-}
+  // ==============================
+  // 8. CARREGAMENTO INICIAL
+  // ==============================
 
-  /**
-   * Carrega as configurações iniciais
-   */
   async carregarConfiguracoesIniciais() {
     try {
-      // Carrega categorias
-      const resCategorias = await fetch(`${this.ARQUIVO_CONFIG_CATEGORIAS}?v=${Date.now()}`);
-      if (resCategorias.ok) {
-        const categorias = await resCategorias.json();
-        Object.entries(categorias).forEach(([categoria, visivel]) => {
-          const btn = document.querySelector(`#dropdownCardapio button[data-categoria="${categoria}"]`);
-          if (btn) {
-            if (!visivel) {
-              btn.classList.add('desativado');
-              localStorage.setItem(`btnEstado_${categoria}`, 'true');
-            }
+      // Categorias
+      const resCats = await fetch(`${this.ARQUIVO_CONFIG_CATEGORIAS}?v=${Date.now()}`);
+      if (resCats.ok) {
+        const cats = await resCats.json();
+        Object.entries(cats).forEach(([cat, visivel]) => {
+          const btn = document.querySelector(`#dropdownCardapio button[data-categoria="${cat}"]`);
+          if (btn && !visivel) {
+            btn.classList.add('desativado');
+            localStorage.setItem(`btnEstado_${cat}`, 'true');
           }
         });
       }
 
-      // Carrega itens desativados
+      // Itens desativados
       const resItens = await fetch(`${this.ARQUIVO_CONFIG_ITENS}?v=${Date.now()}`);
       if (resItens.ok) {
-        const itensDesativados = await resItens.json();
-        Object.entries(itensDesativados).forEach(([categoria, itens]) => {
+        const desat = await resItens.json();
+        Object.entries(desat).forEach(([cat, itens]) => {
           itens.forEach(nomeItem => {
-            const nomeFormatado = nomeItem.replace(/_/g, ' ');
-            localStorage.setItem(`itemEstado_${categoria}_${nomeFormatado}`, 'true');
+            const key = `itemEstado_${cat}_${nomeItem.replace(/_/g, ' ')}`;
+            localStorage.setItem(key, 'true');
           });
         });
       }
-    } catch (error) {
-      console.error('Erro ao carregar configurações:', error);
+    } catch (err) {
+      console.error('Erro ao carregar configs iniciais:', err);
     }
+  }
+
+  // ==============================
+  // 9. CADASTRO DE GARÇONS
+  // ==============================
+
+  setupCadastroGarcons() {
+    const inputQtd = document.getElementById('quantidadeGarcons');
+    const btnMais  = document.getElementById('btnMaisGarcom');
+    const btnMenos = document.getElementById('btnMenosGarcom');
+    const container = document.getElementById('formularioGarcons');
+
+    // Formata celular
+    const formatarCel = value => {
+      value = value.replace(/\D/g, '').slice(0,11);
+      if (value.length > 6) {
+        value = value.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, '($1) $2-$3');
+      } else if (value.length > 2) {
+        value = value.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
+      } else {
+        value = value.replace(/^(\d{0,2})/, '($1');
+      }
+      return value;
+    };
+
+    // Validação de nome e telefone
+    const validar = form => {
+      const nome = form.querySelector('.nome-garcom').value.trim();
+      const tel  = form.querySelector('.tel-garcom').value.replace(/\D/g, '');
+      form.querySelector('.btn-qr').disabled = !(nome && tel.length >= 10);
+    };
+
+    // Gera os formulários
+    const gerarForms = qtd => {
+      const dadosAtuais = {};
+      container.querySelectorAll('.form-garcom').forEach(f => {
+        const id = f.querySelector('.nome-garcom').dataset.id;
+        dadosAtuais[id] = {
+          nome: f.querySelector('.nome-garcom').value,
+          tel: f.querySelector('.tel-garcom').value
+        };
+      });
+
+      container.innerHTML = '';
+      for (let i = 1; i <= qtd; i++) {
+        const form = document.createElement('div');
+        form.className = 'form-garcom';
+        const salvo = dadosAtuais[i] || { nome: '', tel: '' };
+        form.innerHTML = `
+          <label>Garçom ${i}:</label><br>
+          <input type="text" class="nome-garcom" data-id="${i}" placeholder="Nome" value="${salvo.nome}">
+          <input type="tel" class="tel-garcom" data-id="${i}" maxlength="15" placeholder="Telefone" value="${salvo.tel}">
+          <button class="btn-qr" data-id="${i}" disabled>Gerar QR Code</button>
+        `;
+        container.appendChild(form);
+
+        const inpNome = form.querySelector('.nome-garcom');
+        const inpTel  = form.querySelector('.tel-garcom');
+        const btnQr   = form.querySelector('.btn-qr');
+
+        // Eventos
+        inpNome.addEventListener('input', () => validar(form));
+        inpTel.addEventListener('input', e => {
+          e.target.value = formatarCel(e.target.value);
+          validar(form);
+        });
+        validar(form);
+      }
+    };
+
+    // Listeners de quantidade
+    inputQtd.addEventListener('change', () => {
+      const v = Math.max(1, parseInt(inputQtd.value) || 1);
+      inputQtd.value = v;
+      gerarForms(v);
+    });
+    btnMais.addEventListener('click', () => {
+      inputQtd.value = parseInt(inputQtd.value) + 1;
+      inputQtd.dispatchEvent(new Event('change'));
+    });
+    btnMenos.addEventListener('click', () => {
+      inputQtd.value = Math.max(1, parseInt(inputQtd.value) - 1);
+      inputQtd.dispatchEvent(new Event('change'));
+    });
+
+    // Inicializa com 1
+    gerarForms(1);
+  }
+
+  // ==============================
+  // 10. QR CODES DE GARÇONS
+  // ==============================
+
+  setupQrCodeGarcons() {
+    const modalQr    = document.getElementById('modalQrCode');
+    const qrContainer = document.getElementById('qrcodeContainer');
+    const btnFechar   = modalQr.querySelector('.fechar-modal');
+    const forms       = document.getElementById('formularioGarcons');
+    const inputQtd    = document.getElementById('qtdQr');
+    const btnMais     = document.getElementById('aumentarQr');
+    const btnMenos    = document.getElementById('diminuirQr');
+    const btnImprimir = document.getElementById('imprimirQr');
+
+    if (!modalQr || !qrContainer || !btnFechar || !forms || !inputQtd || !btnMais || !btnMenos || !btnImprimir) {
+      console.error('Elementos de QR Code não encontrados.');
+      return;
+    }
+
+    // Gera QR codes
+    const gerarQRCodes = (nome, qtd) => {
+      qrContainer.innerHTML = '';
+      for (let i = 1; i <= qtd; i++) {
+        const wr = document.createElement('div');
+        wr.className = 'qrcode-wrapper';
+        wr.innerHTML = `<div id="qr-${i}" class="qrcode"></div><div class="mesa-label">Mesa ${i}</div>`;
+        qrContainer.appendChild(wr);
+        new QRCode(wr.querySelector('.qrcode'), {
+          text: `https://arcardapio-site.s3.us-east-1.amazonaws.com/app/app.html?v=${Date.now()}`,
+          width: 200, height: 200, correctLevel: QRCode.CorrectLevel.H
+        });
+      }
+    };
+
+    // Atualiza quando clica em “Gerar QR”
+    forms.addEventListener('click', e => {
+      const btn = e.target.closest('.btn-qr');
+      if (!btn || btn.disabled) return;
+      this.currentGarcomId = btn.dataset.id;
+      gerarQRCodes(btn.closest('.form-garcom').querySelector('.nome-garcom').value, parseInt(inputQtd.value) || 1);
+      modalQr.classList.add('ativo');
+    });
+
+    // Controles de quantidade
+    inputQtd.addEventListener('input', () => {
+      if (this.currentGarcomId) {
+        gerarQRCodes(forms.querySelector(`.nome-garcom[data-id="${this.currentGarcomId}"]`).value, parseInt(inputQtd.value));
+      }
+    });
+    btnMais.addEventListener('click', () => {
+      inputQtd.value = (parseInt(inputQtd.value) || 1) + 1;
+      inputQtd.dispatchEvent(new Event('input'));
+    });
+    btnMenos.addEventListener('click', () => {
+      inputQtd.value = Math.max(1, (parseInt(inputQtd.value)||1) - 1);
+      inputQtd.dispatchEvent(new Event('input'));
+    });
+
+    // Fecha modal
+    btnFechar.addEventListener('click', () => {
+      modalQr.classList.remove('ativo');
+      qrContainer.innerHTML = '';
+      this.currentGarcomId = null;
+    });
+
+    // Imprimir
+    btnImprimir.addEventListener('click', () => {
+      if (!qrContainer.innerHTML.trim()) {
+        alert('Gere os QR Codes antes de imprimir.');
+        return;
+      }
+      const w = window.open('', '_blank');
+      w.document.write(`<html><body>${qrContainer.innerHTML}</body></html>`);
+      w.document.close();
+      w.focus();
+      w.print();
+      w.close();
+    });
   }
 }
 
-// Inicializa o sistema quando o DOM estiver pronto
+// ------------------------------
+// Inicialização após DOMReady
+// ------------------------------
 document.addEventListener('DOMContentLoaded', () => {
   new SistemaCardapio();
 });

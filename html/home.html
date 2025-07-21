@@ -18,18 +18,18 @@
     .modal-configuracao {
       display: none;
       position: fixed;
-      inset: 0;                     /* top/right/bottom/left = 0 */
+      inset: 0;
       background-color: rgba(0,0,0,0.5);
       z-index: 1000;
       justify-content: center;
       align-items: center;
     }
     .modal-configuracao.active {
-      display: flex;               /* visível quando .active */
+      display: flex;
     }
     .modal-conteudo-config {
       background-color: #fff;
-      padding: 1rem;               /* reduzido */
+      padding: 1rem;
       border-radius: 8px;
       width: 90%;
       max-width: 500px;
@@ -39,14 +39,12 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 0.5rem;       /* gap menor */
+      margin-bottom: 0.5rem;
     }
     .fechar-modal-config {
       font-size: 1.25rem;
       cursor: pointer;
     }
-
-    /* Campos agrupados */
     .grupo-input {
       margin-bottom: 0.5rem;
     }
@@ -68,8 +66,6 @@
       max-height: 150px;
       resize: vertical;
     }
-
-    /* Ações (botões) do modal */
     .modal-conteudo-config .actions {
       display: flex;
       justify-content: flex-end;
@@ -102,12 +98,12 @@
   <div class="cardapio-menu">
     <button id="cardapio-btn">Cardápio ▼</button>
     <div id="dropdownCardapio" class="dropdown-cardapio hidden">
-      <button data-categoria="bebidas"  class="btn-categoria">Bebidas</button>
-      <button data-categoria="carnes"   class="btn-categoria">Carnes</button>
-      <button data-categoria="pizzas"   class="btn-categoria">Pizzas</button>
-      <button data-categoria="lanches"  class="btn-categoria">Lanches</button>
+      <button data-categoria="bebidas"   class="btn-categoria">Bebidas</button>
+      <button data-categoria="carnes"    class="btn-categoria">Carnes</button>
+      <button data-categoria="pizzas"    class="btn-categoria">Pizzas</button>
+      <button data-categoria="lanches"   class="btn-categoria">Lanches</button>
       <button data-categoria="sobremesas"class="btn-categoria">Sobremesas</button>
-      <button data-categoria="porcoes"  class="btn-categoria">Porções</button>
+      <button data-categoria="porcoes"   class="btn-categoria">Porções</button>
     </div>
   </div>
 
@@ -125,29 +121,28 @@
     <div id="formularioGarcons"></div>
   </section>
 
-  <!-- MODAL PARA CONFIGURAÇÃO DE ITENS -->
-  <div id="modalConfiguracao" class="modal-configuracao">
-    <div class="modal-conteudo-config">
-      <div class="modal-cabecalho">
-        <h3 id="modalTituloItem">Configurar Item</h3>
-        <span class="fechar-modal-config">&times;</span>
+  <!-- MODAL PARA CONFIGURAÇÃO DE ITENS (IDs ajustados para o JS) -->
+  <div id="modalConfiguracaoProduto" class="modal-edicao">
+    <div class="modal-content-edicao">
+      <span class="close-edicao">&times;</span>
+      <h3 class="modal-titulo">Configurar Item</h3>
+      
+      <div class="grupo-input">
+        <label for="inputValor">Valor (R$):</label>
+        <input type="text" id="inputValor" placeholder="0,00">
       </div>
       
       <div class="grupo-input">
-        <label for="inputValorItem">Valor (R$):</label>
-        <input type="text" id="inputValorItem" value="0,00">
-      </div>
-      
-      <div class="grupo-input">
-        <label for="inputDescricaoItem">Descrição:</label>
-        <textarea id="inputDescricaoItem"></textarea>
+        <label for="inputDescricao">Descrição:</label>
+        <textarea id="inputDescricao" rows="4"></textarea>
       </div>
 
       <div class="actions">
-        <button id="btnSalvarItem" class="btn-salvar-config">Salvar</button>
+        <button id="btnSalvarModal" class="btn-salvar-config">Salvar</button>
       </div>
     </div>
   </div>
+
 
   <!-- MODAL QR CODE -->
   <div id="modalQrCode" class="modal">
@@ -157,7 +152,7 @@
       <div id="qrcodeContainer"></div>
       <div class="controles-qrcode">
         <label for="qtdQr">Quantidade:</label>
-        <input type="number" id="qtdQr" value="1" min="1">
+        <input type="number" id="qtdQr" value="1" min="1" />
         <button id="diminuirQr">-</button>
         <button id="aumentarQr">+</button>
         <button id="imprimirQr">Imprimir</button>
@@ -168,50 +163,42 @@
   <!-- BIBLIOTECAS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <!-- Scripts -->
+  <!-- Scripts principais (já preparados para usar os IDs acima) -->
   <script src="../java/home.js"></script>
   <script src="../java/cardapio.js"></script>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // Controle do modal de configuração
+      // Controla abertura/fechamento do modalConfiguracao via classes .active
       const modalConfig = document.getElementById('modalConfiguracao');
-      const btnFecharModal = modalConfig.querySelector('.fechar-modal-config');
-      
-      btnFecharModal.addEventListener('click', () => {
+      const btnFechar = modalConfig.querySelector('.fechar-modal-config');
+
+      // Fecha só ao clicar no “×”
+      btnFechar.addEventListener('click', () => {
         modalConfig.classList.remove('active');
       });
-      
-      window.addEventListener('click', (e) => {
-        if (e.target === modalConfig) {
-          modalConfig.classList.remove('active');
-        }
+
+      // Botão salvar (dentro do home.js já faz PUT e fecha)
+      // Aqui só precisa reativar o modal por classe
+      const btnSalvar = modalConfig.querySelector('#btnSalvarModal');
+      btnSalvar.addEventListener('click', () => {
+        modalConfig.classList.remove('active');
       });
 
-      // Controle do modal de QR Code
+      // QR Code modal
       const modalQr = document.getElementById('modalQrCode');
-      const btnFecharQr = modalQr.querySelector('.fechar-modal');
-      
+      const btnFecharQr = modalQr.querySelector('#fecharModal');
       btnFecharQr.addEventListener('click', () => {
         modalQr.classList.add('hidden');
       });
-      
-      window.addEventListener('click', (e) => {
-        if (e.target === modalQr) {
-          modalQr.classList.add('hidden');
-        }
-      });
 
-      // Canal de comunicação
-      if (typeof BroadcastChannel !== 'undefined') {
+      // BroadcastChannel para sincronizar visibilidade no app AR
+      if ('BroadcastChannel' in window) {
         window.canalStatus = new BroadcastChannel('cardapio_channel');
-        
-        canalStatus.onmessage = (event) => {
+        canalStatus.onmessage = event => {
           const { nome, visivel } = event.data;
-          const botao = document.querySelector(`button[data-nome="${nome}"]`);
-          if (botao) {
-            botao.style.display = visivel ? 'inline-block' : 'none';
-          }
+          const btn = document.querySelector(`button[data-nome="${nome}"]`);
+          if (btn) btn.style.display = visivel ? 'inline-block' : 'none';
         };
       }
     });
