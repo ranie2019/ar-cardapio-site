@@ -362,27 +362,35 @@ async function loadProductInfoJSON(filename, panel) {
     if (!response.ok) throw new Error("Erro ao carregar informações");
 
     const data = await response.json();
-    // monta um array de linhas no formato chave: valor
+
+    // Propriedades que NÃO queremos exibir
+    const ocultar = new Set([ 'preco', 'ultimaAtualizacao' ]);
+
+    // Monta linhas apenas com as chaves permitidas
     const linhas = [];
     for (let key in data) {
-      linhas.push(`${key.replace(/_/g,' ')}: ${data[key]}`);
+      if (ocultar.has(key)) continue;           // pula preco e ultimaAtualizacao
+      const textoChave = key
+        .replace(/_/g, ' ')                     // opcional: trocar undercores
+        .replace(/\b\w/g, l => l.toUpperCase()); // opcional: capitalizar
+      linhas.push(`${textoChave}: ${data[key]}`);
     }
-    // junta com quebras de linha duplas (você pode usar '\n' simples se preferir)
-    const textoFormatado = linhas.join('\n\n');
 
-    // insere preservando \n
+    // Junta com duplo \n para separar em parágrafos
+    const textoFormatado = linhas.join('\n\n');
     const infoDiv = document.getElementById("infoContent");
     infoDiv.innerText = textoFormatado;
-
     panel.style.display = "block";
     infoVisible = true;
+
   } catch (error) {
     console.error("Erro:", error);
-    document.getElementById("infoContent").innerHTML = "Informações não disponíveis";
+    document.getElementById("infoContent").innerText = "Informações não disponíveis";
     panel.style.display = "block";
     infoVisible = true;
   }
 }
+
 
 function getCurrentModelData() {
   for (let cat in models) {
