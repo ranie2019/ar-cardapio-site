@@ -98,7 +98,7 @@ function updateUI(model) {
 }
 
 // ==================== CARREGAMENTO DO MODELO 3D ====================
-function loadModel(path) {
+async function loadModel(path) {
   // Verifica se o modelo está visível
   const modelData = getCurrentModelData();
   if (modelData && modelData.visible === false) {
@@ -121,6 +121,10 @@ function loadModel(path) {
 
   if (modelCache[path]) {
     container.setAttribute("gltf-model", modelCache[path]);
+
+    // Atualiza o preço antes de mostrar
+    await atualizarPrecoDoModelo(path);
+
     loadingIndicator.style.display = "none";
     updateUI({ path, price: getModelPrice(path) });
   } else {
@@ -134,10 +138,14 @@ function loadModel(path) {
       }
     };
 
-    xhr.onload = () => {
+    xhr.onload = async () => {
       const blobURL = URL.createObjectURL(xhr.response);
       modelCache[path] = blobURL;
       container.setAttribute("gltf-model", blobURL);
+
+      // Atualiza o preço antes de mostrar
+      await atualizarPrecoDoModelo(path);
+
       loadingIndicator.style.display = "none";
       updateUI({ path, price: getModelPrice(path) });
     };
@@ -150,6 +158,25 @@ function loadModel(path) {
     xhr.send();
   }
 }
+
+async function atualizarPrecoDoModelo(path) {
+  const modelData = getCurrentModelData();
+  if (!modelData || !modelData.info) return;
+
+  try {
+    const response = await fetch(modelData.info + "?v=" + Date.now());
+    if (!response.ok) throw new Error("Erro ao buscar JSON");
+
+    const data = await response.json();
+
+    if (data.preco !== undefined) {
+      modelData.price = parseFloat(data.preco); // Atualiza o preço com base no JSON do S3
+    }
+  } catch (error) {
+    console.warn("Não foi possível atualizar o preço a partir do JSON:", error);
+  }
+}
+
 
 function getModelPrice(path) {
   for (let cat in models) {
