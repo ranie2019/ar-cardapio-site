@@ -313,6 +313,48 @@ class SistemaCardapio {
         model.setAttribute('scale', novaEscala);
       }
     };
+
+    // Controle de movimento linear com botão direito
+    let isRightMouseDown = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+
+    const modelEntity = this.modelModal.querySelector('a-entity');
+
+    this.modelModal.addEventListener('contextmenu', e => e.preventDefault()); // bloqueia menu direito
+
+    this.modelModal.addEventListener('mousedown', (e) => {
+      if (e.button === 2) { // botão direito
+        isRightMouseDown = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+      }
+    });
+
+    this.modelModal.addEventListener('mouseup', (e) => {
+      if (e.button === 2) {
+        isRightMouseDown = false;
+      }
+    });
+
+    this.modelModal.addEventListener('mousemove', (e) => {
+      if (!isRightMouseDown || !modelEntity) return;
+
+      const deltaX = (e.clientX - lastMouseX) * 0.01;
+      const deltaY = (e.clientY - lastMouseY) * 0.01;
+
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+
+      // Obtém a posição atual e aplica o movimento
+      const currentPos = modelEntity.getAttribute('position');
+      modelEntity.setAttribute('position', {
+        x: currentPos.x + deltaX,
+        y: currentPos.y - deltaY, // invertido porque mover o mouse para cima reduz y
+        z: currentPos.z
+      });
+    });
+
 }
 
   async salvarConfiguracao(confirmado = false) {
