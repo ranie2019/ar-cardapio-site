@@ -11,80 +11,6 @@
   <!-- A-Frame para preview 3D dos modelos GLB -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
-  <style>
-    /* ==============================
-       Estilos do modal de configuração
-       ============================== */
-    .modal-configuracao {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background-color: rgba(0,0,0,0.5);
-      z-index: 1000;
-      justify-content: center;
-      align-items: center;
-    }
-    .modal-configuracao.active {
-      display: flex;
-    }
-    .modal-conteudo-config {
-      background-color: #fff;
-      padding: 1rem;
-      border-radius: 8px;
-      width: 90%;
-      max-width: 500px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    .modal-cabecalho {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.5rem;
-    }
-    .fechar-modal-config {
-      font-size: 1.25rem;
-      cursor: pointer;
-    }
-    .grupo-input {
-      margin-bottom: 0.5rem;
-    }
-    .grupo-input label {
-      display: block;
-      margin-bottom: 0.25rem;
-      font-weight: 600;
-    }
-    .grupo-input input,
-    .grupo-input textarea {
-      width: 100%;
-      padding: 0.5rem;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-    .grupo-input textarea {
-      min-height: 80px;
-      max-height: 150px;
-      resize: vertical;
-    }
-    .modal-conteudo-config .actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 0.5rem;
-      margin-top: 0.5rem;
-    }
-    .btn-salvar-config {
-      background-color: #d81b60;
-      color: #fff;
-      border: none;
-      padding: 0.5rem 1rem;
-      font-size: 0.9rem;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .btn-salvar-config:hover {
-      background-color: #b21853;
-    }
-  </style>
 </head>
 <body>
 
@@ -120,29 +46,6 @@
     </div>
     <div id="formularioGarcons"></div>
   </section>
-
-  <!-- MODAL PARA CONFIGURAÇÃO DE ITENS (IDs ajustados para o JS) -->
-  <div id="modalConfiguracaoProduto" class="modal-edicao">
-    <div class="modal-content-edicao">
-      <span class="close-edicao">&times;</span>
-      <h3 class="modal-titulo">Configurar Item</h3>
-      
-      <div class="grupo-input">
-        <label for="inputValor">Valor (R$):</label>
-        <input type="text" id="inputValor" placeholder="0,00">
-      </div>
-      
-      <div class="grupo-input">
-        <label for="inputDescricao">Descrição:</label>
-        <textarea id="inputDescricao" rows="4"></textarea>
-      </div>
-
-      <div class="actions">
-        <button id="btnSalvarModal" class="btn-salvar-config">Salvar</button>
-      </div>
-    </div>
-  </div>
-
 
   <!-- MODAL QR CODE -->
   <div id="modalQrCode" class="modal">
