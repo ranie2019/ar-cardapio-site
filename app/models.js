@@ -12,7 +12,6 @@ const models = {
   bebidas: [
     { path: `${modelBaseURL}/bebidas/absolut_vodka.glb`, price: 79.90, info: `${modelBaseURL}/informacao/absolut_vodka.json` },
     { path: `${modelBaseURL}/bebidas/champagne.glb`, price: 98.50, info: `${modelBaseURL}/informacao/champagne.json` },
-    { path: `${modelBaseURL}/bebidas/champagne_Lorem.glb`, price: 120.00, info: `${modelBaseURL}/informacao/champagne_Lorem.json` },
     { path: `${modelBaseURL}/bebidas/heineken.glb`, price: 12.90, info: `${modelBaseURL}/informacao/heineken.json` },
     { path: `${modelBaseURL}/bebidas/jack_daniels.glb`, price: 130.00, info: `${modelBaseURL}/informacao/jack_daniels.json` },
     { path: `${modelBaseURL}/bebidas/redbull.glb`, price: 9.90, info: `${modelBaseURL}/informacao/redbull.json` }

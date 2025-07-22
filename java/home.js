@@ -251,9 +251,16 @@ class SistemaCardapio {
       });
 
       box.addEventListener('mouseleave', () => {
-        this.modelModal.style.display = 'none';
-        this.modelModal.innerHTML = '';
+        // Delay para permitir que o usuário vá com o mouse até o preview
+        setTimeout(() => {
+          // Se o mouse NÃO estiver dentro do preview, esconde
+          if (!this.modelModal.matches(':hover')) {
+            this.modelModal.style.display = 'none';
+            this.modelModal.innerHTML = '';
+          }
+        }, 300);
       });
+
 
       wrapper.appendChild(box);
       wrapper.appendChild(botaoConfigurar);
@@ -270,14 +277,17 @@ class SistemaCardapio {
     const nomeArquivo = this.nomeParaArquivo(nome);
     const modelURL = `${this.MODEL_BASE_URL}${categoria}/${nomeArquivo}`;
 
+    this.escalaAtual = 1;
+
     this.modelModal.innerHTML = `
-      <a-scene embedded vr-mode-ui="enabled: false" style="width: 100%; height: 300px;">
+      <a-scene embedded vr-mode-ui="enabled: false" style="width: 100%; height: 300px;" id="previewScene">
         <a-light type="ambient" intensity="1.0"></a-light>
         <a-light type="directional" intensity="0.8" position="2 4 1"></a-light>
         <a-entity position="0 1 -3" rotation="0 0 0">
           <a-gltf-model 
+            id="previewModel"
             src="${modelURL}" 
-            scale="1 1 1"
+            scale="${this.escalaAtual} ${this.escalaAtual} ${this.escalaAtual}"
             rotation="0 0 0"
             animation="property: rotation; to: 0 360 0; loop: true; dur: 5000; easing: linear"
           ></a-gltf-model>
@@ -285,7 +295,25 @@ class SistemaCardapio {
         <a-camera position="0 2 0"></a-camera>
       </a-scene>
     `;
-  }
+
+    // ============ ZOOM COM SCROLL DO MOUSE ============
+    this.modelModal.onwheel = (e) => {
+      e.preventDefault();
+
+      const zoomStep = 0.1;
+      if (e.deltaY < 0) {
+        this.escalaAtual += zoomStep; // Scroll para cima: aumenta
+      } else {
+        this.escalaAtual = Math.max(0.1, this.escalaAtual - zoomStep); // Scroll para baixo: diminui
+      }
+
+      const model = document.getElementById('previewModel');
+      if (model) {
+        const novaEscala = `${this.escalaAtual} ${this.escalaAtual} ${this.escalaAtual}`;
+        model.setAttribute('scale', novaEscala);
+      }
+    };
+}
 
   async salvarConfiguracao(confirmado = false) {
   // Só salva se for chamado com confirmado=true e tiver um item selecionado
