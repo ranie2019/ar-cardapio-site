@@ -360,8 +360,22 @@ body {
 }
 
 #qrcodeContainer {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;           /* permite quebra de linha se passar da largura */
+  justify-content: center;   /* centraliza os QR Codes */
+  gap: 20px;                 /* espaço entre os QR Codes */
   margin-top: 10px;
 }
+
+.qrcode-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+
 
 #modalQrCode .conteudo {
   max-height: 80vh;
@@ -682,3 +696,120 @@ input[type=number]::-webkit-outer-spin-button {
     .btn-salvar-config:hover {
       background-color: #b21853;
     }
+
+    /* Modal principal */
+#modalQrCode {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.6);
+  justify-content: center;
+  align-items: center;
+}
+
+/* Ativa o modal */
+#modalQrCode.ativo {
+  display: flex;
+}
+
+/* Caixa interna do conteúdo */
+#modalQrCode .conteudo-modal {
+  background: #ffffff;
+  padding: 24px 32px;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  max-width: 95%;
+  width: fit-content;
+  max-height: 90vh;
+  overflow-y: auto;
+  text-align: center;
+  font-family: "Segoe UI", sans-serif;
+}
+
+/* Título */
+#modalQrCode h3 {
+  font-size: 1.4rem;
+  margin-bottom: 20px;
+  color: #222;
+}
+
+/* Botão de fechar */
+#modalQrCode .fechar-modal {
+  position: absolute;
+  top: 12px;
+  right: 20px;
+  font-size: 24px;
+  cursor: pointer;
+  color: #555;
+  transition: color 0.2s ease;
+}
+
+#modalQrCode .fechar-modal:hover {
+  color: #d00;
+}
+
+/* Área dos QR Codes */
+#qrcodeContainer {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+/* Cada bloco de QR Code */
+.qrcode-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.qrcode-wrapper .mesa-label {
+  margin-top: 10px;
+  font-weight: 600;
+  font-size: 1rem;
+  color: #333;
+}
+
+/* Controles de quantidade + imprimir */
+.controles-qrcode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.controles-qrcode label {
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: #444;
+}
+
+.controles-qrcode input[type="number"] {
+  width: 50px;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.controles-qrcode button {
+  padding: 6px 10px;
+  font-size: 0.9rem;
+  border: none;
+  border-radius: 6px;
+  background-color: #cc0000;
+  color: rgb(255, 255, 255);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.controles-qrcode button:hover {
+  background-color: #000000;
+}

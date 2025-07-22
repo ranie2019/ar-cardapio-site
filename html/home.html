@@ -10,7 +10,6 @@
 
   <!-- A-Frame para preview 3D dos modelos GLB -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-
 </head>
 <body>
 
@@ -24,12 +23,12 @@
   <div class="cardapio-menu">
     <button id="cardapio-btn">Cardápio ▼</button>
     <div id="dropdownCardapio" class="dropdown-cardapio hidden">
-      <button data-categoria="bebidas"   class="btn-categoria">Bebidas</button>
-      <button data-categoria="carnes"    class="btn-categoria">Carnes</button>
-      <button data-categoria="pizzas"    class="btn-categoria">Pizzas</button>
-      <button data-categoria="lanches"   class="btn-categoria">Lanches</button>
-      <button data-categoria="sobremesas"class="btn-categoria">Sobremesas</button>
-      <button data-categoria="porcoes"   class="btn-categoria">Porções</button>
+      <button data-categoria="bebidas" class="btn-categoria">Bebidas</button>
+      <button data-categoria="carnes" class="btn-categoria">Carnes</button>
+      <button data-categoria="pizzas" class="btn-categoria">Pizzas</button>
+      <button data-categoria="lanches" class="btn-categoria">Lanches</button>
+      <button data-categoria="sobremesas" class="btn-categoria">Sobremesas</button>
+      <button data-categoria="porcoes" class="btn-categoria">Porções</button>
     </div>
   </div>
 
@@ -52,7 +51,8 @@
     <div class="conteudo-modal">
       <span class="fechar-modal" id="fecharModal">&times;</span>
       <h3>QR Code do Garçom</h3>
-      <div id="qrcodeContainer"></div>
+
+      <!-- CONTROLES ACIMA DOS QRCODES -->
       <div class="controles-qrcode">
         <label for="qtdQr">Quantidade:</label>
         <input type="number" id="qtdQr" value="1" min="1" />
@@ -60,42 +60,42 @@
         <button id="aumentarQr">+</button>
         <button id="imprimirQr">Imprimir</button>
       </div>
+
+      <!-- QR Codes abaixo -->
+      <div id="qrcodeContainer"></div>
     </div>
   </div>
 
   <!-- BIBLIOTECAS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <!-- Scripts principais (já preparados para usar os IDs acima) -->
+  <!-- Scripts principais -->
   <script src="../java/home.js"></script>
   <script src="../java/cardapio.js"></script>
 
+  <!-- CONTROLE DE MODAIS -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // Controla abertura/fechamento do modalConfiguracao via classes .active
       const modalConfig = document.getElementById('modalConfiguracao');
-      const btnFechar = modalConfig.querySelector('.fechar-modal-config');
+      const btnFechar = modalConfig?.querySelector('.fechar-modal-config');
 
-      // Fecha só ao clicar no “×”
-      btnFechar.addEventListener('click', () => {
-        modalConfig.classList.remove('active');
-      });
+      if (btnFechar) {
+        btnFechar.addEventListener('click', () => {
+          modalConfig.classList.remove('active');
+        });
 
-      // Botão salvar (dentro do home.js já faz PUT e fecha)
-      // Aqui só precisa reativar o modal por classe
-      const btnSalvar = modalConfig.querySelector('#btnSalvarModal');
-      btnSalvar.addEventListener('click', () => {
-        modalConfig.classList.remove('active');
-      });
+        const btnSalvar = modalConfig.querySelector('#btnSalvarModal');
+        btnSalvar.addEventListener('click', () => {
+          modalConfig.classList.remove('active');
+        });
+      }
 
-      // QR Code modal
       const modalQr = document.getElementById('modalQrCode');
       const btnFecharQr = modalQr.querySelector('#fecharModal');
       btnFecharQr.addEventListener('click', () => {
         modalQr.classList.add('hidden');
       });
 
-      // BroadcastChannel para sincronizar visibilidade no app AR
       if ('BroadcastChannel' in window) {
         window.canalStatus = new BroadcastChannel('cardapio_channel');
         canalStatus.onmessage = event => {
