@@ -4,6 +4,8 @@ let currentIndex = 0;
 const modelCache = {};
 let currentModelPath = '';
 let infoVisible = false;
+let pedidos = {}; // chave: nome do produto, valor: quantidade
+
 
 // ==================== CONFIGURAÇÃO DO RESTAURANTE VIA S3 ====================
 async function aplicarConfiguracaoDoRestaurante() {
@@ -427,3 +429,67 @@ function getCurrentModelData() {
   }
   return null;
 }
+
+// ==================== EVENTOS PARA BOTÃO "ESCOLHER" ====================
+document.getElementById('escolherBtn').addEventListener('click', () => {
+  const modal = document.getElementById('modalEscolha');
+  const nomeProduto = formatProductName(currentModelPath);
+  modal.querySelector('.produto-nome').textContent = nomeProduto;
+  modal.querySelector('.quantidade').textContent = '1';
+  modal.style.display = 'flex';
+});
+
+document.querySelector('#modalEscolha .mais').addEventListener('click', () => {
+  const quantidadeEl = document.querySelector('#modalEscolha .quantidade');
+  let qtd = parseInt(quantidadeEl.textContent);
+  quantidadeEl.textContent = qtd + 1;
+});
+
+document.querySelector('#modalEscolha .menos').addEventListener('click', () => {
+  const quantidadeEl = document.querySelector('#modalEscolha .quantidade');
+  let qtd = parseInt(quantidadeEl.textContent);
+  if (qtd > 1) quantidadeEl.textContent = qtd - 1;
+});
+
+document.querySelector('#modalEscolha .fechar').addEventListener('click', () => {
+  document.getElementById('modalEscolha').style.display = 'none';
+});
+
+document.querySelector('#modalEscolha .ok').addEventListener('click', () => {
+  const nome = document.querySelector('#modalEscolha .produto-nome').textContent;
+  const qtd = parseInt(document.querySelector('#modalEscolha .quantidade').textContent);
+  pedidos[nome] = (pedidos[nome] || 0) + qtd;
+  document.getElementById('modalEscolha').style.display = 'none';
+});
+
+// ==================== EVENTOS PARA BOTÃO "FINALIZAR" ====================
+document.getElementById('finalizarBtn').addEventListener('click', () => {
+  const modal = document.getElementById('modalResumo');
+  const lista = modal.querySelector('.lista-pedidos');
+  lista.innerHTML = '';
+
+  if (Object.keys(pedidos).length === 0) {
+    lista.innerHTML = '<p style="text-align:center; color:gray;">Nenhum pedido.</p>';
+  } else {
+    for (const nome in pedidos) {
+      const item = document.createElement('div');
+      item.textContent = `${pedidos[nome]}x ${nome}`;
+      lista.appendChild(item);
+    }
+  }
+
+  modal.style.display = 'flex';
+});
+
+document.querySelector('#modalResumo .fechar-finalizar').addEventListener('click', () => {
+  pedidos = {}; // limpa todos os pedidos
+  document.getElementById('modalResumo').style.display = 'none';
+});
+
+
+document.querySelector('#modalResumo .ok-finalizar').addEventListener('click', () => {
+  alert('Pedido finalizado com sucesso!');
+  pedidos = {}; // limpa os pedidos
+  document.getElementById('modalResumo').style.display = 'none';
+});
+
