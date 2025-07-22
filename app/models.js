@@ -18,7 +18,7 @@ const models = {
     { path: `${modelBaseURL}/bebidas/redbull.glb`, price: 9.90, info: `${modelBaseURL}/informacao/redbull.json` }
   ],
   pizzas: [
-    { path: `${modelBaseURL}/pizzas/presunto_de_Parma_e_rúcula.glb`, price: 45.00, info: `${modelBaseURL}/informacao/presunto_de_Parma_e_rúcula.json` },
+    { path: `${modelBaseURL}/pizzas/presunto_de_parma_e_rúcula.glb`, price: 45.00, info: `${modelBaseURL}/informacao/presunto_de_parma_e_rúcula.json` },
     { path: `${modelBaseURL}/pizzas/mussarela.glb`, price: 45.00, info: `${modelBaseURL}/informacao/mussarela.json` },
     { path: `${modelBaseURL}/pizzas/salami.glb`, price: 45.00, info: `${modelBaseURL}/informacao/salami.json` }
   ],

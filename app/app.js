@@ -362,12 +362,18 @@ async function loadProductInfoJSON(filename, panel) {
     if (!response.ok) throw new Error("Erro ao carregar informações");
 
     const data = await response.json();
-    let content = "<ul>";
+    // monta um array de linhas no formato chave: valor
+    const linhas = [];
     for (let key in data) {
-      content += `<li><strong>${key}:</strong> ${data[key]}</li>`;
+      linhas.push(`${key.replace(/_/g,' ')}: ${data[key]}`);
     }
-    content += "</ul>";
-    document.getElementById("infoContent").innerHTML = content;
+    // junta com quebras de linha duplas (você pode usar '\n' simples se preferir)
+    const textoFormatado = linhas.join('\n\n');
+
+    // insere preservando \n
+    const infoDiv = document.getElementById("infoContent");
+    infoDiv.innerText = textoFormatado;
+
     panel.style.display = "block";
     infoVisible = true;
   } catch (error) {
