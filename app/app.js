@@ -12,6 +12,9 @@ async function aplicarConfiguracaoDoRestaurante() {
   const urlCategorias = `https://ar-menu-models.s3.amazonaws.com/configuracoes/restaurante-001.json?v=${Date.now()}`;
   const urlItens = `https://ar-menu-models.s3.amazonaws.com/configuracoes/restaurante-001-itens.json?v=${Date.now()}`;
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const telefoneGarcom = urlParams.get("garcom"); // ex: 11947329140
+
   try {
     // Carrega configurações de categorias
     const responseCategorias = await fetch(urlCategorias);
@@ -493,3 +496,50 @@ document.querySelector('#modalResumo .ok-finalizar').addEventListener('click', (
   document.getElementById('modalResumo').style.display = 'none';
 });
 
+async function enviarPedidoParaTelegram(resumoTexto) {
+  const tokenBot = "SEU_TOKEN_DO_BOT";
+  const telefone = telefoneGarcom;
+
+  if (!telefone) {
+    console.warn("Telefone do garçom não disponível.");
+    return;
+  }
+
+  // Construa a mensagem
+  const mensagem = `🛎️ *Novo Pedido*\n\n${resumoTexto}`;
+
+  // Opcional: mapeie telefone para chat_id manualmente
+  const chatIds = {
+    "11947329140": 1234567890,  // exemplo: telefone → chat_id
+    // adicione outros garçons aqui
+  };
+
+  const chatId = chatIds[telefone];
+  if (!chatId) {
+    console.warn("Chat ID do garçom não encontrado.");
+    return;
+  }
+
+  const url = `https://api.telegram.org/bot${tokenBot}/sendMessage`;
+
+  const body = {
+    chat_id: chatId,
+    text: mensagem,
+    parse_mode: "Markdown"
+  };
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+
+    const data = await res.json();
+    if (!data.ok) throw new Error("Erro ao enviar mensagem: " + data.description);
+
+    console.log("✅ Pedido enviado com sucesso para o Telegram.");
+  } catch (err) {
+    console.error("❌ Falha ao enviar pedido para Telegram:", err);
+  }
+}

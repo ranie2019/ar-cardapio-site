@@ -2,17 +2,22 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Acesso</title>
-
-  <!-- CSS específicos para esta página -->
-  <link rel="stylesheet" href="../css/plano.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARCardápio - Planos</title>
   <link rel="stylesheet" href="../css/index.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
 </head>
 <body>
-
-  <!-- Faixa de topo branca com botão Perfil -->
-  <header class="header">
-    <h1 class="titulo">Sistema</h1>
+  <header>
+    <h1>ARCardápio</h1>
   </header>
 
   <!-- Botão que abre o modal -->
@@ -30,31 +35,30 @@
     </div>
   </div>
 
-  <!-- Conteúdo principal da página -->
-  <main class="conteudo-planos">
-    <h1>Escolha o seu plano</h1>
+  <h2>Escolha seu plano ideal</h2>
 
-    <section class="cards">
-      <div class="card">
-        <h2>Plus (1 Mês)</h2>
-        <p class="preco">R$ 300,00</p>
-        <button class="btn-vermelho" onclick="window.location.href='../html/cadastro.html'">cadastre-se</button>
-      </div>
+  <section class="planos">
+    <div class="plano">
+      <h3>Plus (1 Mês)</h3>
+      <p class="preco">R$ 300,00</p>
+      <button class="btn-vermelho" onclick="window.location.href='../html/cadastro.html'">cadastre-se</button>
+    </div>
+    <div class="plano">
+      <h3>Pro (1 Ano)</h3>
+      <p class="preco">R$ 3300,00</p>
+      <button class="btn-vermelho" onclick="window.location.href='../html/cadastro.html'">cadastre-se</button>
+    </div>
+    <div class="plano">
+      <h3>Ultra (5 Anos)</h3>
+      <p class="preco">R$ 6900,00</p>
+      <button class="btn-vermelho" onclick="window.location.href='../html/cadastro.html'">cadastre-se</button>
+    </div>
+  </section>
 
-      <div class="card destaque">
-        <h2>Pro (1 ano)</h2>
-        <p class="preco">R$ 3300,00</p>
-        <button class="btn-vermelho" onclick="window.location.href='../html/cadastro.html'">cadastre-se</button>
-      </div>
-
-      <div class="card">
-        <h2>Ultra (5 anos)</h2>
-        <p class="preco">R$ 6900,00</p>
-        <button class="btn-vermelho" onclick="window.location.href='../html/cadastro.html'">cadastre-se</button>
-      </div>
-    </section>
-  </main>
-
+  <footer>
+    &copy; 2025 ARCardápio. Todos os direitos reservados.
+  </footer>
+  
   <!-- JS correto -->
   <script src="../java/index.js"></script>
 </body>

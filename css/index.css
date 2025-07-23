@@ -1,93 +1,12 @@
-/* Estilo geral da página index */
-body {
-  background-color: #fff;
-  font-family: Arial, sans-serif;
-}
-
-/* Título principal da index */
-h1 {
-  text-align: center;
-  font-size: 3rem;
-  margin: 20px;
-  color: #333;
-}
-
-/* ===================== FAIXA DO TOPO - PERFIL ===================== */
-
-/* Cabeçalho branco com alinhamento horizontal */
-header.header {
-  background-color: rgb(209, 141, 64);
-  color: rgb(230, 215, 249);
-  padding: 15px 30px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #ddd;
-}
-
-/* Título centralizado dentro do header */
-header .titulo {
-  flex-grow: 5;
-  text-align: center;
-  font-size: 2.6rem;
-  font-weight: bold;
-}
-
-/* Container do botão de perfil */
-.profile-menu {
-  position: relative;
-}
-
-/* Botão "Perfil" */
-#profile-btn {
-  background-color: transparent;
-  border: 1px solid #e50914;
-  color: #e50914;
-  padding: 10px 16px;
-  font-size: 14px;
-  cursor: pointer;
-  border-radius: 6px;
-}
-
-/* Conteúdo do dropdown (inicialmente oculto) */
-.dropdown-content {
-  display: none;
-  position: absolute;
-  top: 42px;
-  right: 0;
-  background-color: white;
-  min-width: 160px;
-  box-shadow: 0px 4px 8px rgba(0,0,0,0.1);
-  border-radius: 6px;
-  z-index: 1;
-}
-
-/* Mostrar o dropdown quando ativado */
-.dropdown-content.show {
-  display: block;
-}
-
-/* Itens do dropdown */
-.dropdown-content a {
-  color: #333;
-  padding: 10px 15px;
-  text-decoration: none;
-  display: block;
-}
-
-.dropdown-content a:hover {
-  background-color: #f5f5f5;
-}
-
-/* ===================== BOTÃO DE ACESSO FLUTUANTE ===================== */
+/* ===================== BOTÃO AREA DO CLIENTE ===================== */
 
 .btn-acesso {
   position: fixed;
   top: 20px;
   right: 20px;
   padding: 12px 20px;
-  background-color: #c70039;
-  color: white;
+  background-color: hsl(167, 100%, 50%);
+  color: rgb(0, 0, 0);
   border: none;
   border-radius: 20px;
   font-size: 16px;
@@ -103,7 +22,7 @@ header .titulo {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(146, 141, 141, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -116,7 +35,7 @@ header .titulo {
 
 /* Caixa central do modal */
 .modal-content {
-  background: white;
+  background: rgb(206, 201, 201);
   padding: 30px;
   border-radius: 10px;
   text-align: center;
@@ -126,7 +45,7 @@ header .titulo {
 
 /* Título do modal */
 .modal-content h2 {
-  color: #c70039;
+  color: #000000;
 }
 
 /* Botões dentro do modal */
@@ -136,17 +55,17 @@ header .titulo {
   margin: 10px 0;
   padding: 10px;
   font-size: 16px;
-  border: 2px solid #c70039;
+  border: 2px solid #727575;
   border-radius: 6px;
-  background-color: white;
-  color: #c70039;
+  background-color: hsl(167, 100%, 50%);
+  color: #000000;
   cursor: pointer;
 }
 
 /* Botão "Acessar" destacado */
 .modal-content button:first-of-type {
-  background-color: #c70039;
-  color: white;
+  background-color: hsla(167, 100%, 50%, 0.548);
+  color: rgb(0, 0, 0);
 }
 
 /* Ícone de fechar o modal */
@@ -156,4 +75,107 @@ header .titulo {
   right: 15px;
   font-size: 20px;
   cursor: pointer;
+}
+
+footer {
+      margin-top: auto;
+      padding: 20px;
+      color: #888;
+      font-size: 0.9rem;
+    }
+.plano button:hover {background-color: #00e6b5;}
+
+.plano button {
+      background-color: #00ffc8;
+      color: #0f0f0f;
+      border: none;
+      padding: 10px 20px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+.plano .preco {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #00ffc8;
+      margin-bottom: 20px;
+    }
+.plano h3 {
+      font-size: 1.4rem;
+      margin-bottom: 15px;
+    }
+        .plano:hover {
+      transform: scale(1.05);
+      border-color: #00ffc8;
+      box-shadow: 0 0 20px rgba(0, 255, 200, 0.4);
+    }
+
+header {
+  width: 100%;
+  padding: 20px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: transparent; /* Removido o fundo preto */
+  box-shadow: none;              /* Remove a sombra */
+}
+    header h1 {
+      color: #00ffc8;
+      font-size: 2.8rem;
+    }
+    .btn-area {
+      background-color: #ff0055;
+      border: none;
+      color: white;
+      font-weight: 600;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .btn-area:hover {
+      background-color: #e60048;
+    }
+    h2 {
+      margin: 60px 0 30px;
+      font-size: 2rem;
+      color: #ffffff;
+    }
+    .planos {
+      display: flex;
+      gap: 30px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .plano {
+      background-color: #1e1e1e;
+      border-radius: 16px;
+      padding: 30px;
+      width: 280px;
+      text-align: center;
+      border: 2px solid transparent;
+      box-shadow: 0 0 20px rgba(0, 255, 200, 0.1);
+      transition: transform 0.3s, box-shadow 0.3s, border 0.3s;
+    }
+
+body {
+      background: linear-gradient(180deg, #0f0f0f, #1c1c1c);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+body {
+  background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+              url('../imagens/bgindex.jpg') no-repeat center center fixed;
+  background-size: cover;
+  color: #fff;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Inter', sans-serif;
 }
