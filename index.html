@@ -6,60 +6,89 @@
   <title>ARCardápio - Planos</title>
   <link rel="stylesheet" href="../css/index.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-  <style>
-    * {
-      box-sizing: border-box;
-      font-family: 'Inter', sans-serif;
-      margin: 0;
-      padding: 0;
-    }
-  </style>
 </head>
 <body>
+
   <header>
     <h1>ARCardápio</h1>
+    <button id="abrirModal" class="btn-acesso">Área do cliente</button>
   </header>
 
-  <!-- Botão que abre o modal -->
-  <button id="abrirModal" class="btn-acesso">Área do cliente</button>
+  <!-- Seção Sobre -->
+  <section class="sobre">
+    <h2>O que é o ARCardápio?</h2>
+    <p>
+      O ARCardápio é uma solução inovadora para restaurantes e bares que permite apresentar os pratos em 3D usando realidade aumentada. 
+      Com ele, seus clientes têm uma experiência imersiva ao visualizar os alimentos diretamente pelo celular.
+    </p>
+  </section>
 
-  <!-- Modal -->
+  <!-- Seção Planos -->
+  <h2>Escolha seu plano ideal</h2>
+  <section class="planos">
+    <div class="plano">
+      <h3>Plus (1 Mês)</h3>
+      <p class="preco">R$ 300,00</p>
+      <button onclick="window.location.href='../html/cadastro.html'">cadastre-se</button>
+    </div>
+    <div class="plano">
+      <h3>Pro (1 Ano)</h3>
+      <p class="preco">R$ 3300,00</p>
+      <button onclick="window.location.href='../html/cadastro.html'">cadastre-se</button>
+    </div>
+    <div class="plano">
+      <h3>Ultra (5 Anos)</h3>
+      <p class="preco">R$ 6900,00</p>
+      <button onclick="window.location.href='../html/cadastro.html'">cadastre-se</button>
+    </div>
+  </section>
+
+  <!-- Seção Contato -->
+  <section class="contato">
+    <div class="container-form">
+      <span class="subtitulo-form">Vem para <strong>AR Cardapio</strong></span>
+      <h2>Entre em contato conosco</h2>
+      <form action="https://formsubmit.co/ranie.black29@gmail.com" method="POST">
+        <!-- redirecionamento após envio -->
+        <input type="hidden" name="_next" value="https://google.com">
+        <!-- desabilita captcha -->
+        <input type="hidden" name="_captcha" value="false">
+
+        <div class="linha">
+          <input type="text" name="Nome" placeholder="Nome" required />
+          <input type="email" name="Email" placeholder="Email" required />
+        </div>
+        <div class="linha">
+          <input type="tel" name="Telefone" placeholder="Telefone" required />
+          <select name="Setor da empresa" required>
+            <option value="">Setor da empresa</option>
+            <option value="Restaurantes e Lanchonetes">Restaurantes e Lanchonetes</option>
+            <option value="Padarias">Padarias</option>
+            <option value="Cafeterias">Cafeterias</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </div>
+        <textarea name="Observações" placeholder="Observações"></textarea>
+        <button type="submit" class="btn-atendimento">SOLICITAR ATENDIMENTO</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Modal da Área do Cliente -->
   <div id="modal" class="modal hidden">
     <div class="modal-content">
       <span id="fecharModal" class="fechar">&times;</span>
       <h2>Área do cliente</h2>
       <p>Para acessar, clique em acessar. Se ainda não tem conta, clique em criar cadastro.</p>
-      <!-- Botões dentro do modal -->
       <button onclick="window.location.href='../html/login.html'">Acessar</button>
       <button onclick="window.location.href='../html/cadastro.html'">Criar cadastro</button>
     </div>
   </div>
 
-  <h2>Escolha seu plano ideal</h2>
-
-  <section class="planos">
-    <div class="plano">
-      <h3>Plus (1 Mês)</h3>
-      <p class="preco">R$ 300,00</p>
-      <button class="btn-vermelho" onclick="window.location.href='../html/cadastro.html'">cadastre-se</button>
-    </div>
-    <div class="plano">
-      <h3>Pro (1 Ano)</h3>
-      <p class="preco">R$ 3300,00</p>
-      <button class="btn-vermelho" onclick="window.location.href='../html/cadastro.html'">cadastre-se</button>
-    </div>
-    <div class="plano">
-      <h3>Ultra (5 Anos)</h3>
-      <p class="preco">R$ 6900,00</p>
-      <button class="btn-vermelho" onclick="window.location.href='../html/cadastro.html'">cadastre-se</button>
-    </div>
-  </section>
-
   <footer>
     &copy; 2025 ARCardápio. Todos os direitos reservados.
   </footer>
-  
-  <!-- JS correto -->
+
   <script src="../java/index.js"></script>
 </body>
 </html>

@@ -179,3 +179,92 @@ body {
   align-items: center;
   font-family: 'Inter', sans-serif;
 }
+
+.sobre {
+  text-align: center;
+  padding: 20px 20px 10px; /* reduziu o topo e base */
+  background: rgba(0, 0, 0, 0.6); /* camada escura leve */
+  color: #fff;
+  max-width: 1000px;
+  margin: 0 auto 10px; /* margem externa mais curta */
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+.sobre h2 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin-bottom: 15px;
+  color: #00ffc8;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.6);
+}
+
+.sobre p {
+  font-size: 1.15rem;
+  line-height: 1.6;
+  max-width: 800px;
+  margin: auto;
+  color: #eee;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
+}
+
+/* ===================== CONTATO ===================== */
+.contato {
+  max-width: 800px;
+  margin: 40px auto 60px;
+  padding: 30px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 12px;
+  box-shadow: 0 0 25px rgba(0, 255, 200, 0.2);
+  text-align: center;
+}
+
+.contato h2 {
+  font-size: 2.2rem;
+  margin-bottom: 20px;
+  color: #ffffff;
+}
+
+.contato form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+}
+
+.contato input,
+.contato select,
+.contato textarea {
+  flex: 1 1 45%;
+  min-width: 280px;
+  padding: 12px;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  color: #333;
+  outline: none;
+}
+
+.contato textarea {
+  flex: 1 1 100%;
+  min-height: 100px;
+  resize: vertical;
+}
+
+.contato button {
+  flex: 1 1 100%;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  background-color: #ff9900;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.contato button:hover {
+  background-color: #e68900;
+}
