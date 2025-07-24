@@ -1,5 +1,5 @@
 // ==================== BASE URL DO BUCKET S3 ====================
-const modelBaseURL = "https://ar-menu-models.s3.amazonaws.com";
+const modelBaseURL = "https://ar-cardapio-models.s3.amazonaws.com";
 
 // ==================== NOME DO RESTAURANTE PARA CONFIG PERSONALIZADA ====================
 const nomeRestaurante = 'restaurante-001';
@@ -72,7 +72,7 @@ async function carregarConfiguracaoDoRestaurante() {
   }
 }
 async function carregarStatus() {
-  const url = `https://ar-menu-models.s3.amazonaws.com/configuracoes/restaurante-001-itens.json?v=${Date.now()}`;
+  const url = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/restaurante-001-itens.json?v=${Date.now()}`;
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error('Erro ao carregar status dos itens');

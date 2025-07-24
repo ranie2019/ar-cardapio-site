@@ -12,7 +12,11 @@ class SistemaCardapio {
     this.dadosRestaurante = {};
     this.categoriaAtiva = null;
     this.currentGarcomId = null;
+<<<<<<< HEAD
+    this.MODEL_BASE_URL = 'https://ar-cardapio-models.s3.amazonaws.com/';
+=======
     this.MODEL_BASE_URL = 'https://ar-menu-models.s3.amazonaws.com/';
+>>>>>>> 1e7c522c20335d8103178c1c2614a3b6a25ec75c
     this.ARQUIVO_CONFIG_CATEGORIAS = `${this.MODEL_BASE_URL}configuracoes/${this.nomeRestaurante}.json`;
     this.ARQUIVO_CONFIG_ITENS = `${this.MODEL_BASE_URL}configuracoes/${this.nomeRestaurante}-itens.json`;
 

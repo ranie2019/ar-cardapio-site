@@ -9,8 +9,11 @@ let pedidos = {}; // chave: nome do produto, valor: quantidade
 
 // ==================== CONFIGURAÇÃO DO RESTAURANTE VIA S3 ====================
 async function aplicarConfiguracaoDoRestaurante() {
-  const urlCategorias = `https://ar-menu-models.s3.amazonaws.com/configuracoes/restaurante-001.json?v=${Date.now()}`;
-  const urlItens = `https://ar-menu-models.s3.amazonaws.com/configuracoes/restaurante-001-itens.json?v=${Date.now()}`;
+  const urlCategorias = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/restaurante-001.json?v=${Date.now()}`;
+  const urlItens = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/restaurante-001-itens.json?v=${Date.now()}`;
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const telefoneGarcom = urlParams.get("garcom"); // ex: 11947329140
 
   const urlParams = new URLSearchParams(window.location.search);
   const telefoneGarcom = urlParams.get("garcom"); // ex: 11947329140
