@@ -12,11 +12,7 @@ class SistemaCardapio {
     this.dadosRestaurante = {};
     this.categoriaAtiva = null;
     this.currentGarcomId = null;
-<<<<<<< HEAD
     this.MODEL_BASE_URL = 'https://ar-cardapio-models.s3.amazonaws.com/';
-=======
-    this.MODEL_BASE_URL = 'https://ar-menu-models.s3.amazonaws.com/';
->>>>>>> 1e7c522c20335d8103178c1c2614a3b6a25ec75c
     this.ARQUIVO_CONFIG_CATEGORIAS = `${this.MODEL_BASE_URL}configuracoes/${this.nomeRestaurante}.json`;
     this.ARQUIVO_CONFIG_ITENS = `${this.MODEL_BASE_URL}configuracoes/${this.nomeRestaurante}-itens.json`;
 
@@ -751,14 +747,18 @@ class SistemaCardapio {
         wrapper.appendChild(label);
         containerQR.appendChild(wrapper);
         
-        // Gera o QR Code
+        // Gera o QR Code dinamicamente com versão anti-cache
         new QRCode(divQR, {
-          text: `https://arcardapio-site.s3.us-east-1.amazonaws.com/app/app.html?v=${Date.now()}`,
-          width: 200,
-          height: 200,
-          colorDark: "#000000",
-          colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.H
+          // Texto (URL) codificado no QR Code — aqui usamos a URL do app com um parâmetro ?v= para forçar atualização
+          text: `https://site-arcardapio.s3.us-east-1.amazonaws.com/app/app.html?v=${Date.now()}`,
+
+          width: 200, // Largura do QR Code em pixels
+          height: 200, // Altura do QR Code em pixels
+          colorDark: "#000000", // Cor dos quadradinhos (pixels escuros) do QR Code
+          colorLight: "#ffffff", // Cor de fundo do QR Code
+
+          // Nível de correção de erro: 
+          correctLevel: QRCode.CorrectLevel.H  // H = Alta (recupera até 30% do QR Code mesmo com dano ou sujeira)
         });
       }
     };

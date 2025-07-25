@@ -4,19 +4,11 @@ let currentIndex = 0;
 const modelCache = {};
 let currentModelPath = '';
 let infoVisible = false;
-let pedidos = {}; // chave: nome do produto, valor: quantidade
-
 
 // ==================== CONFIGURAÇÃO DO RESTAURANTE VIA S3 ====================
 async function aplicarConfiguracaoDoRestaurante() {
   const urlCategorias = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/restaurante-001.json?v=${Date.now()}`;
   const urlItens = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/restaurante-001-itens.json?v=${Date.now()}`;
-
-  const urlParams = new URLSearchParams(window.location.search);
-  const telefoneGarcom = urlParams.get("garcom"); // ex: 11947329140
-
-  const urlParams = new URLSearchParams(window.location.search);
-  const telefoneGarcom = urlParams.get("garcom"); // ex: 11947329140
 
   try {
     // Carrega configurações de categorias
@@ -434,115 +426,4 @@ function getCurrentModelData() {
     }
   }
   return null;
-}
-
-// ==================== EVENTOS PARA BOTÃO "ESCOLHER" ====================
-document.getElementById('escolherBtn').addEventListener('click', () => {
-  const modal = document.getElementById('modalEscolha');
-  const nomeProduto = formatProductName(currentModelPath);
-  modal.querySelector('.produto-nome').textContent = nomeProduto;
-  modal.querySelector('.quantidade').textContent = '1';
-  modal.style.display = 'flex';
-});
-
-document.querySelector('#modalEscolha .mais').addEventListener('click', () => {
-  const quantidadeEl = document.querySelector('#modalEscolha .quantidade');
-  let qtd = parseInt(quantidadeEl.textContent);
-  quantidadeEl.textContent = qtd + 1;
-});
-
-document.querySelector('#modalEscolha .menos').addEventListener('click', () => {
-  const quantidadeEl = document.querySelector('#modalEscolha .quantidade');
-  let qtd = parseInt(quantidadeEl.textContent);
-  if (qtd > 1) quantidadeEl.textContent = qtd - 1;
-});
-
-document.querySelector('#modalEscolha .fechar').addEventListener('click', () => {
-  document.getElementById('modalEscolha').style.display = 'none';
-});
-
-document.querySelector('#modalEscolha .ok').addEventListener('click', () => {
-  const nome = document.querySelector('#modalEscolha .produto-nome').textContent;
-  const qtd = parseInt(document.querySelector('#modalEscolha .quantidade').textContent);
-  pedidos[nome] = (pedidos[nome] || 0) + qtd;
-  document.getElementById('modalEscolha').style.display = 'none';
-});
-
-// ==================== EVENTOS PARA BOTÃO "FINALIZAR" ====================
-document.getElementById('finalizarBtn').addEventListener('click', () => {
-  const modal = document.getElementById('modalResumo');
-  const lista = modal.querySelector('.lista-pedidos');
-  lista.innerHTML = '';
-
-  if (Object.keys(pedidos).length === 0) {
-    lista.innerHTML = '<p style="text-align:center; color:gray;">Nenhum pedido.</p>';
-  } else {
-    for (const nome in pedidos) {
-      const item = document.createElement('div');
-      item.textContent = `${pedidos[nome]}x ${nome}`;
-      lista.appendChild(item);
-    }
-  }
-
-  modal.style.display = 'flex';
-});
-
-document.querySelector('#modalResumo .fechar-finalizar').addEventListener('click', () => {
-  pedidos = {}; // limpa todos os pedidos
-  document.getElementById('modalResumo').style.display = 'none';
-});
-
-
-document.querySelector('#modalResumo .ok-finalizar').addEventListener('click', () => {
-  alert('Pedido finalizado com sucesso!');
-  pedidos = {}; // limpa os pedidos
-  document.getElementById('modalResumo').style.display = 'none';
-});
-
-async function enviarPedidoParaTelegram(resumoTexto) {
-  const tokenBot = "SEU_TOKEN_DO_BOT";
-  const telefone = telefoneGarcom;
-
-  if (!telefone) {
-    console.warn("Telefone do garçom não disponível.");
-    return;
-  }
-
-  // Construa a mensagem
-  const mensagem = `🛎️ *Novo Pedido*\n\n${resumoTexto}`;
-
-  // Opcional: mapeie telefone para chat_id manualmente
-  const chatIds = {
-    "11947329140": 1234567890,  // exemplo: telefone → chat_id
-    // adicione outros garçons aqui
-  };
-
-  const chatId = chatIds[telefone];
-  if (!chatId) {
-    console.warn("Chat ID do garçom não encontrado.");
-    return;
-  }
-
-  const url = `https://api.telegram.org/bot${tokenBot}/sendMessage`;
-
-  const body = {
-    chat_id: chatId,
-    text: mensagem,
-    parse_mode: "Markdown"
-  };
-
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-
-    const data = await res.json();
-    if (!data.ok) throw new Error("Erro ao enviar mensagem: " + data.description);
-
-    console.log("✅ Pedido enviado com sucesso para o Telegram.");
-  } catch (err) {
-    console.error("❌ Falha ao enviar pedido para Telegram:", err);
-  }
 }

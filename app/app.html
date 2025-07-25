@@ -20,19 +20,10 @@
     .debug-text {
       display: none !important;
     }
-
-    
   </style>
 </head>
 
 <body>
-
-  <!-- Botões de ação -->
-  <div class="action-buttons">
-    <button id="finalizarBtn" class="check-btn">FINALIZAR</button>
-    <button id="escolherBtn" class="check-btn">ESCOLHER</button>
-  </div>
-
   <!-- Botão de menu -->
   <button id="menuBtn">Cardapio</button>
 
@@ -64,6 +55,7 @@
     border-radius: 12px;
     font-size: 1.1em;
     font-weight: 500;
+    z-index: 1000;
   "></div>
 
   <!-- Botões para navegar entre os modelos -->
@@ -125,36 +117,9 @@
     <a-camera position="0 1.5 3"></a-camera>
   </a-scene>
 
-  <!-- Modal de ESCOLHER produto -->
-  <div id="modalEscolha" class="modal">
-    <div class="modal-content">
-      <h2 class="produto-nome">Produto</h2>
-      <div class="controle-quantidade">
-        <button class="menos">–</button>
-        <span class="quantidade">1</span>
-        <button class="mais">+</button>
-      </div>
-      <div class="botoes">
-        <button class="fechar">X</button>
-        <button class="ok">OK</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal de FINALIZAR pedido -->
-  <div id="modalResumo" class="modal">
-    <div class="modal-content">
-      <h2>Resumo do Pedido</h2>
-      <div class="lista-pedidos"></div>
-      <div class="botoes">
-        <button class="fechar-finalizar">X</button>
-        <button class="ok-finalizar">OK</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Scripts do projeto -->
+  <!-- Scripts do projeto (com controle de cache) -->
   <script src="../app/models.js?v=1.2"></script>
   <script src="../app/app.js?v=1.2"></script>
+
 </body>
 </html>
