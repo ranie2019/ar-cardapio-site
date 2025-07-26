@@ -18,8 +18,6 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 20px 40px;
-  background-color: white;
-  border-bottom: 1px solid #dddddd;
 }
 
 .titulo {
@@ -74,17 +72,6 @@ body {
   display: block;
 }
 
-#dropdownCardapio button {
-  background-color: rgb(255, 0, 0);
-  color: white;
-  font-weight: bold;
-  margin-bottom: 8px;
-  border: none;
-  padding: 8px 16px;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
 #dropdownCardapio button.desativado {
   background-color: lightgray;
   color: #333333;
@@ -96,12 +83,12 @@ body {
 
 .itens-container {
   position: absolute;
-  top: 90px;
-  left: 160px;
+  top: 150px; /* afasta um pouco para baixo */
+  left: 260px; /* alinha horizontalmente com o botão de categoria */
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  max-width: calc(100% - 180px);
+  max-width: calc(100% - 280px); /* reduz para acomodar nova margem */
 }
 
 .item-box {
@@ -226,16 +213,25 @@ body {
 /* ====================== */
 
 .model-preview-modal {
-  position: fixed;
-  z-index: 9999;
-  width: 320px;
-  height: 320px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 12px;
-  box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
-  overflow: hidden;
-  padding: 5px;
+  position: absolute;
+  z-index: 999;
+  padding: 20px;
+  background: rgba(124, 124, 124, 0.95);
+  border-radius: 16px;
+  border: 2px solid #00ffc8;
+  box-shadow: 0 0 20px rgba(0, 255, 200, 0.5);
+  transition: all 0.3s ease;
+  width: 330px;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 60px; /* Ajuste conforme a distância desejada */
+  left: 50%;
+  transform: translate(-50%, 50px); /* Desce 50px além do centro */
 }
+
 
 .a-enter-vr-button {
   display: none !important;
@@ -544,3 +540,289 @@ Estilos do modal de configuração
   transition: background-color 0.2s ease;
 }
 
+/* FUNDO PRETO PADRÃO */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #000000;
+  font-family: Arial, sans-serif;
+  color: #00f0c0; /* cor dos textos */
+}
+
+/* SOBREPOSIÇÃO E VÍDEO (removido ou comentado) */
+.video-bg,
+.overlay {
+  display: none;
+}
+
+/* TÍTULO CENTRAL */
+.titulo {
+  color: #00f0c0;
+  font-size: 32px;
+  font-weight: bold;
+  text-align: center;
+  flex: 1;
+}
+
+/* BOTÕES VERDES */
+.btn-vermelho,
+#profile-btn,
+#cardapio-btn,
+#btnQrCode,
+.btn-categoria,
+.controles-qrcode button,
+.btn-imprimir {
+  background-color: #00f0c0;
+  color: #000000;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 16px;
+  transition: background-color 0.2s ease;
+}
+
+.btn-vermelho:hover,
+#profile-btn:hover,
+#cardapio-btn:hover,
+#btnQrCode:hover,
+.btn-categoria:hover,
+.controles-qrcode button:hover,
+.btn-imprimir:hover {
+  background-color: #00d0a8;
+}
+
+/* BOTÃO DESATIVADO */
+#dropdownCardapio button.desativado {
+  background-color: #555;
+  color: #ccc;
+}
+
+/* MODAL */
+.modal .conteudo-modal {
+  background-color: #111;
+  color: #00f0c0;
+}
+
+/* Fechar modal */
+.fechar-modal {
+  color: #00f0c0;
+}
+
+/* OUTROS ELEMENTOS */
+label, input, h3 {
+  color: #00f0c0;
+}
+input, textarea {
+  background: #222;
+  border: 1px solid #444;
+  color: #00f0c0;
+}
+
+/* VÍDEO DE FUNDO */
+#bg-video {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  z-index: -1;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  color: #00ffd1;
+}
+
+.titulo {
+  font-size: 32px;
+  font-weight: bold;
+}
+
+.menu-lateral {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#btnGerarQR {
+  background-color: #00ffd1;
+  color: black;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+#btnGerarQR .video-hover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+  z-index: 0;
+  border-radius: 20px;
+}
+
+#btnGerarQR span {
+  position: relative;
+  z-index: 1;
+}
+
+#btnGerarQR:hover .video-hover {
+  display: block;
+}
+
+.cardapio-menu {
+  margin-top: 60px;
+  padding-left: 20px;
+}
+
+.btn-categoria {
+  background: #8DEBFF;
+  color: #001f33;
+  font-weight: bold;
+  border: none;
+  padding: 12px 24px;
+  margin: 10px auto;
+  border-radius: 30px;
+  font-size: 16px;
+  width: 160px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(141, 235, 255, 0.4);
+}
+
+.btn-categoria::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(120deg, rgba(255,255,255,0.3), rgba(255,255,255,0));
+  transform: skewX(-25deg);
+  transition: left 0.5s ease;
+}
+
+.btn-categoria:hover::before {
+  left: 125%;
+}
+
+.btn-categoria:hover {
+  box-shadow: 0 0 15px #8DEBFF, 0 0 25px #8DEBFF;
+  transform: scale(1.04);
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0,0,0,0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+
+.conteudo-modal {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 80%;
+  max-width: 500px;
+}
+
+.fechar-modal {
+  float: right;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.controles-qrcode {
+  margin-top: 20px;
+}
+    
+.botao-com-video {
+  position: relative;
+  overflow: hidden;
+  background-color: #00ffcc;
+  color: black;
+  font-weight: bold;
+  font-size: 18px;
+  border: none;
+  border-radius: 30px;
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  z-index: 1;
+}
+
+.botao-com-video .video-hover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 30px;
+}
+
+.botao-com-video:hover .video-hover {
+  opacity: 1;
+}
+
+.botao-com-video .texto-botao {
+  position: relative;
+  z-index: 1;
+  color: black;
+  transition: color 0.3s ease;
+}
+
+.botao-com-video:hover .texto-botao {
+  color: white;
+}
+
+.menu-direita {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+}
+
+footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  color: #ccc;
+  font-size: 16px;
+  padding: 10px 0;
+  z-index: 1;
+}

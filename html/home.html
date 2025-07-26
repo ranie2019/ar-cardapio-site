@@ -10,17 +10,52 @@
 
   <!-- A-Frame para preview 3D dos modelos GLB -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      overflow-x: hidden;
+    }
+  </style>
 </head>
+
 <body>
+  <!-- VÍDEO DE FUNDO -->
+  <video autoplay muted loop id="bg-video">
+    <source src="../videos/home.mp4" type="video/mp4">
+    Seu navegador não suporta vídeo em HTML5.
+  </video>
 
   <!-- CABEÇALHO -->
   <header class="header">
-    <button id="cardapio-btn">Cardápio ▼</button>
-    <h1 class="titulo">Bem-vindo(a) ao Sistema</h1>
-    <div>
-      <button id="btnGerarQR">QR Code</button>
-      <button id="profile-btn">Perfil ▼</button>
+    <div class="menu-lateral">
+      <!-- Botão Cardápio com vídeo -->
+      <button class="botao-com-video" id="cardapio-btn">
+        <video autoplay muted loop class="video-hover">
+          <source src="../videos/botoes.mp4" type="video/mp4">
+        </video>
+        <span class="texto-botao">Cardápio ▼</span>
+      </button>
+
+      <!-- Botão QR Code com vídeo -->
+      <button class="botao-com-video" id="btnGerarQR">
+        <video autoplay muted loop class="video-hover">
+          <source src="../videos/botoes.mp4" type="video/mp4">
+        </video>
+        <span class="texto-botao">QR Code</span>
+      </button>
     </div>
+
+    <div class="menu-direita">
+      <button class="botao-com-video" id="profile-btn">
+        <video autoplay muted loop class="video-hover">
+          <source src="../videos/botoes.mp4" type="video/mp4">
+        </video>
+        <span class="texto-botao">Perfil</span>
+      </button>
+    </div>
+
+    <h1 class="titulo">Bem-vindo(a) ao Sistema</h1>
   </header>
 
   <!-- CARDÁPIO -->
@@ -44,7 +79,6 @@
       <span class="fechar-modal" id="fecharModal">&times;</span>
       <h3>QR Code</h3>
 
-      <!-- CONTROLES ACIMA DOS QRCODES -->
       <div class="controles-qrcode">
         <label for="qtdQr">Quantidade:</label>
         <input type="number" id="qtdQr" value="1" min="1" />
@@ -53,7 +87,6 @@
         <button id="imprimirQr">Imprimir</button>
       </div>
 
-      <!-- QR Codes abaixo -->
       <div id="qrcodeContainer"></div>
     </div>
   </div>
@@ -82,19 +115,12 @@
         });
       }
 
-      // QR Code
       const modalQr = document.getElementById('modalQrCode');
       const btnFecharQr = modalQr.querySelector('#fecharModal');
       btnFecharQr.addEventListener('click', () => {
         modalQr.classList.add('hidden');
       });
 
-      const btnQrCode = document.getElementById('btnQrCode');
-      btnQrCode.addEventListener('click', () => {
-        modalQr.classList.remove('hidden');
-      });
-
-      // Canal de sincronização de status de visibilidade
       if ('BroadcastChannel' in window) {
         window.canalStatus = new BroadcastChannel('cardapio_channel');
         canalStatus.onmessage = event => {
@@ -105,5 +131,9 @@
       }
     });
   </script>
+
+  <footer>
+    &copy; 2025 ARCardápio. Todos os direitos reservados.
+  </footer>
 </body>
 </html>
