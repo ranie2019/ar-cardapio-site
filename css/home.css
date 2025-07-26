@@ -199,14 +199,11 @@ body {
 }
 
 .grupo-input {
-  margin: 15px 0;
-}
-
-.grupo-input label {
-  display: block;
   margin-bottom: 5px;
+  display: block;
   font-weight: bold;
 }
+
 
 .grupo-input input,
 .grupo-input textarea {
@@ -218,7 +215,10 @@ body {
 
 .actions {
   text-align: right;
-  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 /* ====================== */
@@ -246,74 +246,6 @@ body {
   height: 80px;
   margin: 100px auto;
   display: block;
-}
-
-/* ====================== */
-/* SEÇÃO DE GARÇONS */
-/* ====================== */
-
-#garconsSection {
-  margin-top: 30px;
-  padding: 20px;
-  background: #ffffff;
-  border-radius: 15px;
-}
-
-#garconsSection h2 {
-  margin-bottom: 10px;
-}
-
-#controleGarcons {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-#controleGarcons button {
-  background-color: rgb(255, 0, 0);
-  color: rgb(255, 255, 255);
-  border: none;
-  padding: 6px 12px;
-  font-size: 20px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-#controleGarcons input {
-  width: 60px;
-  text-align: center;
-  font-size: 18px;
-  border-radius: 8px;
-  padding: 5px;
-}
-
-#formularioGarcons {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.form-garcom input {
-  margin-right: 10px;
-  padding: 6px;
-  border-radius: 6px;
-  border: 1px solid #000000;
-}
-
-.btn-qr {
-  background-color: red;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-#quantidadeGarcons::-webkit-outer-spin-button,
-#quantidadeGarcons::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
 }
 
 /* ====================== */
@@ -373,14 +305,6 @@ body {
   flex-direction: column;
   align-items: center;
   text-align: center;
-}
-
-
-
-#modalQrCode .conteudo {
-  max-height: 80vh;
-  overflow-y: auto;
-  padding-right: 10px;
 }
 
 /* ====================== */
@@ -489,103 +413,11 @@ input[type=number]::-webkit-outer-spin-button {
     font-family: Arial, sans-serif;
   }
 
-  /* Cabeçalho */
-  .print-header {
-    text-align: center;
-    width: 100%;
-    margin-bottom: 15mm;
-  }
-
-  .print-header h1 {
-    font-size: 28pt;
-    font-weight: normal;
-    margin-bottom: 5mm;
-    color: #000;
-  }
-
-  .print-header h2 {
-    font-size: 22pt;
-    font-weight: bold;
-    margin-bottom: 10mm;
-    color: #000;
-    position: relative;
-  }
-
-  .print-header h2::after {
-    content: "";
-    display: block;
-    width: 100%;
-    height: 1px;
-    background: #000;
-    position: absolute;
-    bottom: -5mm;
-    left: 0;
-  }
-
-  /* Grid de QR Codes */
-  .qrcode-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 15mm;
-    width: 100%;
-    max-width: 120mm;
-  }
-
-  /* Item individual de QR Code */
-  .qrcode-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    page-break-inside: avoid;
-  }
-
-  .qrcode-item h3 {
-    font-size: 18pt;
-    font-weight: bold;
-    margin-bottom: 8mm;
-    text-align: center;
-    width: 100%;
-    position: relative;
-  }
-
-  .qrcode-item h3::after {
-    content: "";
-    display: block;
-    width: 100%;
-    height: 1px;
-    background: #000;
-    position: absolute;
-    bottom: -4mm;
-    left: 0;
-  }
-
   /* QR Code visual */
   .qrcode {
     width: 70mm !important;
     height: 70mm !important;
     margin: 0 auto 8mm;
-  }
-
-  /* Controles de quantidade (não visíveis na impressão) */
-  .qrcode-controls {
-    display: none !important;
-  }
-
-  /* Rodapé */
-  .print-footer {
-    width: 100%;
-    text-align: center;
-    margin-top: 15mm;
-    font-size: 14pt;
-  }
-
-  .print-footer .qtd-label {
-    font-weight: bold;
-    margin-bottom: 2mm;
-  }
-
-  .print-footer .qtd-value {
-    margin-bottom: 10mm;
   }
 
   /* Configurações da página */
@@ -594,7 +426,6 @@ input[type=number]::-webkit-outer-spin-button {
     margin: 20mm;
   }
 }
-
 
 /* ====================== */
 /* RESPONSIVIDADE */
@@ -625,169 +456,72 @@ input[type=number]::-webkit-outer-spin-button {
 }
 
 /* ==============================
-       Estilos do modal de configuração
-       ============================== */
-    .modal-configuracao {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background-color: rgba(0,0,0,0.5);
-      z-index: 1000;
-      justify-content: center;
-      align-items: center;
-    }
-    .modal-configuracao.active {
-      display: flex;
-    }
-    .modal-conteudo-config {
-      background-color: #fff;
-      padding: 1rem;
-      border-radius: 8px;
-      width: 90%;
-      max-width: 500px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    .modal-cabecalho {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.5rem;
-    }
-    .fechar-modal-config {
-      font-size: 1.25rem;
-      cursor: pointer;
-    }
-    .grupo-input {
-      margin-bottom: 0.5rem;
-    }
-    .grupo-input label {
-      display: block;
-      margin-bottom: 0.25rem;
-      font-weight: 600;
-    }
-    .grupo-input input,
-    .grupo-input textarea {
-      width: 100%;
-      padding: 0.5rem;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-    .grupo-input textarea {
-      min-height: 80px;
-      max-height: 150px;
-      resize: vertical;
-    }
-    .modal-conteudo-config .actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 0.5rem;
-      margin-top: 0.5rem;
-    }
-    .btn-salvar-config {
-      background-color: #d81b60;
-      color: #fff;
-      border: none;
-      padding: 0.5rem 1rem;
-      font-size: 0.9rem;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .btn-salvar-config:hover {
-      background-color: #b21853;
-    }
-
-    /* Modal principal */
-#modalQrCode {
+Estilos do modal de configuração
+============================== */
+.modal-configuracao {
   display: none;
   position: fixed;
-  z-index: 9999;
-  left: 0;
-  top: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.6);
+  inset: 0;
+  background-color: rgba(0,0,0,0.5);
+  z-index: 1000;
   justify-content: center;
   align-items: center;
 }
-
-/* Ativa o modal */
-#modalQrCode.ativo {
+.modal-configuracao.active {
   display: flex;
 }
-
-/* Caixa interna do conteúdo */
-#modalQrCode .conteudo-modal {
-  background: #ffffff;
-  padding: 24px 32px;
-  border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-  max-width: 95%;
-  width: fit-content;
-  max-height: 90vh;
-  overflow-y: auto;
-  text-align: center;
-  font-family: "Segoe UI", sans-serif;
+.modal-conteudo-config {
+  background-color: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
+
+.fechar-modal-config {
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.grupo-input label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+.grupo-input input,
+.grupo-input textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+.grupo-input textarea {
+  min-height: 80px;
+  max-height: 150px;
+  resize: vertical;
+}
+
+.btn-salvar-config {
+  background-color: #d81b60;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-salvar-config:hover {
+  background-color: #b21853;
+}
+
 
 /* Título */
 #modalQrCode h3 {
-  font-size: 1.4rem;
+  font-size: 2rem;
   margin-bottom: 20px;
   color: #222;
-}
-
-/* Botão de fechar */
-#modalQrCode .fechar-modal {
-  position: absolute;
-  top: 12px;
-  right: 20px;
-  font-size: 24px;
-  cursor: pointer;
-  color: #555;
-  transition: color 0.2s ease;
-}
-
-#modalQrCode .fechar-modal:hover {
-  color: #d00;
-}
-
-/* Área dos QR Codes */
-#qrcodeContainer {
-  display: flex;
-  gap: 24px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 24px;
-}
-
-/* Cada bloco de QR Code */
-.qrcode-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.qrcode-wrapper .mesa-label {
-  margin-top: 10px;
-  font-weight: 600;
-  font-size: 1rem;
-  color: #333;
-}
-
-/* Controles de quantidade + imprimir */
-.controles-qrcode {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.controles-qrcode label {
-  font-weight: 500;
-  font-size: 0.95rem;
-  color: #444;
 }
 
 .controles-qrcode input[type="number"] {
@@ -810,6 +544,3 @@ input[type=number]::-webkit-outer-spin-button {
   transition: background-color 0.2s ease;
 }
 
-.controles-qrcode button:hover {
-  background-color: #000000;
-}

@@ -15,13 +15,16 @@
 
   <!-- CABEÇALHO -->
   <header class="header">
+    <button id="cardapio-btn">Cardápio ▼</button>
     <h1 class="titulo">Bem-vindo(a) ao Sistema</h1>
-    <button id="profile-btn">Perfil ▼</button>
+    <div>
+      <button id="btnGerarQR">QR Code</button>
+      <button id="profile-btn">Perfil ▼</button>
+    </div>
   </header>
 
   <!-- CARDÁPIO -->
   <div class="cardapio-menu">
-    <button id="cardapio-btn">Cardápio ▼</button>
     <div id="dropdownCardapio" class="dropdown-cardapio hidden">
       <button data-categoria="bebidas" class="btn-categoria">Bebidas</button>
       <button data-categoria="carnes" class="btn-categoria">Carnes</button>
@@ -35,22 +38,11 @@
   <!-- CONTAINER DE ITENS -->
   <div id="itensContainer" class="itens-container"></div>
 
-  <!-- SEÇÃO DE GARÇONS -->
-  <section id="garconsSection">
-    <h2>Adicionar Garçons</h2>
-    <div id="controleGarcons">
-      <input type="number" id="quantidadeGarcons" value="1" min="1" />
-      <button id="btnMaisGarcom">+</button>
-      <button id="btnMenosGarcom">-</button>
-    </div>
-    <div id="formularioGarcons"></div>
-  </section>
-
   <!-- MODAL QR CODE -->
-  <div id="modalQrCode" class="modal">
+  <div id="modalQrCode" class="modal hidden">
     <div class="conteudo-modal">
       <span class="fechar-modal" id="fecharModal">&times;</span>
-      <h3>QR Code do Garçom</h3>
+      <h3>QR Code</h3>
 
       <!-- CONTROLES ACIMA DOS QRCODES -->
       <div class="controles-qrcode">
@@ -73,7 +65,7 @@
   <script src="../java/home.js"></script>
   <script src="../java/cardapio.js"></script>
 
-  <!-- CONTROLE DE MODAIS -->
+  <!-- CONTROLE DE MODAIS E BROADCAST -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const modalConfig = document.getElementById('modalConfiguracao');
@@ -90,12 +82,19 @@
         });
       }
 
+      // QR Code
       const modalQr = document.getElementById('modalQrCode');
       const btnFecharQr = modalQr.querySelector('#fecharModal');
       btnFecharQr.addEventListener('click', () => {
         modalQr.classList.add('hidden');
       });
 
+      const btnQrCode = document.getElementById('btnQrCode');
+      btnQrCode.addEventListener('click', () => {
+        modalQr.classList.remove('hidden');
+      });
+
+      // Canal de sincronização de status de visibilidade
       if ('BroadcastChannel' in window) {
         window.canalStatus = new BroadcastChannel('cardapio_channel');
         canalStatus.onmessage = event => {

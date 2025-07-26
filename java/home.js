@@ -11,7 +11,6 @@ class SistemaCardapio {
     this.itemConfiguracao = null;
     this.dadosRestaurante = {};
     this.categoriaAtiva = null;
-    this.currentGarcomId = null;
     this.MODEL_BASE_URL = 'https://ar-cardapio-models.s3.amazonaws.com/';
     this.ARQUIVO_CONFIG_CATEGORIAS = `${this.MODEL_BASE_URL}configuracoes/${this.nomeRestaurante}.json`;
     this.ARQUIVO_CONFIG_ITENS = `${this.MODEL_BASE_URL}configuracoes/${this.nomeRestaurante}-itens.json`;
@@ -22,8 +21,7 @@ class SistemaCardapio {
     this.inicializarModalConfiguracao();
     this.inicializarModalPreview3D();
     this.configurarEventosCardapio();
-    this.setupCadastroGarcons();
-    this.setupQrCodeGarcons();
+    this.setupQrCode(); // Atualizado para versão simplificada
 
     // ------------------------------
     // Sincronização com o app AR
@@ -35,6 +33,10 @@ class SistemaCardapio {
     // Carregamento inicial de configurações de categorias e itens
     // ------------------------------
     this.carregarConfiguracoesIniciais();
+
+    this.previewFecharTimeout = null;
+    this.previewItemAtual = null;
+
   }
 
   // ==============================
@@ -76,17 +78,15 @@ class SistemaCardapio {
       event.stopPropagation();
     });
 
-    // ADICIONE ESTE CÓDIGO NOVAMENTE (com modificações):
     const inputValor = this.modalConfig.querySelector('#inputValor');
     const inputDescricao = this.modalConfig.querySelector('#inputDescricao');
 
-    // Mantém APENAS a formatação (sem auto-save)
+    // Formatação monetária
     inputValor.addEventListener('input', (event) => {
       this.formatarValorMonetario(event);
     });
 
-    // NOVO EVENT LISTENER PARA O BOTÃO SALVAR:
-    // NOVO EVENT LISTENER PARA O BOTÃO SALVAR:
+    // Event listener para o botão Salvar
     this.modalConfig.querySelector('#btnSalvarModal').addEventListener('click', async (e) => {
       e.preventDefault();
       
@@ -94,7 +94,6 @@ class SistemaCardapio {
         const salvou = await this.salvarConfiguracao(true);
         if (salvou) {
           this.modalConfig.style.display = 'none';
-          // Adicione qualquer feedback visual de sucesso aqui se necessário
         }
       } catch (error) {
         console.error('Erro ao salvar:', error);
@@ -102,10 +101,10 @@ class SistemaCardapio {
       }
     });
 
-    // MODIFIQUE O LISTENER DO BOTÃO FECHAR (X):
+    // Listener do botão fechar (X)
     this.modalConfig.querySelector('.close-edicao').addEventListener('click', () => {
       this.modalConfig.style.display = 'none';
-      this.itemConfiguracao = null; // Reseta o item sendo configurado
+      this.itemConfiguracao = null;
     });
   }
 
@@ -184,14 +183,17 @@ class SistemaCardapio {
           this.mostrarItens(categoria);
           container.style.display = 'flex';
           
-          document.querySelectorAll(`.item-box[data-categoria="${categoria}"]`).forEach(item => {item.classList.remove('desativado');
+          document.querySelectorAll(`.item-box[data-categoria="${categoria}"]`).forEach(item => {
+            item.classList.remove('desativado');
           });
         }
       });
 
       // Efeito hover
       button.addEventListener('mouseenter', () => {
-        if (!button.classList.contains('desativado') && this.categoriaAtiva !== categoria) { this.mostrarItens(categoria);}
+        if (!button.classList.contains('desativado') && this.categoriaAtiva !== categoria) {
+          this.mostrarItens(categoria);
+        }
       });
     });
   }
@@ -216,7 +218,7 @@ class SistemaCardapio {
       box.textContent = nome;
       box.setAttribute('data-categoria', categoria);
       box.style.animationDelay = `${index * 0.1}s`;
-      box.setAttribute('data-nome', nome.toLowerCase().replace(/\s+/g,'_'));
+      box.setAttribute('data-nome', nome.toLowerCase().replace(/\s+/g, '_'));
 
       // Verifica estado no localStorage
       const idItem = `itemEstado_${categoria}_${nome}`;
@@ -251,16 +253,30 @@ class SistemaCardapio {
       });
 
       box.addEventListener('mouseleave', () => {
-        // Delay para permitir que o usuário vá com o mouse até o preview
-        setTimeout(() => {
-          // Se o mouse NÃO estiver dentro do preview, esconde
+        this.previewFecharTimeout = setTimeout(() => {
           if (!this.modelModal.matches(':hover')) {
             this.modelModal.style.display = 'none';
             this.modelModal.innerHTML = '';
+            this.previewItemAtual = null;
           }
         }, 300);
       });
 
+      box.addEventListener('mouseenter', () => {
+        if (box.classList.contains('desativado')) return;
+
+        // Cancela qualquer tentativa anterior de fechar
+        if (this.previewFecharTimeout) {
+          clearTimeout(this.previewFecharTimeout);
+        }
+
+        // Garante que só mostra se for um novo item
+        const itemAtual = `${categoria}/${nome}`;
+        if (this.previewItemAtual !== itemAtual) {
+          this.previewItemAtual = itemAtual;
+          this.mostrarPreview3D(box, categoria, nome);
+        }
+      });
 
       wrapper.appendChild(box);
       wrapper.appendChild(botaoConfigurar);
@@ -296,15 +312,15 @@ class SistemaCardapio {
       </a-scene>
     `;
 
-    // ============ ZOOM COM SCROLL DO MOUSE ============
+    // Controle de zoom com scroll do mouse
     this.modelModal.onwheel = (e) => {
       e.preventDefault();
 
       const zoomStep = 0.1;
       if (e.deltaY < 0) {
-        this.escalaAtual += zoomStep; // Scroll para cima: aumenta
+        this.escalaAtual += zoomStep;
       } else {
-        this.escalaAtual = Math.max(0.1, this.escalaAtual - zoomStep); // Scroll para baixo: diminui
+        this.escalaAtual = Math.max(0.1, this.escalaAtual - zoomStep);
       }
 
       const model = document.getElementById('previewModel');
@@ -314,17 +330,17 @@ class SistemaCardapio {
       }
     };
 
-    // Controle de movimento linear com botão direito
+    // Controle de movimento com botão direito
     let isRightMouseDown = false;
     let lastMouseX = 0;
     let lastMouseY = 0;
 
     const modelEntity = this.modelModal.querySelector('a-entity');
 
-    this.modelModal.addEventListener('contextmenu', e => e.preventDefault()); // bloqueia menu direito
+    this.modelModal.addEventListener('contextmenu', e => e.preventDefault());
 
     this.modelModal.addEventListener('mousedown', (e) => {
-      if (e.button === 2) { // botão direito
+      if (e.button === 2) {
         isRightMouseDown = true;
         lastMouseX = e.clientX;
         lastMouseY = e.clientY;
@@ -346,84 +362,76 @@ class SistemaCardapio {
       lastMouseX = e.clientX;
       lastMouseY = e.clientY;
 
-      // Obtém a posição atual e aplica o movimento
       const currentPos = modelEntity.getAttribute('position');
       modelEntity.setAttribute('position', {
         x: currentPos.x + deltaX,
-        y: currentPos.y - deltaY, // invertido porque mover o mouse para cima reduz y
+        y: currentPos.y - deltaY,
         z: currentPos.z
       });
     });
-
-}
+  }
 
   async salvarConfiguracao(confirmado = false) {
-  // Só salva se for chamado com confirmado=true e tiver um item selecionado
-  if (!this.itemConfiguracao || !confirmado) {
-    return false; // Retorna false quando não salva
-  }
-
-  try {
-    const inputValor = this.modalConfig.querySelector('#inputValor');
-    const inputDescricao = this.modalConfig.querySelector('#inputDescricao');
-    
-    // Validação dos campos
-    if (!inputValor || !inputDescricao) {
-      throw new Error('Campos de configuração não encontrados');
+    if (!this.itemConfiguracao || !confirmado) {
+      return false;
     }
 
-    const valorTexto = inputValor.value;
-    const preco = parseFloat(valorTexto.replace(/\./g, '').replace(',', '.')) || 0;
-    const descricao = inputDescricao.value.trim();
+    try {
+      const inputValor = this.modalConfig.querySelector('#inputValor');
+      const inputDescricao = this.modalConfig.querySelector('#inputDescricao');
+      
+      if (!inputValor || !inputDescricao) {
+        throw new Error('Campos de configuração não encontrados');
+      }
 
-    const [categoria, nomeProduto] = this.itemConfiguracao.split('/');
-    const nomeArquivo = `${nomeProduto}.json`;
-    
-    const dadosAtualizados = {
-      preco: preco,
-      descricao: descricao,
-      ultimaAtualizacao: new Date().toISOString()
-    };
+      const valorTexto = inputValor.value;
+      const preco = parseFloat(valorTexto.replace(/\./g, '').replace(',', '.')) || 0;
+      const descricao = inputDescricao.value.trim();
 
-    const urlCompleta = `${this.MODEL_BASE_URL}informacao/${nomeArquivo}`;
+      const [categoria, nomeProduto] = this.itemConfiguracao.split('/');
+      const nomeArquivo = `${nomeProduto}.json`;
+      
+      const dadosAtualizados = {
+        preco: preco,
+        descricao: descricao,
+        ultimaAtualizacao: new Date().toISOString()
+      };
 
-    const resposta = await fetch(urlCompleta, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-amz-acl': 'bucket-owner-full-control'
-      },
-      body: JSON.stringify(dadosAtualizados)
-    });
+      const urlCompleta = `${this.MODEL_BASE_URL}informacao/${nomeArquivo}`;
 
-    if (!resposta.ok) {
-      throw new Error(`Erro ${resposta.status}: ${await resposta.text()}`);
+      const resposta = await fetch(urlCompleta, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-amz-acl': 'bucket-owner-full-control'
+        },
+        body: JSON.stringify(dadosAtualizados)
+      });
+
+      if (!resposta.ok) {
+        throw new Error(`Erro ${resposta.status}: ${await resposta.text()}`);
+      }
+
+      this.dadosRestaurante[this.itemConfiguracao] = dadosAtualizados;
+      return true;
+      
+    } catch (erro) {
+      console.error('Falha ao salvar configuração:', erro);
+      throw erro;
     }
-
-    // Atualiza o cache local
-    this.dadosRestaurante[this.itemConfiguracao] = dadosAtualizados;
-    return true; // Retorna true quando salva com sucesso
-    
-  } catch (erro) {
-    console.error('Falha ao salvar configuração:', erro);
-    throw erro; // Re-lança o erro para ser tratado pelo chamador
   }
-}
 
   // ==============================
   // 4. CONFIGURAÇÃO DE ITENS (Modal)
   // ==============================
 
   async abrirModalConfiguracao(categoria, nome) {
-    // 1. Formata o nome do arquivo JSON
     const nomeFormatado = nome.toLowerCase().replace(/\s+/g, '_');
     this.itemConfiguracao = `${categoria}/${nomeFormatado}`;
     const arquivoJson = `${nomeFormatado}.json`;
     
-    // 2. Atualiza o título do modal
     this.modalConfig.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
     
-    // 3. Tenta carregar os dados do S3
     let dadosProduto = { preco: 0, descricao: '' };
     const urlJson = `${this.MODEL_BASE_URL}informacao/${arquivoJson}?v=${Date.now()}`;
     
@@ -443,40 +451,19 @@ class SistemaCardapio {
       console.error('Falha ao carregar configuração:', erro);
     }
     
-    // 4. Preenche os campos do modal
     const inputValor = this.modalConfig.querySelector('#inputValor');
     const inputDescricao = this.modalConfig.querySelector('#inputDescricao');
     
-    // Formata o preço para exibição
     inputValor.value = typeof dadosProduto.preco === 'number' 
       ? dadosProduto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
       : '0,00';
     
-    // Preenche a descrição (ou string vazia se não existir)
     inputDescricao.value = dadosProduto.descricao || '';
     
-    // 5. Atualiza o cache local
     this.dadosRestaurante[this.itemConfiguracao] = dadosProduto;
     
-    // 6. Exibe o modal
     this.modalConfig.style.display = 'flex';
   }
-
-  // No seu home.js, atualize a função salvarConfiguracao:
-  async testarConexaoS3() {
-  try {
-    const urlTeste = `${this.MODEL_BASE_URL}test-connection.txt`;
-    const resposta = await fetch(urlTeste, {
-      method: 'PUT',
-      headers: {'Content-Type': 'text/plain'},
-      body: 'teste de conexão'
-    });
-    
-    console.log('Teste S3:', resposta.status, await resposta.text());
-  } catch (erro) {
-    console.error('Falha no teste S3:', erro);
-  }
-}
 
   // ==============================
   // 5. UTILITÁRIOS
@@ -573,7 +560,8 @@ class SistemaCardapio {
     try {
       // Carrega configurações de categoria
       const respostaCategorias = await fetch(`${this.ARQUIVO_CONFIG_CATEGORIAS}?v=${Date.now()}`);
-      if (respostaCategorias.ok) {const categorias = await respostaCategorias.json();
+      if (respostaCategorias.ok) {
+        const categorias = await respostaCategorias.json();
         Object.entries(categorias).forEach(([categoria, visivel]) => {
           const botao = document.querySelector(`#dropdownCardapio button[data-categoria="${categoria}"]`);
           if (botao && !visivel) {
@@ -600,135 +588,26 @@ class SistemaCardapio {
   }
 
   // ==============================
-  // 9. CADASTRO DE GARÇONS
+  // 9. GERADOR DE QR CODE (Versão Simplificada)
   // ==============================
 
-  setupCadastroGarcons() {
-    const inputQuantidade = document.getElementById('quantidadeGarcons');
-    const botaoMais = document.getElementById('btnMaisGarcom');
-    const botaoMenos = document.getElementById('btnMenosGarcom');
-    const containerFormularios = document.getElementById('formularioGarcons');
-
-    // Função para formatar número de celular
-    const formatarCelular = (valor) => {
-      valor = valor.replace(/\D/g, '');
-      valor = valor.substring(0, 11);
-      if (valor.length > 6) {
-        valor = valor.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, '($1) $2-$3');
-      } else if (valor.length > 2) {
-        valor = valor.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
-      } else if (valor.length > 0) {
-        valor = valor.replace(/^(\d{0,2})/, '($1');
-      }
-      return valor;
-    };
-
-    // Valida os campos do formulário
-    const validarFormulario = (formulario) => {
-      const inputNome = formulario.querySelector('.nome-garcom');
-      const inputTelefone = formulario.querySelector('.tel-garcom');
-      const botaoQR = formulario.querySelector('.btn-qr');
-      
-      const nomeValido = inputNome.value.trim().length > 0;
-      const telefoneValido = inputTelefone.value.replace(/\D/g, '').length >= 10;
-      
-      botaoQR.disabled = !(nomeValido && telefoneValido);
-    };
-
-    // Gera os formulários de garçons
-    const gerarFormularios = (quantidade) => {
-      const dadosSalvos = {};
-      
-      // Coleta dados existentes
-      containerFormularios.querySelectorAll('.form-garcom').forEach(formulario => {
-        const id = formulario.querySelector('.nome-garcom').dataset.id;
-        dadosSalvos[id] = {nome: formulario.querySelector('.nome-garcom').value,telefone: formulario.querySelector('.tel-garcom').value};
-      });
-
-      containerFormularios.innerHTML = '';
-      
-      for (let i = 1; i <= quantidade; i++) {
-        const formulario = document.createElement('div');
-        formulario.className = 'form-garcom';
-        
-        const dados = dadosSalvos[i] || { nome: '', telefone: '' };
-        
-        formulario.innerHTML = `
-          <label>Garçom ${i}:</label><br>
-          <input type="text" class="nome-garcom" data-id="${i}" placeholder="Nome" value="${dados.nome}">
-          <input type="tel" class="tel-garcom" data-id="${i}" maxlength="15" placeholder="Telefone" value="${dados.telefone}">
-          <button class="btn-qr" data-id="${i}" disabled>Gerar QR Code</button>
-        `;
-        
-        containerFormularios.appendChild(formulario);
-        
-        const inputTelefone = formulario.querySelector('.tel-garcom');
-        
-        // Adiciona formatação ao telefone
-        inputTelefone.addEventListener('input', (evento) => {
-          const posicaoCursor = inputTelefone.selectionStart;
-          const valorAnterior = inputTelefone.value;
-          
-          inputTelefone.value = formatarCelular(inputTelefone.value);
-          
-          // Ajusta a posição do cursor após formatação
-          const diferenca = inputTelefone.value.length - valorAnterior.length;
-          inputTelefone.setSelectionRange(posicaoCursor + diferenca, posicaoCursor + diferenca);
-          
-          validarFormulario(formulario);
-        });
-        
-        // Validação ao digitar nome
-        formulario.querySelector('.nome-garcom').addEventListener('input', () => {validarFormulario(formulario)});
-        
-        // Validação inicial
-        validarFormulario(formulario);
-      }
-    };
-
-    // Event listeners
-    inputQuantidade.addEventListener('change', () => {
-      let valor = parseInt(inputQuantidade.value);
-      if (isNaN(valor) || valor < 1) valor = 1;
-      inputQuantidade.value = valor;
-      gerarFormularios(valor);
-    });
-
-    botaoMais.addEventListener('click', () => {
-      inputQuantidade.value = parseInt(inputQuantidade.value) + 1;
-      inputQuantidade.dispatchEvent(new Event('change'));
-    });
-
-    botaoMenos.addEventListener('click', () => {
-      inputQuantidade.value = Math.max(1, parseInt(inputQuantidade.value) - 1);
-      inputQuantidade.dispatchEvent(new Event('change'));
-    });
-
-    // Inicializa com 1 formulário
-    gerarFormularios(1);
-  }
-
-  // ==============================
-  // 10. QR CODES DE GARÇONS
-  // ==============================
-
-  setupQrCodeGarcons() {
+  setupQrCode() {
     const modalQR = document.getElementById('modalQrCode');
     const containerQR = document.getElementById('qrcodeContainer');
     const botaoFechar = modalQR.querySelector('.fechar-modal');
-    const formularios = document.getElementById('formularioGarcons');
     const inputQuantidade = document.getElementById('qtdQr');
     const botaoMais = document.getElementById('aumentarQr');
     const botaoMenos = document.getElementById('diminuirQr');
     const botaoImprimir = document.getElementById('imprimirQr');
+    const botaoGerarQR = document.getElementById('btnGerarQR');
 
-    if (!modalQR || !containerQR || !botaoFechar || !formularios || !inputQuantidade || !botaoMais || !botaoMenos || !botaoImprimir) {
+    if (!modalQR || !containerQR || !botaoFechar || !inputQuantidade || !botaoMais || !botaoMenos || !botaoImprimir || !botaoGerarQR) {
       console.error('Elementos do QR Code não encontrados.');
       return;
     }
 
-    // Gera QR Codes
-    const gerarQRCodes = (nome, quantidade) => {
+    // Gera QR Codes diretamente
+    const gerarQRCodes = (quantidade) => {
       containerQR.innerHTML = '';
       
       for (let i = 1; i <= quantidade; i++) {
@@ -747,41 +626,26 @@ class SistemaCardapio {
         wrapper.appendChild(label);
         containerQR.appendChild(wrapper);
         
-        // Gera o QR Code dinamicamente com versão anti-cache
+        // Gera o QR Code sem necessidade de dados do garçom
         new QRCode(divQR, {
-          // Texto (URL) codificado no QR Code — aqui usamos a URL do app com um parâmetro ?v= para forçar atualização
           text: `https://site-arcardapio.s3.us-east-1.amazonaws.com/app/app.html?v=${Date.now()}`,
-
-          width: 200, // Largura do QR Code em pixels
-          height: 200, // Altura do QR Code em pixels
-          colorDark: "#000000", // Cor dos quadradinhos (pixels escuros) do QR Code
-          colorLight: "#ffffff", // Cor de fundo do QR Code
-
-          // Nível de correção de erro: 
-          correctLevel: QRCode.CorrectLevel.H  // H = Alta (recupera até 30% do QR Code mesmo com dano ou sujeira)
+          width: 200,
+          height: 200,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H
         });
       }
     };
 
-    // Atualiza QR Codes quando muda a quantidade
+    // Atualiza QR Codes baseado na quantidade
     const atualizarQRCodes = () => {
-      if (!this.currentGarcomId) return;
-      
-      const formulario = formularios.querySelector(`.form-garcom .nome-garcom[data-id="${this.currentGarcomId}"]`)?.closest('.form-garcom');
-      if (!formulario) return;
-      
-      const nome = formulario.querySelector('.nome-garcom').value.trim() || `Garçom ${this.currentGarcomId}`;
       const quantidade = parseInt(inputQuantidade.value) || 1;
-      
-      gerarQRCodes(nome, quantidade);
+      gerarQRCodes(quantidade);
     };
 
-    // Geração inicial de QR Code
-    formularios.addEventListener('click', (evento) => {
-      const botaoQR = evento.target.closest('.btn-qr');
-      if (!botaoQR || botaoQR.disabled) return;
-      
-      this.currentGarcomId = botaoQR.dataset.id;
+    // Geração de QR Code ao clicar no botão principal
+    botaoGerarQR.addEventListener('click', () => {
       atualizarQRCodes();
       modalQR.classList.add('ativo');
     });
@@ -796,14 +660,13 @@ class SistemaCardapio {
     
     botaoMenos.addEventListener('click', () => {
       inputQuantidade.value = Math.max(1, (parseInt(inputQuantidade.value) || 1) - 1);
-      inputQuantidade.dispatchEvent(new Event('input'));
+      inputQuantidade.dispatchEvent(new Event('input')); // Corrigido: aspas simples normais
     });
 
     // Fechar modal
     botaoFechar.addEventListener('click', () => {
       modalQR.classList.remove('ativo');
       containerQR.innerHTML = '';
-      this.currentGarcomId = null;
     });
 
     // Fechar ao clicar fora
@@ -811,7 +674,6 @@ class SistemaCardapio {
       if (evento.target === modalQR) {
         modalQR.classList.remove('ativo');
         containerQR.innerHTML = '';
-        this.currentGarcomId = null;
       }
     });
 
@@ -859,7 +721,6 @@ class SistemaCardapio {
       janelaImpressao.document.close();
       janelaImpressao.focus();
       
-      // Espera um pouco antes de imprimir para garantir que o conteúdo foi carregado
       setTimeout(() => {
         janelaImpressao.print();
         janelaImpressao.close();
