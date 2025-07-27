@@ -79,14 +79,26 @@
 
   <!-- Modal da Área do Cliente -->
   <div id="modal" class="modal hidden">
-    <div class="modal-content">
-      <span id="fecharModal" class="fechar">&times;</span>
-      <h2>Área do cliente</h2>
-      <p>Para acessar, clique em acessar. Se ainda não tem conta, clique em criar cadastro.</p>
+  <div class="modal-content">
+    <span id="fecharModal" class="fechar">&times;</span>
+    <h2 class="titulo-modal">Área do cliente</h2>
+    <p class="texto-modal">Para acessar, clique em acessar. Se ainda não tem conta, clique em criar cadastro.</p>
+
+    <div class="botao-video">
       <button onclick="window.location.href='html/login.html'">Acessar</button>
+      <video autoplay loop muted playsinline class="video-fundo-botao">
+        <source src="../videos/botao-index.mp4" type="video/mp4" />
+      </video>
+    </div>
+
+    <div class="botao-video">
       <button onclick="window.location.href='html/cadastro.html'">Criar cadastro</button>
+      <video autoplay loop muted playsinline class="video-fundo-botao">
+        <source src="../videos/botao-index.mp4" type="video/mp4" />
+      </video>
     </div>
   </div>
+</div>
 
   <footer>
     &copy; 2025 ARCardápio. Todos os direitos reservados.
