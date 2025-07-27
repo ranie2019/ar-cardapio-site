@@ -48,29 +48,32 @@
     <div class="container-form">
       <span class="subtitulo-form">Vem para <strong>AR Cardapio</strong></span>
       <h2>Entre em contato conosco</h2>
-      <form action="https://formsubmit.co/ranie.black29@gmail.com" method="POST">
-        <!-- redirecionamento após envio -->
-        <input type="hidden" name="_next" value="https://google.com">
-        <!-- desabilita captcha -->
-        <input type="hidden" name="_captcha" value="false">
+      <form id="form-contato">
 
-        <div class="linha">
-          <input type="text" name="Nome" placeholder="Nome" required />
-          <input type="email" name="Email" placeholder="Email" required />
-        </div>
-        <div class="linha">
-          <input type="tel" name="Telefone" placeholder="Telefone" required />
-          <select name="Setor da empresa" required>
-            <option value="">Setor da empresa</option>
-            <option value="Restaurantes e Lanchonetes">Restaurantes e Lanchonetes</option>
-            <option value="Padarias">Padarias</option>
-            <option value="Cafeterias">Cafeterias</option>
-            <option value="Outro">Outro</option>
-          </select>
-        </div>
-        <textarea name="Observações" placeholder="Observações"></textarea>
-        <button type="submit" class="btn-atendimento">SOLICITAR ATENDIMENTO</button>
-      </form>
+      <div id="mensagem-sucesso" style="display:none; color: #00ffc8; margin-top: 20px; font-weight: bold;">
+        Mensagem enviada com sucesso! Entraremos em contato em breve.
+      </div>
+
+      <!-- Campos visíveis -->
+      <div class="linha">
+        <input type="text" name="Nome" placeholder="Nome" required />
+        <input type="email" name="Email" placeholder="Email" required />
+      </div>
+      <div class="linha">
+        <input type="tel" name="Telefone" placeholder="Telefone" required />
+        <select name="Setor da empresa" required>
+          <option value="">Setor da empresa</option>
+          <option value="Restaurantes e Lanchonetes">Restaurantes e Lanchonetes</option>
+          <option value="Padarias">Padarias</option>
+          <option value="Cafeterias">Cafeterias</option>
+          <option value="Outro">Outro</option>
+        </select>
+      </div>
+      <textarea name="Observações" placeholder="Observações"></textarea>
+
+      <button type="submit" class="btn-atendimento">SOLICITAR ATENDIMENTO</button>
+    </form>
+
     </div>
   </section>
 

@@ -83,7 +83,7 @@ footer {
       color: #888;
       font-size: 0.9rem;
     }
-    
+
 .plano button:hover {background-color: #00e6b5;}
 
 .plano button {
@@ -160,26 +160,29 @@ header {
       transition: transform 0.3s, box-shadow 0.3s, border 0.3s;
     }
 
-body {
-      background: linear-gradient(180deg, #0f0f0f, #1c1c1c);
-      color: #fff;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
+body, html {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* Oculta rolagem horizontal */
+  width: 100%;
+}
 
 body {
-  background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+  background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
               url('../imagens/bgindex.jpg') no-repeat center center fixed;
   background-size: cover;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% auto; /* ou 'cover', mas certifique-se do comportamento */
+  font-family: 'Inter', sans-serif;
   color: #fff;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-family: 'Inter', sans-serif;
 }
+
 
 .sobre {
   text-align: center;
@@ -268,4 +271,10 @@ body {
 
 .contato button:hover {
   background-color: #e68900;
+}
+
+
+.btn-acesso:hover {
+  box-shadow: 0 0 15px #00ffc8, 0 0 25px #00ffc8;
+  transform: scale(1.04);
 }
