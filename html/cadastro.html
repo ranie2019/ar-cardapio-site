@@ -188,13 +188,44 @@
     form.addEventListener('input', validarCampos);
 
     // Redireciona para planos.html ao cadastrar
-    form.addEventListener('submit', function (e) {
-      e.preventDefault(); // Impede o envio padrão do formulário
-      if (!botao.disabled) { // Verifica se o botão está habilitado antes de redirecionar
-        // Aqui você poderia salvar os dados ou fazer uma requisição
-        window.location.href = "../html/plano.html"; // Redireciona para a página planos.html
-      }
+    form.addEventListener('submit', async function (e) {
+  e.preventDefault(); // Impede o envio padrão
+
+  if (botao.disabled) return;
+
+  const dados = {
+    empresa: document.getElementById('empresa').value.trim(),
+    email: document.getElementById('email').value.trim(),
+    telefone: document.getElementById('telefone').value.trim(),
+    cnpj: document.getElementById('cnpj').value.trim(),
+    senha: document.getElementById('senha').value.trim()
+  };
+
+  try {
+    const resposta = await fetch("https://k61hfu0r63.execute-api.us-east-1.amazonaws.com/dev/registrar", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(dados)
     });
+
+    if (!resposta.ok) {
+      throw new Error("Erro ao salvar no banco");
+    }
+
+    const resultado = await resposta.json();
+    alert(resultado.message || "Cadastro realizado com sucesso!");
+
+    // Redireciona se tudo ocorreu bem
+    window.location.href = "../html/plano.html";
+
+  } catch (erro) {
+    console.error("Erro no cadastro:", erro);
+    alert("Erro ao cadastrar. Tente novamente.");
+  }
+});
+
   </script>
 </body>
 </html>

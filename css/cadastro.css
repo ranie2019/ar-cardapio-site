@@ -1,13 +1,120 @@
-/* A estrutura de cadastro é compartilhada com login */
-p {
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;              /* Força altura da tela */
+  overflow: hidden;           /* Remove a barra de rolagem */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+              url('../imagens/bgcadastro.jpeg') no-repeat center center fixed;
+  background-size: cover;
+  color: #fff;
+}
+
+.container {
+  background-color: rgba(0, 0, 0, 0.75);
+  border-radius: 16px;
+  padding: 40px;
+  width: 100%;
+  max-width: 800px;
+  box-shadow: 0 0 25px rgba(0, 255, 200, 0.15);
+}
+
+h2 {
+  text-align: center;
+  margin-bottom: 30px;
+  color: #00ffc8;
+  font-size: 2rem;
+  text-shadow: 0 0 6px rgba(0, 255, 200, 0.5);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  gap: 30px;
+  width: 100%;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.input-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+label {
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #fff;
+}
+
+input {
+  padding: 10px;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  background-color: #f1f1f1;
+  color: #000;
+}
+
+/* ✅ ESTILO DO BOTÃO CADASTRAR */
+button {
+  padding: 14px 24px;
+  font-size: 18px;
+  font-weight: bold;
+  background-color: #00ffc8;
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
   margin-top: 20px;
+  align-self: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+  box-shadow: 0 0 10px rgba(0, 255, 200, 0.5),
+              0 0 20px rgba(0, 255, 200, 0.4),
+              0 0 30px rgba(0, 255, 200, 0.3);
+  animation: glowCadBotao 2.5s infinite ease-in-out;
 }
 
-p a {
-  color: #c70039;
-  text-decoration: none;
+button:hover {
+  transform: scale(1.05);
+  background-color: #00e6b4;
+  box-shadow: 0 0 14px rgba(0, 255, 200, 0.8),
+              0 0 28px rgba(0, 255, 200, 0.6),
+              0 0 40px rgba(0, 255, 200, 0.4);
 }
 
-p a:hover {
-  text-decoration: underline;
+button:disabled {
+  background-color: #aaa;
+  color: #444;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+@keyframes glowCadBotao {
+  0% { box-shadow: 0 0 10px rgba(0, 255, 200, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(0, 255, 200, 0.6); }
+  100% { box-shadow: 0 0 10px rgba(0, 255, 200, 0.3); }
+}
+
+input:invalid {
+  border: 2px solid #ff6b6b;
+  background-color: #fff0f0;
+}
+
+input:focus:invalid {
+  outline: none;
+  box-shadow: 0 0 5px #ff6b6b;
 }
