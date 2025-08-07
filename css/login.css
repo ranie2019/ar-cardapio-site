@@ -26,10 +26,18 @@ body {
   box-shadow: 0 0 25px rgba(0, 255, 200, 0.15);
 }
 
+h1 {
+  text-align: center;
+  margin-bottom: 30px;
+  color: #00ffc8; /* Mesma cor dos links */
+  font-size: 2rem;
+  text-shadow: 0 0 6px rgba(0, 255, 200, 0.5);
+}
+
 h2 {
   text-align: center;
   margin-bottom: 30px;
-  color: #00ffc8;
+  color: #00ffc8; /* Mesma cor do botão e links */
   font-size: 2rem;
   text-shadow: 0 0 6px rgba(0, 255, 200, 0.5);
 }
@@ -120,16 +128,17 @@ input:focus:invalid {
 }
 
 .forgot-password {
-  margin-top: 35px;
+  margin-top: 20px; /* Reduzi a margem superior para ficar mais próximo do botão */
   text-align: center;
 }
 
 .forgot-password a {
-  color: #00ffc8;
+  color: #00ffc8; /* Mesma cor do Cadastre-se */
   text-decoration: none;
   font-weight: 500;
   font-size: 14px;
   transition: color 0.3s ease;
+  display: block; /* Para centralizar corretamente */
 }
 
 .forgot-password a:hover {
@@ -189,6 +198,27 @@ input:focus:invalid {
 
 .forgot-password a:hover,
 .container p a:hover {
+  color: #00e6b4;
+  text-decoration: underline;
+}
+
+.links-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px; /* Espaçamento menor entre os links */
+  margin-top: 15px; /* Espaço acima do primeiro link */
+}
+
+.links-container a {
+  color: #00ffc8;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+  transition: color 0.3s ease;
+}
+
+.links-container a:hover {
   color: #00e6b4;
   text-decoration: underline;
 }

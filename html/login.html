@@ -3,44 +3,53 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Página de acesso ao sistema">
   <title>Acesso - Sistema</title>
-
-  <!-- Estilo da página de login -->
   <link rel="stylesheet" href="../css/login.css" />
 </head>
 <body>
 
   <div class="login-wrapper">
     <div class="container">
-      <h2>Acesso ao Sistema</h2>
+      <h1>Acesso ao Sistema</h1>
 
-      <form id="form-login">
+      <form id="form-login" novalidate>
+        <div id="mensagem-erro" class="mensagem-erro" style="display: none;"></div>
+        
         <div class="input-container">
           <label for="email">E-mail:</label>
-          <input type="email" id="email" name="email" required placeholder="Digite seu e-mail" />
+          <input type="email" id="email" name="email" required 
+                 placeholder="Digite seu e-mail"
+                 autocomplete="username" />
         </div>
 
         <div class="input-container">
           <label for="senha">Senha:</label>
-          <input type="password" id="senha" name="senha" required placeholder="Digite sua senha" />
+          <input type="password" id="senha" name="senha" required 
+                 placeholder="Digite sua senha"
+                 minlength="6"
+                 autocomplete="current-password" />
         </div>
 
-        <!-- Botão Acessar com vídeo -->
-        <button class="botao-com-video" id="Acessar">
-          <video autoplay muted loop class="video-hover">
+        <button type="submit" class="botao-com-video" id="Acessar" aria-label="Acessar sistema">
+          <video autoplay muted loop playsinline class="video-hover" preload="auto" aria-hidden="true">
             <source src="../videos/login.mp4" type="video/mp4">
           </video>
           <span class="texto-botao">Acessar</span>
         </button>
       </form>
 
-      <div class="forgot-password">
-        <a href="../html/esqueci_senha.html">Esqueci minha senha</a>
+      <div class="links-container">
+        <a href="../html/esqueci_senha.html" class="link-acesso">Esqueci minha senha</a>
+        <p>Não tem uma conta? <a href="../html/cadastro.html" class="link-acesso">Cadastre-se</a></p>
       </div>
-
-      <p>Não tem uma conta? <a href="../html/cadastro.html">Cadastre-se</a></p>
     </div>
   </div>
-  <script src="../js/login.js"></script>
+
+  <noscript>
+    <p class="erro">Por favor, habilite o JavaScript para acessar o sistema.</p>
+  </noscript>
+
+  <script src="../java/login.js"></script>
 </body>
 </html>
