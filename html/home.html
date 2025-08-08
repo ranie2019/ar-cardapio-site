@@ -59,10 +59,10 @@
     <script>
       function logout() {
         localStorage.removeItem('authToken');
+        localStorage.removeItem('userEmail');
         window.location.href = "../html/login.html";
       }
     </script>
-
 
     <h1 class="titulo">Bem-vindo(a) ao Sistema</h1>
   </header>
@@ -141,24 +141,10 @@
     });
   </script>
 
+  <!-- RODAPÉ -->
   <footer>
     &copy; 2025 ARCardápio. Todos os direitos reservados.
   </footer>
-
-  <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const token = localStorage.getItem('authToken');
-
-    if (!token) {
-      // Redireciona para login se não houver token
-      alert("Você precisa estar logado para acessar esta página.");
-      window.location.href = "../html/login.html";
-    }
-
-    // (Opcional) Exibir mensagem ou carregar dados do usuário
-    console.log("Usuário autenticado com token:", token);
-  });
-</script>
 
 </body>
 </html>

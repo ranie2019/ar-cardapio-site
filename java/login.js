@@ -13,48 +13,49 @@ document.addEventListener('DOMContentLoaded', () => {
   const emailInput = document.getElementById('email');
   const senhaInput = document.getElementById('senha');
 
-  // Constantes - URL corrigida e verificada
-  const API_URL = 'https://8p9aawiikb.execute-api.us-east-1.amazonaws.com/dev/loginCliente';
-  const HOME_URL = '../html/home.html';
+  // Constantes
+  const API_URL = 'https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/loginCliente';
+  const HOME_URL = '../html/home.html'; // ou sistema.html, dependendo da sua lógica
   const TOKEN_KEY = 'authToken';
   const EMAIL_KEY = 'userEmail';
 
-  // Função para validar e-mail
+  // Validação de e-mail
   function validarEmail(email) {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(String(email).toLowerCase());
   }
 
-  // Função para mostrar erros
+  // Exibir erro
   function mostrarErro(mensagem) {
     if (!mensagemErro) return;
-    
+
     mensagemErro.textContent = mensagem;
     mensagemErro.style.display = 'block';
-    
+
     setTimeout(() => {
       mensagemErro.style.display = 'none';
     }, 5000);
   }
 
-  // Função para habilitar/desabilitar botão
+  // Ativar/desativar botão com texto de carregamento
   function toggleBotaoCarregamento(estaCarregando) {
     if (!botaoAcessar) return;
-    
+
     const textoBotao = botaoAcessar.querySelector('.texto-botao');
-    if (!textoBotao) return;
-    
+    if (textoBotao) {
+      textoBotao.textContent = estaCarregando ? 'Autenticando...' : 'Acessar';
+    }
+
     botaoAcessar.disabled = estaCarregando;
-    textoBotao.textContent = estaCarregando ? 'Autenticando...' : 'Acessar';
   }
 
-  // Evento de submit do formulário
+  // Submissão do formulário
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    
+
     if (mensagemErro) mensagemErro.style.display = 'none';
-    
-    const email = emailInput?.value.trim();
+
+    const email = emailInput?.value.trim().toLowerCase();
     const senha = senhaInput?.value.trim();
 
     if (!email || !senha) {
@@ -73,49 +74,48 @@ document.addEventListener('DOMContentLoaded', () => {
       const response = await fetch(API_URL, {
         method: 'POST',
         mode: 'cors',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Origin': 'https://site-arcardapio.s3.us-east-1.amazonaws.com'
+          'Accept': 'application/json'
         },
-        body: JSON.stringify({ 
-          email: String(email).toLowerCase(), 
-          senha 
-        })
+        body: JSON.stringify({ email, senha })
       });
 
-      // Verificação de erro de rede/CORS
       if (response.type === 'opaque' || response.type === 'error') {
-        throw new Error('Erro de conexão/CORS');
+        throw new Error('Erro de conexão ou CORS');
       }
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.mensagem || `Erro HTTP: ${response.status}`);
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || `Erro HTTP: ${response.status}`);
       }
 
-      if (data.sucesso && data.token) {
-        localStorage.setItem(TOKEN_KEY, data.token);
-        localStorage.setItem(EMAIL_KEY, email);
-        window.location.href = HOME_URL;
+      if (data.success && data.user?.token) {
+        localStorage.setItem('authToken', data.user.token);
+        localStorage.setItem('userEmail', data.user.email);
+        // Espera pequena para garantir que o armazenamento finalize antes do redirecionamento
+        setTimeout(() => {
+          window.location.href = HOME_URL;
+        }, 100); // 100 milissegundos
       } else {
-        throw new Error(data.mensagem || 'Autenticação falhou');
+        throw new Error('Autenticação falhou');
       }
-      
+      console.log('Token salvo, redirecionando para:', HOME_URL);
+
     } catch (error) {
       console.error('Erro no login:', error);
-      
-      const mensagem = error.message.includes('Failed to fetch') || error.message.includes('CORS')
-        ? "Erro de conexão com o servidor. Tente novamente mais tarde."
-        : error.message.includes('HTTP')
-          ? `Erro do servidor: ${error.message}`
-          : error.message || "E-mail ou senha incorretos.";
-      
+
+      const mensagem =
+        error.message.includes('fetch') || error.message.includes('CORS')
+          ? "Erro de conexão com o servidor. Tente novamente mais tarde."
+          : error.message.includes('HTTP')
+            ? `Erro do servidor: ${error.message}`
+            : error.message || "E-mail ou senha incorretos.";
+
       mostrarErro(mensagem);
-      
+
       if (senhaInput) senhaInput.value = '';
-      
     } finally {
       toggleBotaoCarregamento(false);
     }

@@ -5,8 +5,8 @@
 body {
   margin: 0;
   padding: 0;
-  height: 100vh;              /* Força altura da tela */
-  overflow: hidden;           /* Remove a barra de rolagem */
+  height: 100vh;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -26,18 +26,10 @@ body {
   box-shadow: 0 0 25px rgba(0, 255, 200, 0.15);
 }
 
-h1 {
+h1, h2 {
   text-align: center;
   margin-bottom: 30px;
-  color: #00ffc8; /* Mesma cor dos links */
-  font-size: 2rem;
-  text-shadow: 0 0 6px rgba(0, 255, 200, 0.5);
-}
-
-h2 {
-  text-align: center;
-  margin-bottom: 30px;
-  color: #00ffc8; /* Mesma cor do botão e links */
+  color: #00ffc8;
   font-size: 2rem;
   text-shadow: 0 0 6px rgba(0, 255, 200, 0.5);
 }
@@ -77,7 +69,17 @@ input {
   color: #000;
 }
 
-/* ✅ ESTILO DO BOTÃO CADASTRAR */
+input:invalid {
+  border: 2px solid #ff6b6b;
+  background-color: #fff0f0;
+}
+
+input:focus:invalid {
+  outline: none;
+  box-shadow: 0 0 5px #ff6b6b;
+}
+
+/* Botão padrão (ex: cadastro) */
 button {
   padding: 14px 24px;
   font-size: 18px;
@@ -117,35 +119,7 @@ button:disabled {
   100% { box-shadow: 0 0 10px rgba(0, 255, 200, 0.3); }
 }
 
-input:invalid {
-  border: 2px solid #ff6b6b;
-  background-color: #fff0f0;
-}
-
-input:focus:invalid {
-  outline: none;
-  box-shadow: 0 0 5px #ff6b6b;
-}
-
-.forgot-password {
-  margin-top: 20px; /* Reduzi a margem superior para ficar mais próximo do botão */
-  text-align: center;
-}
-
-.forgot-password a {
-  color: #00ffc8; /* Mesma cor do Cadastre-se */
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 14px;
-  transition: color 0.3s ease;
-  display: block; /* Para centralizar corretamente */
-}
-
-.forgot-password a:hover {
-  color: #00e6b4;
-  text-decoration: underline;
-}
-
+/* Botão com vídeo */
 .botao-com-video {
   position: relative;
   overflow: hidden;
@@ -156,10 +130,10 @@ input:focus:invalid {
   height: 60px;
   cursor: pointer;
   margin-top: 20px;
-  transition: transform 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.3s ease;
 }
 
 .botao-com-video:hover {
@@ -187,6 +161,16 @@ input:focus:invalid {
   text-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
 }
 
+/* Links: esqueci senha, cadastre-se, etc */
+.links-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  margin-top: 15px;
+}
+
+.links-container a,
 .forgot-password a,
 .container p a {
   color: #00ffc8;
@@ -196,29 +180,21 @@ input:focus:invalid {
   transition: color 0.3s ease;
 }
 
+.links-container a:hover,
 .forgot-password a:hover,
 .container p a:hover {
   color: #00e6b4;
   text-decoration: underline;
 }
 
-.links-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px; /* Espaçamento menor entre os links */
-  margin-top: 15px; /* Espaço acima do primeiro link */
-}
-
-.links-container a {
-  color: #00ffc8;
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 14px;
-  transition: color 0.3s ease;
-}
-
-.links-container a:hover {
-  color: #00e6b4;
-  text-decoration: underline;
+/* Mensagem de erro (exibição dinâmica via JS) */
+.mensagem-erro {
+  color: #ff6b6b;
+  background-color: #fff0f0;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  text-align: center;
+  font-weight: bold;
+  display: none;
 }
