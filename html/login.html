@@ -6,6 +6,7 @@
   <meta name="description" content="Página de acesso ao sistema">
   <title>Acesso - Sistema</title>
   <link rel="stylesheet" href="../css/login.css" />
+  <link rel="icon" href="../images/favicon.ico" type="image/x-icon" />
 </head>
 <body>
 
@@ -27,7 +28,7 @@
           <label for="senha">Senha:</label>
           <input type="password" id="senha" name="senha" required 
                  placeholder="Digite sua senha"
-                 minlength="6"
+                 minlength="3"
                  autocomplete="current-password" />
         </div>
 
@@ -50,6 +51,48 @@
     <p class="erro">Por favor, habilite o JavaScript para acessar o sistema.</p>
   </noscript>
 
-  <script src="../java/login.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      console.log("login.js carregado!");
+
+      const form = document.getElementById("form-login");
+      const mensagemErro = document.getElementById("mensagem-erro");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        const email = document.getElementById("email").value.trim();
+        const senha = document.getElementById("senha").value;
+
+        try {
+          const response = await fetch("https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/loginCliente", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ email, senha })
+          });
+
+          const data = await response.json();
+
+          if (!data.success) {
+            mensagemErro.style.display = "block";
+            mensagemErro.textContent = "Erro: " + data.message;
+            return;
+          }
+
+          // Sucesso
+          alert("Login realizado com sucesso!");
+          window.location.href = "../html/home.html"; // redireciona para a área logada
+
+        } catch (err) {
+          console.error("Erro no login:", err);
+          mensagemErro.style.display = "block";
+          mensagemErro.textContent = "Erro de conexão com o servidor.";
+        }
+      });
+    });
+  </script>
+
 </body>
 </html>
