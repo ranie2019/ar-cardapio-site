@@ -15,36 +15,51 @@ class SistemaCardapio {
     this.ARQUIVO_CONFIG_CATEGORIAS = `${this.MODEL_BASE_URL}configuracoes/${this.nomeRestaurante}.json`;
     this.ARQUIVO_CONFIG_ITENS = `${this.MODEL_BASE_URL}configuracoes/${this.nomeRestaurante}-itens.json`;
 
+    // Canais reutilizados
+    this.canalStatus = new BroadcastChannel('cardapio_channel');
+    this.canalCategorias = new BroadcastChannel('sincronizacao_categorias');
+
     // ------------------------------
     // Inicialização dos componentes
     // ------------------------------
     this.inicializarModalConfiguracao();
     this.inicializarModalPreview3D();
     this.configurarEventosCardapio();
-    this.setupQrCode(); // Atualizado para versão simplificada
+    this.setupQrCode();
 
     // ------------------------------
     // Sincronização com o app AR
     // ------------------------------
-    this.canalStatus = new BroadcastChannel('cardapio_channel');
     this.configurarSincronizacao();
 
     // ------------------------------
-    // Carregamento inicial de configurações de categorias e itens
+    // Carregamento inicial
     // ------------------------------
     this.carregarConfiguracoesIniciais();
 
     this.previewFecharTimeout = null;
     this.previewItemAtual = null;
+  }
 
+  // ==============================
+  // Helpers
+  // ==============================
+  gerarChaveItem(categoria, nome) {
+    return `itemEstado_${categoria}_${nome.trim().toLowerCase()}`;
+  }
+
+  nomeParaSlug(nome) {
+    return nome.trim().toLowerCase().replace(/\s+/g, '_');
+  }
+
+  nomeParaArquivo(nome) {
+    return this.nomeParaSlug(nome) + '.glb';
   }
 
   // ==============================
   // 1. MODAIS
   // ==============================
-
   inicializarModalConfiguracao() {
-    // Cria e injeta o container do modal
     this.modalConfig = document.createElement('div');
     this.modalConfig.id = 'modalConfiguracaoProduto';
     this.modalConfig.className = 'modal-edicao';
@@ -68,40 +83,27 @@ class SistemaCardapio {
     `;
     document.body.appendChild(this.modalConfig);
 
-    // Fecha ao clicar no "×"
-    this.modalConfig.querySelector('.close-edicao').addEventListener('click', () => {
-      this.modalConfig.style.display = 'none';
-    });
-
     // Impede fechamento ao clicar dentro do conteúdo
-    this.modalConfig.querySelector('.modal-content-edicao').addEventListener('click', (event) => {
-      event.stopPropagation();
-    });
-
-    const inputValor = this.modalConfig.querySelector('#inputValor');
-    const inputDescricao = this.modalConfig.querySelector('#inputDescricao');
+    this.modalConfig.querySelector('.modal-content-edicao')
+      .addEventListener('click', (event) => event.stopPropagation());
 
     // Formatação monetária
-    inputValor.addEventListener('input', (event) => {
-      this.formatarValorMonetario(event);
-    });
+    const inputValor = this.modalConfig.querySelector('#inputValor');
+    inputValor.addEventListener('input', (event) => this.formatarValorMonetario(event));
 
-    // Event listener para o botão Salvar
+    // Salvar
     this.modalConfig.querySelector('#btnSalvarModal').addEventListener('click', async (e) => {
       e.preventDefault();
-      
       try {
         const salvou = await this.salvarConfiguracao(true);
-        if (salvou) {
-          this.modalConfig.style.display = 'none';
-        }
+        if (salvou) this.modalConfig.style.display = 'none';
       } catch (error) {
         console.error('Erro ao salvar:', error);
         alert('Erro ao salvar as configurações: ' + error.message);
       }
     });
 
-    // Listener do botão fechar (X)
+    // Fechar (X)
     this.modalConfig.querySelector('.close-edicao').addEventListener('click', () => {
       this.modalConfig.style.display = 'none';
       this.itemConfiguracao = null;
@@ -113,26 +115,30 @@ class SistemaCardapio {
     this.modelModal.className = 'model-preview-modal';
     this.modelModal.style.display = 'none';
     document.body.appendChild(this.modelModal);
+
+    // Se o mouse entrar no modal de preview, cancela o fechamento agendado
+    this.modelModal.addEventListener('mouseenter', () => {
+      if (this.previewFecharTimeout) clearTimeout(this.previewFecharTimeout);
+    });
   }
 
   // ==============================
   // 2. EVENTOS DO CARDÁPIO
   // ==============================
-
   configurarEventosCardapio() {
     const profileButton = document.getElementById('profile-btn');
     const cardapioButton = document.getElementById('cardapio-btn');
     const dropdownCardapio = document.getElementById('dropdownCardapio');
     const container = document.getElementById('itensContainer');
 
-    // Evento do botão de perfil
+    // Perfil: não redireciona (dropdown é controlado no HTML)
     if (profileButton) {
-      profileButton.addEventListener('click', () => {
-        window.location.href = 'perfil.html';
+      profileButton.addEventListener('click', (e) => {
+        // intencionalmente vazio
       });
     }
 
-    // Evento do botão do cardápio
+    // Cardápio: toggle apenas no clique do botão
     if (cardapioButton && dropdownCardapio) {
       cardapioButton.addEventListener('click', () => {
         dropdownCardapio.classList.toggle('show');
@@ -149,22 +155,22 @@ class SistemaCardapio {
       });
     }
 
-    // Eventos dos botões de categoria
+    // Botões de categoria
     document.querySelectorAll('#dropdownCardapio button').forEach(button => {
       const categoria = button.getAttribute('data-categoria');
       const id = 'btnEstado_' + categoria;
 
-      // Estado inicial do localStorage
+      // Estado inicial
       const estaDesativado = localStorage.getItem(id) === 'true';
       if (estaDesativado) {
         button.classList.add('desativado');
         this.notificarEstadoCategoria(categoria, true);
       }
 
-      // Clique no botão
+      // Clique no botão da categoria
       button.addEventListener('click', () => {
         const desativadoAgora = !button.classList.contains('desativado');
-        
+
         button.classList.toggle('desativado');
         localStorage.setItem(id, desativadoAgora);
         this.notificarEstadoCategoria(categoria, desativadoAgora);
@@ -182,14 +188,12 @@ class SistemaCardapio {
           this.categoriaAtiva = categoria;
           this.mostrarItens(categoria);
           container.style.display = 'flex';
-          
-          document.querySelectorAll(`.item-box[data-categoria="${categoria}"]`).forEach(item => {
-            item.classList.remove('desativado');
-          });
+          document.querySelectorAll(`.item-box[data-categoria="${categoria}"]`)
+            .forEach(item => item.classList.remove('desativado'));
         }
       });
 
-      // Efeito hover
+      // Hover: pré-visualiza itens da categoria (sem mudar estado ativo)
       button.addEventListener('mouseenter', () => {
         if (!button.classList.contains('desativado') && this.categoriaAtiva !== categoria) {
           this.mostrarItens(categoria);
@@ -201,7 +205,6 @@ class SistemaCardapio {
   // ==============================
   // 3. EXIBIÇÃO DE ITENS E PREVIEW 3D
   // ==============================
-
   mostrarItens(categoria) {
     const container = document.getElementById('itensContainer');
     if (!container || !objetos3D[categoria]) return;
@@ -218,38 +221,33 @@ class SistemaCardapio {
       box.textContent = nome;
       box.setAttribute('data-categoria', categoria);
       box.style.animationDelay = `${index * 0.1}s`;
-      box.setAttribute('data-nome', nome.toLowerCase().replace(/\s+/g, '_'));
+      box.setAttribute('data-nome', this.nomeParaSlug(nome));
 
-      // Verifica estado no localStorage
-      const idItem = `itemEstado_${categoria}_${nome}`;
-      if (localStorage.getItem(idItem) === 'true') {
+      // Estado salvo
+      const chaveItem = this.gerarChaveItem(categoria, nome);
+      if (localStorage.getItem(chaveItem) === 'true') {
         box.classList.add('desativado');
       }
 
-      // Click para ativar/desativar item e notificar o app AR
+      // Toggle do item
       box.addEventListener('click', () => {
         const desativadoAgora = box.classList.toggle('desativado');
-        localStorage.setItem(idItem, desativadoAgora);
+        localStorage.setItem(chaveItem, desativadoAgora);
         this.salvarConfiguracaoNoS3();
-        this.canalStatus.postMessage({
-          nome: nome,
-          visivel: !desativadoAgora
-        });
+        this.canalStatus.postMessage({ nome, visivel: !desativadoAgora });
       });
 
-      // Botão de configuração
-      const botaoConfigurar = document.createElement('button');
-      botaoConfigurar.className = 'btn-configurar-produto';
-      botaoConfigurar.textContent = 'Configuração';
-      botaoConfigurar.addEventListener('click', (event) => {
-        event.stopPropagation();
-        this.abrirModalConfiguracao(categoria, nome);
-      });
-
-      // Preview 3D no hover
+      // Preview 3D — único mouseenter
       box.addEventListener('mouseenter', () => {
         if (box.classList.contains('desativado')) return;
-        this.mostrarPreview3D(box, categoria, nome);
+
+        if (this.previewFecharTimeout) clearTimeout(this.previewFecharTimeout);
+
+        const itemAtual = `${categoria}/${nome}`;
+        if (this.previewItemAtual !== itemAtual) {
+          this.previewItemAtual = itemAtual;
+          this.mostrarPreview3D(box, categoria, nome);
+        }
       });
 
       box.addEventListener('mouseleave', () => {
@@ -262,20 +260,13 @@ class SistemaCardapio {
         }, 300);
       });
 
-      box.addEventListener('mouseenter', () => {
-        if (box.classList.contains('desativado')) return;
-
-        // Cancela qualquer tentativa anterior de fechar
-        if (this.previewFecharTimeout) {
-          clearTimeout(this.previewFecharTimeout);
-        }
-
-        // Garante que só mostra se for um novo item
-        const itemAtual = `${categoria}/${nome}`;
-        if (this.previewItemAtual !== itemAtual) {
-          this.previewItemAtual = itemAtual;
-          this.mostrarPreview3D(box, categoria, nome);
-        }
+      // Botão de configuração
+      const botaoConfigurar = document.createElement('button');
+      botaoConfigurar.className = 'btn-configurar-produto';
+      botaoConfigurar.textContent = 'Configuração';
+      botaoConfigurar.addEventListener('click', (event) => {
+        event.stopPropagation();
+        this.abrirModalConfiguracao(categoria, nome);
       });
 
       wrapper.appendChild(box);
@@ -290,9 +281,14 @@ class SistemaCardapio {
     this.modelModal.style.top = `${rect.top}px`;
     this.modelModal.style.display = 'block';
 
-    const nomeArquivo = this.nomeParaArquivo(nome);
-    const modelURL = `${this.MODEL_BASE_URL}${categoria}/${nomeArquivo}`;
+    // ajuste fino: descer X pixels para não cobrir o botão
+    const OFFSET_TOP = 80; // mude para o valor que preferir (40~80)
 
+    this.modelModal.style.left = `${rect.right + 5}px`;
+    this.modelModal.style.top  = `${rect.top + OFFSET_TOP}px`; // << aqui
+    this.modelModal.style.display = 'block';
+
+    const modelURL = `${this.MODEL_BASE_URL}${categoria}/${this.nomeParaArquivo(nome)}`;
     this.escalaAtual = 1;
 
     this.modelModal.innerHTML = `
@@ -303,42 +299,31 @@ class SistemaCardapio {
           <a-gltf-model 
             id="previewModel"
             src="${modelURL}" 
-            scale="${this.escalaAtual} ${this.escalaAtual} ${this.escalaAtual}"
+            scale="${this.escalaAtual * 2} ${this.escalaAtual * 2} ${this.escalaAtual * 2}"
             rotation="0 0 0"
-            animation="property: rotation; to: 0 360 0; loop: true; dur: 5000; easing: linear"
+            animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear"
           ></a-gltf-model>
         </a-entity>
         <a-camera position="0 2 0"></a-camera>
       </a-scene>
     `;
 
-    // Controle de zoom com scroll do mouse
+    // Zoom
     this.modelModal.onwheel = (e) => {
       e.preventDefault();
-
       const zoomStep = 0.1;
-      if (e.deltaY < 0) {
-        this.escalaAtual += zoomStep;
-      } else {
-        this.escalaAtual = Math.max(0.1, this.escalaAtual - zoomStep);
-      }
-
+      this.escalaAtual = e.deltaY < 0 ? this.escalaAtual + zoomStep : Math.max(0.1, this.escalaAtual - zoomStep);
       const model = document.getElementById('previewModel');
-      if (model) {
-        const novaEscala = `${this.escalaAtual} ${this.escalaAtual} ${this.escalaAtual}`;
-        model.setAttribute('scale', novaEscala);
-      }
+      if (model) model.setAttribute('scale', `${this.escalaAtual} ${this.escalaAtual} ${this.escalaAtual}`);
     };
 
-    // Controle de movimento com botão direito
+    // Pan (botão direito)
     let isRightMouseDown = false;
     let lastMouseX = 0;
     let lastMouseY = 0;
-
     const modelEntity = this.modelModal.querySelector('a-entity');
 
     this.modelModal.addEventListener('contextmenu', e => e.preventDefault());
-
     this.modelModal.addEventListener('mousedown', (e) => {
       if (e.button === 2) {
         isRightMouseDown = true;
@@ -346,57 +331,74 @@ class SistemaCardapio {
         lastMouseY = e.clientY;
       }
     });
-
     this.modelModal.addEventListener('mouseup', (e) => {
-      if (e.button === 2) {
-        isRightMouseDown = false;
-      }
+      if (e.button === 2) isRightMouseDown = false;
     });
-
     this.modelModal.addEventListener('mousemove', (e) => {
       if (!isRightMouseDown || !modelEntity) return;
-
       const deltaX = (e.clientX - lastMouseX) * 0.01;
       const deltaY = (e.clientY - lastMouseY) * 0.01;
-
       lastMouseX = e.clientX;
       lastMouseY = e.clientY;
-
       const currentPos = modelEntity.getAttribute('position');
-      modelEntity.setAttribute('position', {
-        x: currentPos.x + deltaX,
-        y: currentPos.y - deltaY,
-        z: currentPos.z
-      });
+      modelEntity.setAttribute('position', { x: currentPos.x + deltaX, y: currentPos.y - deltaY, z: currentPos.z });
     });
   }
 
-  async salvarConfiguracao(confirmado = false) {
-    if (!this.itemConfiguracao || !confirmado) {
-      return false;
+  // ==============================
+  // 4. CONFIGURAÇÃO DE ITENS (Modal)
+  // ==============================
+  async abrirModalConfiguracao(categoria, nome) {
+    const nomeFormatado = this.nomeParaSlug(nome);
+    this.itemConfiguracao = `${categoria}/${nomeFormatado}`;
+    const arquivoJson = `${nomeFormatado}.json`;
+
+    this.modalConfig.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
+
+    let dadosProduto = { preco: 0, descricao: '' };
+    const urlJson = `${this.MODEL_BASE_URL}informacao/${arquivoJson}?v=${Date.now()}`;
+
+    try {
+      const resposta = await fetch(urlJson);
+      if (resposta.ok) {
+        dadosProduto = await resposta.json();
+      } else if (resposta.status !== 404) {
+        console.warn('Erro ao buscar configuração:', resposta.status, resposta.statusText);
+      }
+    } catch (erro) {
+      console.error('Falha ao carregar configuração:', erro);
     }
+
+    const inputValor = this.modalConfig.querySelector('#inputValor');
+    const inputDescricao = this.modalConfig.querySelector('#inputDescricao');
+
+    inputValor.value = typeof dadosProduto.preco === 'number'
+      ? dadosProduto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+      : '0,00';
+
+    inputDescricao.value = dadosProduto.descricao || '';
+
+    this.dadosRestaurante[this.itemConfiguracao] = dadosProduto;
+
+    this.modalConfig.style.display = 'flex';
+  }
+
+  async salvarConfiguracao(confirmado = false) {
+    if (!this.itemConfiguracao || !confirmado) return false;
 
     try {
       const inputValor = this.modalConfig.querySelector('#inputValor');
       const inputDescricao = this.modalConfig.querySelector('#inputDescricao');
-      
-      if (!inputValor || !inputDescricao) {
-        throw new Error('Campos de configuração não encontrados');
-      }
+      if (!inputValor || !inputDescricao) throw new Error('Campos de configuração não encontrados');
 
       const valorTexto = inputValor.value;
       const preco = parseFloat(valorTexto.replace(/\./g, '').replace(',', '.')) || 0;
       const descricao = inputDescricao.value.trim();
 
-      const [categoria, nomeProduto] = this.itemConfiguracao.split('/');
+      const [, nomeProduto] = this.itemConfiguracao.split('/');
       const nomeArquivo = `${nomeProduto}.json`;
-      
-      const dadosAtualizados = {
-        preco: preco,
-        descricao: descricao,
-        ultimaAtualizacao: new Date().toISOString()
-      };
 
+      const dadosAtualizados = { preco, descricao, ultimaAtualizacao: new Date().toISOString() };
       const urlCompleta = `${this.MODEL_BASE_URL}informacao/${nomeArquivo}`;
 
       const resposta = await fetch(urlCompleta, {
@@ -408,13 +410,10 @@ class SistemaCardapio {
         body: JSON.stringify(dadosAtualizados)
       });
 
-      if (!resposta.ok) {
-        throw new Error(`Erro ${resposta.status}: ${await resposta.text()}`);
-      }
+      if (!resposta.ok) throw new Error(`Erro ${resposta.status}: ${await resposta.text()}`);
 
       this.dadosRestaurante[this.itemConfiguracao] = dadosAtualizados;
       return true;
-      
     } catch (erro) {
       console.error('Falha ao salvar configuração:', erro);
       throw erro;
@@ -422,53 +421,8 @@ class SistemaCardapio {
   }
 
   // ==============================
-  // 4. CONFIGURAÇÃO DE ITENS (Modal)
-  // ==============================
-
-  async abrirModalConfiguracao(categoria, nome) {
-    const nomeFormatado = nome.toLowerCase().replace(/\s+/g, '_');
-    this.itemConfiguracao = `${categoria}/${nomeFormatado}`;
-    const arquivoJson = `${nomeFormatado}.json`;
-    
-    this.modalConfig.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
-    
-    let dadosProduto = { preco: 0, descricao: '' };
-    const urlJson = `${this.MODEL_BASE_URL}informacao/${arquivoJson}?v=${Date.now()}`;
-    
-    try {
-      console.log(`Buscando configuração do produto em: ${urlJson}`);
-      const resposta = await fetch(urlJson);
-      
-      if (resposta.ok) {
-        dadosProduto = await resposta.json();
-        console.log('Dados do produto carregados:', dadosProduto);
-      } else if (resposta.status === 404) {
-        console.log('Arquivo de configuração não encontrado, usando valores padrão');
-      } else {
-        console.warn('Erro ao buscar configuração:', resposta.status, resposta.statusText);
-      }
-    } catch (erro) {
-      console.error('Falha ao carregar configuração:', erro);
-    }
-    
-    const inputValor = this.modalConfig.querySelector('#inputValor');
-    const inputDescricao = this.modalConfig.querySelector('#inputDescricao');
-    
-    inputValor.value = typeof dadosProduto.preco === 'number' 
-      ? dadosProduto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-      : '0,00';
-    
-    inputDescricao.value = dadosProduto.descricao || '';
-    
-    this.dadosRestaurante[this.itemConfiguracao] = dadosProduto;
-    
-    this.modalConfig.style.display = 'flex';
-  }
-
-  // ==============================
   // 5. UTILITÁRIOS
   // ==============================
-
   formatarValorMonetario(evento) {
     let valor = evento.target.value.replace(/\D/g, '');
     valor = (parseFloat(valor) / 100).toFixed(2);
@@ -477,27 +431,21 @@ class SistemaCardapio {
     evento.target.value = valor;
   }
 
-  nomeParaArquivo(nome) {
-    return nome.trim().toLowerCase().replace(/\s+/g, '_') + '.glb';
-  }
-
   notificarEstadoCategoria(categoria, desativado) {
-    const canal = new BroadcastChannel('sincronizacao_categorias');
-    canal.postMessage({
+    this.canalCategorias.postMessage({
       acao: 'atualizar_botao',
-      categoria: categoria,
-      desativado: desativado
+      categoria,
+      desativado
     });
   }
 
   // ==============================
   // 6. SINCRONIZAÇÃO COM O APP AR
   // ==============================
-
   configurarSincronizacao() {
     this.canalStatus.onmessage = (evento) => {
       const { nome, visivel } = evento.data;
-      const elemento = document.querySelector(`[data-nome="${nome}"]`);
+      const elemento = document.querySelector(`[data-nome="${this.nomeParaSlug(nome)}"]`);
       if (!elemento) return;
       elemento.style.display = visivel ? '' : 'none';
     };
@@ -506,12 +454,10 @@ class SistemaCardapio {
   // ==============================
   // 7. CATEGORIAS E ITENS → S3
   // ==============================
-
   async salvarConfiguracaoNoS3() {
-    // 1. Salva configurações de categorias
+    // 1. Categorias
     const botoesCategoria = document.querySelectorAll('#dropdownCardapio .btn-categoria');
     const configuracoesCategoria = {};
-
     botoesCategoria.forEach(botao => {
       const categoria = botao.getAttribute('data-categoria');
       configuracoesCategoria[categoria] = !botao.classList.contains('desativado');
@@ -527,16 +473,14 @@ class SistemaCardapio {
       console.error('Erro ao salvar configurações de categoria:', erro);
     }
 
-    // 2. Salva itens desativados
+    // 2. Itens desativados
     const itensDesativados = {};
     Object.keys(objetos3D).forEach(categoria => {
       objetos3D[categoria].forEach(nomeItem => {
-        const chaveLocalStorage = `itemEstado_${categoria}_${nomeItem}`;
-        if (localStorage.getItem(chaveLocalStorage) === 'true') {
-          if (!itensDesativados[categoria]) {
-            itensDesativados[categoria] = [];
-          }
-          itensDesativados[categoria].push(nomeItem.toLowerCase().replace(/\s+/g, '_'));
+        const chaveLocal = this.gerarChaveItem(categoria, nomeItem);
+        if (localStorage.getItem(chaveLocal) === 'true') {
+          if (!itensDesativados[categoria]) itensDesativados[categoria] = [];
+          itensDesativados[categoria].push(this.nomeParaSlug(nomeItem));
         }
       });
     });
@@ -555,10 +499,9 @@ class SistemaCardapio {
   // ==============================
   // 8. CARREGAMENTO INICIAL
   // ==============================
-
   async carregarConfiguracoesIniciais() {
     try {
-      // Carrega configurações de categoria
+      // Categorias
       const respostaCategorias = await fetch(`${this.ARQUIVO_CONFIG_CATEGORIAS}?v=${Date.now()}`);
       if (respostaCategorias.ok) {
         const categorias = await respostaCategorias.json();
@@ -571,13 +514,14 @@ class SistemaCardapio {
         });
       }
 
-      // Carrega itens desativados
+      // Itens desativados
       const respostaItens = await fetch(`${this.ARQUIVO_CONFIG_ITENS}?v=${Date.now()}`);
       if (respostaItens.ok) {
         const itensDesativados = await respostaItens.json();
         Object.entries(itensDesativados).forEach(([categoria, itens]) => {
-          itens.forEach(nomeItem => {
-            const chave = `itemEstado_${categoria}_${nomeItem.replace(/_/g, ' ')}`;
+          itens.forEach(nomeItemSlug => {
+            const nomeNormalizado = nomeItemSlug.replace(/_/g, ' ').toLowerCase();
+            const chave = this.gerarChaveItem(categoria, nomeNormalizado);
             localStorage.setItem(chave, 'true');
           });
         });
@@ -588,9 +532,8 @@ class SistemaCardapio {
   }
 
   // ==============================
-  // 9. GERADOR DE QR CODE (Versão Simplificada)
+  // 9. GERADOR DE QR CODE (Versão Melhorada)
   // ==============================
-
   setupQrCode() {
     const modalQR = document.getElementById('modalQrCode');
     const containerQR = document.getElementById('qrcodeContainer');
@@ -606,28 +549,31 @@ class SistemaCardapio {
       return;
     }
 
-    // Gera QR Codes diretamente
     const gerarQRCodes = (quantidade) => {
       containerQR.innerHTML = '';
-      
+      const frag = document.createDocumentFragment();
+
       for (let i = 1; i <= quantidade; i++) {
         const wrapper = document.createElement('div');
         wrapper.className = 'qrcode-wrapper';
-        
+
         const divQR = document.createElement('div');
         divQR.className = 'qrcode';
         divQR.id = `qr-${i}`;
-        
+
         const label = document.createElement('div');
         label.className = 'mesa-label';
         label.textContent = `Mesa ${i}`;
-        
+
         wrapper.appendChild(divQR);
         wrapper.appendChild(label);
-        containerQR.appendChild(wrapper);
-        
-        // Gera o QR Code sem necessidade de dados do garçom
-        new QRCode(divQR, {
+        frag.appendChild(wrapper);
+      }
+
+      containerQR.appendChild(frag);
+
+      for (let i = 1; i <= quantidade; i++) {
+        new QRCode(document.getElementById(`qr-${i}`), {
           text: `https://site-arcardapio.s3.us-east-1.amazonaws.com/app/app.html?v=${Date.now()}`,
           width: 200,
           height: 200,
@@ -638,38 +584,37 @@ class SistemaCardapio {
       }
     };
 
-    // Atualiza QR Codes baseado na quantidade
     const atualizarQRCodes = () => {
-      const quantidade = parseInt(inputQuantidade.value) || 1;
+      let quantidade = parseInt(inputQuantidade.value, 10) || 1;
+      if (quantidade < 1) quantidade = 1;
+      if (quantidade > 200) quantidade = 200;
+      inputQuantidade.value = quantidade;
       gerarQRCodes(quantidade);
     };
 
-    // Geração de QR Code ao clicar no botão principal
     botaoGerarQR.addEventListener('click', () => {
       atualizarQRCodes();
       modalQR.classList.add('ativo');
     });
 
-    // Controles de quantidade
     inputQuantidade.addEventListener('input', atualizarQRCodes);
-    
+
     botaoMais.addEventListener('click', () => {
-      inputQuantidade.value = (parseInt(inputQuantidade.value) || 1) + 1;
+      inputQuantidade.value = (parseInt(inputQuantidade.value, 10) || 1) + 1;
       inputQuantidade.dispatchEvent(new Event('input'));
     });
-    
+
     botaoMenos.addEventListener('click', () => {
-      inputQuantidade.value = Math.max(1, (parseInt(inputQuantidade.value) || 1) - 1);
-      inputQuantidade.dispatchEvent(new Event('input')); // Corrigido: aspas simples normais
+      inputQuantidade.value = Math.max(1, (parseInt(inputQuantidade.value, 10) || 1) - 1);
+      inputQuantidade.dispatchEvent(new Event('input'));
     });
 
-    // Fechar modal
     botaoFechar.addEventListener('click', () => {
       modalQR.classList.remove('ativo');
       containerQR.innerHTML = '';
     });
 
-    // Fechar ao clicar fora
+    // Fecha ao clicar fora do conteúdo
     modalQR.addEventListener('click', (evento) => {
       if (evento.target === modalQR) {
         modalQR.classList.remove('ativo');
@@ -698,29 +643,17 @@ class SistemaCardapio {
                 grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
                 gap: 20px;
               }
-              .qrcode-wrapper {
-                text-align: center;
-                page-break-inside: avoid;
-              }
-              .mesa-label {
-                font-weight: bold;
-                margin-top: 8px;
-                font-size: 16px;
-              }
-              @page {
-                size: auto;
-                margin: 10mm;
-              }
+              .qrcode-wrapper { text-align: center; page-break-inside: avoid; }
+              .mesa-label { font-weight: bold; margin-top: 8px; font-size: 16px; }
+              @page { size: auto; margin: 10mm; }
             </style>
           </head>
-          <body>
-            ${containerQR.innerHTML}
-          </body>
+          <body>${containerQR.innerHTML}</body>
         </html>
       `);
       janelaImpressao.document.close();
       janelaImpressao.focus();
-      
+
       setTimeout(() => {
         janelaImpressao.print();
         janelaImpressao.close();

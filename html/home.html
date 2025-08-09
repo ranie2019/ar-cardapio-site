@@ -12,10 +12,14 @@
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
   <style>
-    body {
-      margin: 0;
-      overflow-x: hidden;
-    }
+    body { margin: 0; overflow-x: hidden; }
+
+    /* --- Dropdown do Perfil (estilo leve; o resto já está no home.css) --- */
+    .perfil-menu { position: relative; display: inline-block; }
+    .dropdown-perfil { position: absolute; top: 60px; right: 0; display: none; background: transparent; z-index: 20; }
+    .dropdown-perfil.show { display: block; }
+    /* reaproveita .btn-categoria; ajusta largura pra bater com os da esquerda */
+    #dropdownPerfil .btn-categoria { width: 160px; margin: 8px 0; }
   </style>
 </head>
 
@@ -46,23 +50,23 @@
       </button>
     </div>
 
+    <!-- Lado direito: Perfil vira dropdown; sem navegação de página -->
     <div class="menu-direita">
-      <button class="botao-com-video" id="profile-btn">
-        <video autoplay muted loop class="video-hover">
-          <source src="../videos/botoes.mp4" type="video/mp4">
-        </video>
-        <span class="texto-botao">Perfil</span>
-      </button>
-    </div>
+      <div class="perfil-menu">
+        <button class="botao-com-video" id="profile-btn">
+          <video autoplay muted loop class="video-hover">
+            <source src="../videos/botoes.mp4" type="video/mp4">
+          </video>
+          <span class="texto-botao" id="perfil-texto">Perfil ▼</span>
+        </button>
 
-    <button onclick="logout()">Sair</button>
-    <script>
-      function logout() {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userEmail');
-        window.location.href = "../html/login.html";
-      }
-    </script>
+        <!-- Dropdown do Perfil -->
+        <div id="dropdownPerfil" class="dropdown-perfil hidden">
+          <button id="perfil-dados" class="btn-categoria">Conta</button>
+          <button id="perfil-sair" class="btn-categoria">Sair</button>
+        </div>
+      </div>
+    </div>
 
     <h1 class="titulo">Bem-vindo(a) ao Sistema</h1>
   </header>
@@ -107,29 +111,25 @@
   <script src="../java/home.js"></script>
   <script src="../java/cardapio.js"></script>
 
-  <!-- CONTROLE DE MODAIS E BROADCAST -->
+  <!-- CONTROLE DE MODAIS, DROPDOWNS E BROADCAST -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      // -------- Modal de configuração (se existir no DOM) ----------
       const modalConfig = document.getElementById('modalConfiguracao');
       const btnFechar = modalConfig?.querySelector('.fechar-modal-config');
 
       if (btnFechar) {
-        btnFechar.addEventListener('click', () => {
-          modalConfig.classList.remove('active');
-        });
-
+        btnFechar.addEventListener('click', () => modalConfig.classList.remove('active'));
         const btnSalvar = modalConfig.querySelector('#btnSalvarModal');
-        btnSalvar.addEventListener('click', () => {
-          modalConfig.classList.remove('active');
-        });
+        btnSalvar.addEventListener('click', () => modalConfig.classList.remove('active'));
       }
 
+      // -------- Modal de QR: botão fechar ----------
       const modalQr = document.getElementById('modalQrCode');
       const btnFecharQr = modalQr.querySelector('#fecharModal');
-      btnFecharQr.addEventListener('click', () => {
-        modalQr.classList.add('hidden');
-      });
+      btnFecharQr.addEventListener('click', () => modalQr.classList.add('hidden'));
 
+      // -------- Broadcast para botões de item ----------
       if ('BroadcastChannel' in window) {
         window.canalStatus = new BroadcastChannel('cardapio_channel');
         canalStatus.onmessage = event => {
@@ -138,6 +138,69 @@
           if (btn) btn.style.display = visivel ? 'inline-block' : 'none';
         };
       }
+
+      // ============================================================
+      // PERFIL COMO DROPDOWN (sem navegação de página)
+      // ============================================================
+      const profileButtonOriginal = document.getElementById('profile-btn');
+      const dropdownPerfil = document.getElementById('dropdownPerfil');
+      const perfilTexto = document.getElementById('perfil-texto');
+
+      // Remove qualquer listener antigo (ex.: de home.js) clonando o botão
+      const profileButton = profileButtonOriginal.cloneNode(true);
+      profileButtonOriginal.parentNode.replaceChild(profileButton, profileButtonOriginal);
+
+      // Abre/fecha o dropdown do Perfil
+      profileButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdownPerfil.classList.toggle('show');
+        dropdownPerfil.classList.toggle('hidden');
+        // alterna o ▼/▲ no texto
+        if (perfilTexto) {
+          perfilTexto.textContent = dropdownPerfil.classList.contains('show') ? 'Perfil ▲' : 'Perfil ▼';
+        }
+      });
+
+      // Ações do dropdown do Perfil
+      const btnPerfilDados = document.getElementById('perfil-dados');
+      const btnPerfilSair  = document.getElementById('perfil-sair');
+
+      if (btnPerfilDados) {
+        btnPerfilDados.addEventListener('click', (e) => {
+          e.stopPropagation();
+          // aqui você pode abrir um modal de dados futuramente
+          alert('Em breve: Dados da Conta');
+          dropdownPerfil.classList.remove('show');
+          dropdownPerfil.classList.add('hidden');
+          if (perfilTexto) perfilTexto.textContent = 'Perfil ▼';
+        });
+      }
+
+      if (btnPerfilSair) {
+        btnPerfilSair.addEventListener('click', (e) => {
+          e.stopPropagation();
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userEmail');
+          window.location.href = "../html/login.html";
+        });
+      }
+
+      document.addEventListener('click', (e) => {
+        // Cardápio
+        if (dropdownCardapio &&
+            !dropdownCardapio.contains(e.target) &&
+            e.target !== cardapioButton) {
+          dropdownCardapio.classList.remove('show');
+        }
+        // Perfil
+        if (dropdownPerfil &&
+            !dropdownPerfil.contains(e.target) &&
+            e.target !== profileButton) {
+          dropdownPerfil.classList.remove('show');
+          dropdownPerfil.classList.add('hidden');
+          if (perfilTexto) perfilTexto.textContent = 'Perfil ▼';
+        }
+      });
     });
   </script>
 
@@ -145,6 +208,5 @@
   <footer>
     &copy; 2025 ARCardápio. Todos os direitos reservados.
   </footer>
-
 </body>
 </html>

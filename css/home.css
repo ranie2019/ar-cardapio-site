@@ -1,15 +1,4 @@
 /* ====================== */
-/* ESTILOS GERAIS */
-/* ====================== */
-
-body {
-  margin: 0;
-  padding: 0;
-  background-color: #ffffff;
-  font-family: Arial, sans-serif;
-}
-
-/* ====================== */
 /* CABEÇALHO */
 /* ====================== */
 
@@ -18,25 +7,6 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 20px 40px;
-}
-
-.titulo {
-  flex: 1;
-  text-align: center;
-  color: #c70039;
-  margin: 0;
-  font-size: 34px;
-}
-
-#profile-btn {
-  background-color: #c70039;
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 24px;
 }
 
 /* ====================== */
@@ -227,9 +197,6 @@ body {
   align-items: center;
   justify-content: center;
   position: absolute;
-  top: 60px; /* Ajuste conforme a distância desejada */
-  left: 50%;
-  transform: translate(-50%, 50px); /* Desce 50px além do centro */
 }
 
 
@@ -287,14 +254,6 @@ body {
   cursor: pointer;
 }
 
-#qrcodeContainer {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;           /* permite quebra de linha se passar da largura */
-  justify-content: center;   /* centraliza os QR Codes */
-  gap: 20px;                 /* espaço entre os QR Codes */
-  margin-top: 10px;
-}
 
 .qrcode-wrapper {
   display: flex;
@@ -306,48 +265,6 @@ body {
 /* ====================== */
 /* CONTROLE DE QUANTIDADE QR CODE */
 /* ====================== */
-
-.quantidade-bloco {
-  background-color: #f9f9f9;
-  border: 1px solid #cccccc;
-  border-radius: 10px;
-  padding: 15px;
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-.quantidade-bloco h3 {
-  margin-top: 0;
-  margin-bottom: 10px;
-  font-size: 18px;
-  color: #333333;
-}
-
-.controle-quantidade {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-}
-
-.controle-quantidade button {
-  background-color: #d62828;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  font-size: 18px;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.controle-quantidade input[type="number"] {
-  width: 60px;
-  text-align: center;
-  font-size: 16px;
-  padding: 6px;
-  border: 1px solid #cccccc;
-  border-radius: 5px;
-}
 
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {
@@ -566,7 +483,6 @@ body {
 
 /* BOTÕES VERDES */
 .btn-vermelho,
-#profile-btn,
 #cardapio-btn,
 #btnQrCode,
 .btn-categoria,
@@ -747,14 +663,6 @@ input, textarea {
   z-index: 10;
 }
 
-.conteudo-modal {
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  width: 80%;
-  max-width: 500px;
-}
-
 .fechar-modal {
   float: right;
   font-size: 20px;
@@ -825,4 +733,86 @@ footer {
   font-size: 16px;
   padding: 10px 0;
   z-index: 1;
+}
+
+/* ===== FIX: modal largo de verdade ===== */
+#modalQrCode .conteudo-modal{
+  background-color:#fff;
+  border:1px solid rgba(0,240,192,.35);
+  box-shadow:0 12px 40px rgba(0,0,0,.35), inset 0 0 0 6px rgba(0,240,192,.05);
+  border-radius:16px;
+
+  /* ↓↓↓ O segredo: tamanho guiado pelo conteúdo */
+  display: inline-flex;           /* encolhe/expande pelo conteúdo */
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+
+  width: fit-content;             /* fica do tamanho do conteúdo */
+  max-width: 94vw;                /* mas nunca maior que a viewport */
+  min-width: 520px;               /* mantém header/layout bonitos */
+  max-height: 90vh;               /* não passa da altura da tela */
+  overflow: auto;
+
+  padding: 20px 24px;
+  text-align: center;
+  position: relative;
+}
+
+/* Título/fechar (estético) */
+#modalQrCode h3{ margin: 0 0 10px; }
+#modalQrCode .fechar-modal{
+  color:#222 !important; background:#f3f5f7; border-radius:50%;
+  width:32px;height:32px;line-height:32px;text-align:center;
+}
+
+/* ===== Quantidade: rótulo preto + fundo cinza claro no número ===== */
+#modalQrCode .controles-qrcode label{ color:#000 !important; }
+#modalQrCode .controles-qrcode input[type="number"]{
+  background:#eef1f4 !important;   /* cinza leve */
+  color:#000 !important;
+  border:1px solid #d6dbe1 !important;
+  border-radius:12px !important;
+  width:64px; font-weight:700; padding:6px 8px;
+}
+
+/* Botões de + e - (mantém o verde) */
+#modalQrCode .controles-qrcode button{
+  background:#00f0c0 !important; color:#000 !important;
+  border:none; border-radius:12px; padding:8px 12px; font-weight:700;
+}
+#modalQrCode .controles-qrcode button:hover{ filter:brightness(.95); }
+
+/* ===== Grid responsivo: usa a largura toda e só então quebra ===== */
+#qrcodeContainer{
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  justify-items: center;
+  align-items: start;
+
+  /* ↓ largura do grid = largura do conteúdo, não 100% da tela */
+  width: max-content;             /* casa com o fit-content do container */
+  max-width: 90vw;                /* segurança pra não estourar em telas pequenas */
+}
+
+/* “card” discreto de cada QR */
+.qrcode-wrapper{
+  display:flex; flex-direction:column; align-items:center;
+  background:#fafafa; border:1px solid #eee; border-radius:12px;
+  padding:16px 12px; box-shadow:0 6px 18px rgba(0,0,0,.06);
+}
+
+/* Tamanho do QR e legenda */
+.qrcode{ width:200px !important; height:200px !important; }
+.mesa-label{ margin-top:8px; font-weight:600; color:#000; font-size:1rem; }
+
+@media (max-width: 720px){
+  #modalQrCode .conteudo-modal{ min-width: 320px; }
+  #qrcodeContainer{ grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+}
+
+.botao-com-video .video-hover,
+.botao-com-video .texto-botao {
+    pointer-events: none; /* Permite que o clique atravesse e ative o botão */
 }
