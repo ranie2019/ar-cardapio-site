@@ -5,7 +5,7 @@
 body {
   margin: 0;
   padding: 0;
-  height: 100vh;              /* Força altura da tela */
+  height: 100vh;              /* ForÃ§a altura da tela */
   overflow: hidden;           /* Remove a barra de rolagem */
   display: flex;
   align-items: center;
@@ -69,7 +69,7 @@ input {
   color: #000;
 }
 
-/* ✅ ESTILO DO BOTÃO CADASTRAR */
+/* âœ… ESTILO DO BOTÃƒO CADASTRAR */
 button {
   padding: 14px 24px;
   font-size: 18px;
@@ -118,3 +118,22 @@ input:focus:invalid {
   outline: none;
   box-shadow: 0 0 5px #ff6b6b;
 }
+
+
+/* Estilos para a notificaÃ§Ã£o customizada */
+#custom-notification {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 15px 25px;
+  border-radius: 8px;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: opacity 0.5s ease-in-out;
+  opacity: 1;
+}
+

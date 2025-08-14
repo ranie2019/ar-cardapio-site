@@ -2,7 +2,10 @@
 const modelBaseURL = "https://ar-cardapio-models.s3.amazonaws.com";
 
 // ==================== NOME DO RESTAURANTE PARA CONFIG PERSONALIZADA ====================
-const nomeRestaurante = 'restaurante-001';
+function obterNomeRestaurante() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get("restaurante") || "restaurante-padrao";
+}
 
 // ==================== CATÁLOGO DE MODELOS 3D ====================
 const models = {
@@ -59,6 +62,7 @@ async function carregarInfoProduto(infoUrl) {
 
 // ==================== CARREGAR CONFIGURAÇÃO DO RESTAURANTE ====================
 async function carregarConfiguracaoDoRestaurante() {
+  const nomeRestaurante = obterNomeRestaurante();
   const url = `${modelBaseURL}/configuracoes/${nomeRestaurante}.json`;
 
   try {
@@ -72,7 +76,8 @@ async function carregarConfiguracaoDoRestaurante() {
   }
 }
 async function carregarStatus() {
-  const url = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/restaurante-001-itens.json?v=${Date.now()}`;
+  const nomeRestaurante = obterNomeRestaurante();
+  const url = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}-itens.json?v=${Date.now()}`;
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error('Erro ao carregar status dos itens');

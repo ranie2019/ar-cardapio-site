@@ -353,7 +353,7 @@ class SistemaCardapio {
     this.itemConfiguracao = `${categoria}/${nomeFormatado}`;
     const arquivoJson = `${nomeFormatado}.json`;
 
-    this.modalConfig.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
+    this.modalConfig.querySelector('.modal-titulo').textContent = `Configurar: ${nome}`;
 
     let dadosProduto = { preco: 0, descricao: '' };
     const urlJson = `${this.MODEL_BASE_URL}informacao/${arquivoJson}?v=${Date.now()}`;

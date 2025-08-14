@@ -1,19 +1,21 @@
-// ==================== VARIÁVEIS GLOBAIS ====================
+// ==================== VARIÃVEIS GLOBAIS ====================
 let currentCategory = 'inicio';
 let currentIndex = 0;
 const modelCache = {};
 let currentModelPath = '';
 let infoVisible = false;
 
-// ==================== CONFIGURAÇÃO DO RESTAURANTE VIA S3 ====================
+// ==================== CONFIGURAÃ‡ÃƒO DO RESTAURANTE VIA S3 ====================
 async function aplicarConfiguracaoDoRestaurante() {
-  const urlCategorias = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/restaurante-001.json?v=${Date.now()}`;
-  const urlItens = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/restaurante-001-itens.json?v=${Date.now()}`;
+  const urlParams = new URLSearchParams(window.location.search);
+  const nomeRestaurante = urlParams.get("restaurante") || "restaurante-padrao";
+  const urlCategorias = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}.json?v=${Date.now()}`;
+  const urlItens = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}-itens.json?v=${Date.now()}`;
 
   try {
-    // Carrega configurações de categorias
+    // Carrega configuraÃ§Ãµes de categorias
     const responseCategorias = await fetch(urlCategorias);
-    if (!responseCategorias.ok) throw new Error('Erro ao carregar configuração de categorias');
+    if (!responseCategorias.ok) throw new Error('Erro ao carregar configuraÃ§Ã£o de categorias');
     const configCategorias = await responseCategorias.json();
 
     // Aplica visibilidade das categorias
@@ -25,9 +27,9 @@ async function aplicarConfiguracaoDoRestaurante() {
       }
     }
 
-    // Carrega configurações de itens desativados
+    // Carrega configuraÃ§Ãµes de itens desativados
     const responseItens = await fetch(urlItens);
-    if (!responseItens.ok) throw new Error('Erro ao carregar configuração de itens');
+    if (!responseItens.ok) throw new Error('Erro ao carregar configuraÃ§Ã£o de itens');
     const configItens = await responseItens.json();
 
     // Aplica visibilidade dos itens
@@ -43,11 +45,11 @@ async function aplicarConfiguracaoDoRestaurante() {
     }
 
   } catch (err) {
-    console.warn('⚠️ Falha ao aplicar configuração do restaurante:', err);
+    console.warn('âš ï¸ Falha ao aplicar configuraÃ§Ã£o do restaurante:', err);
   }
 }
 
-// ==================== SINCRONIZAÇÃO EM TEMPO REAL ====================
+// ==================== SINCRONIZAÃ‡ÃƒO EM TEMPO REAL ====================
 const canalCardapio = new BroadcastChannel('cardapio_channel');
 
 canalCardapio.onmessage = (event) => {
@@ -64,7 +66,7 @@ canalCardapio.onmessage = (event) => {
     if (itemIndex !== -1) {
       models[categoria][itemIndex].visible = visivel;
       
-      // Se o item atual ficou invisível, muda para o próximo
+      // Se o item atual ficou invisÃ­vel, muda para o prÃ³ximo
       if (!visivel && currentModelPath === models[categoria][itemIndex].path) {
         changeModel(1);
       }
@@ -73,7 +75,7 @@ canalCardapio.onmessage = (event) => {
   }
 };
 
-// ==================== ATUALIZAÇÕES DE INTERFACE ====================
+// ==================== ATUALIZAÃ‡Ã•ES DE INTERFACE ====================
 function formatProductName(path) {
   const file = path.split('/').pop().replace('.glb', '');
   return file.replace(/[_-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -99,10 +101,10 @@ function updateUI(model) {
 
 // ==================== CARREGAMENTO DO MODELO 3D ====================
 async function loadModel(path) {
-  // Verifica se o modelo está visível
+  // Verifica se o modelo estÃ¡ visÃ­vel
   const modelData = getCurrentModelData();
   if (modelData && modelData.visible === false) {
-    changeModel(1); // Pula para o próximo modelo se este estiver invisível
+    changeModel(1); // Pula para o prÃ³ximo modelo se este estiver invisÃ­vel
     return;
   }
 
@@ -122,7 +124,7 @@ async function loadModel(path) {
   if (modelCache[path]) {
     container.setAttribute("gltf-model", modelCache[path]);
 
-    // Atualiza o preço antes de mostrar
+    // Atualiza o preÃ§o antes de mostrar
     await atualizarPrecoDoModelo(path);
 
     loadingIndicator.style.display = "none";
@@ -143,7 +145,7 @@ async function loadModel(path) {
       modelCache[path] = blobURL;
       container.setAttribute("gltf-model", blobURL);
 
-      // Atualiza o preço antes de mostrar
+      // Atualiza o preÃ§o antes de mostrar
       await atualizarPrecoDoModelo(path);
 
       loadingIndicator.style.display = "none";
@@ -170,10 +172,10 @@ async function atualizarPrecoDoModelo(path) {
     const data = await response.json();
 
     if (data.preco !== undefined) {
-      modelData.price = parseFloat(data.preco); // Atualiza o preço com base no JSON do S3
+      modelData.price = parseFloat(data.preco); // Atualiza o preÃ§o com base no JSON do S3
     }
   } catch (error) {
-    console.warn("Não foi possível atualizar o preço a partir do JSON:", error);
+    console.warn("NÃ£o foi possÃ­vel atualizar o preÃ§o a partir do JSON:", error);
   }
 }
 
@@ -190,13 +192,13 @@ function getModelPrice(path) {
 // ==================== CONTROLE DE MODELOS ====================
 function changeModel(dir) {
   let tentativas = 0;
-  const maxTentativas = models[currentCategory].length * 2; // Prevenção de loop infinito
+  const maxTentativas = models[currentCategory].length * 2; // PrevenÃ§Ã£o de loop infinito
   
   do {
     currentIndex = (currentIndex + dir + models[currentCategory].length) % models[currentCategory].length;
     tentativas++;
     
-    // Para se encontrou um item visível ou excedeu o número máximo de tentativas
+    // Para se encontrou um item visÃ­vel ou excedeu o nÃºmero mÃ¡ximo de tentativas
     if (models[currentCategory][currentIndex].visible !== false || tentativas >= maxTentativas) {
       break;
     }
@@ -217,12 +219,12 @@ function selectCategory(category) {
   currentCategory = category;
   currentIndex = 0;
   
-  // Encontra o primeiro item visível na categoria
+  // Encontra o primeiro item visÃ­vel na categoria
   while (currentIndex < models[category].length && models[category][currentIndex].visible === false) {
     currentIndex++;
   }
   
-  // Se todos estiverem invisíveis, mostra o primeiro (como fallback)
+  // Se todos estiverem invisÃ­veis, mostra o primeiro (como fallback)
   if (currentIndex >= models[category].length) {
     currentIndex = 0;
   }
@@ -235,9 +237,9 @@ document.getElementById("menuBtn").addEventListener("click", () => {
   el.style.display = el.style.display === "flex" ? "none" : "flex";
 });
 
-// ==================== INICIALIZAÇÃO ====================
+// ==================== INICIALIZAÃ‡ÃƒO ====================
 window.addEventListener("DOMContentLoaded", async () => {
-  // Inicializa todos os modelos como visíveis por padrão
+  // Inicializa todos os modelos como visÃ­veis por padrÃ£o
   for (const categoria in models) {
     models[categoria].forEach(model => {
       if (model.visible === undefined) {
@@ -249,11 +251,11 @@ window.addEventListener("DOMContentLoaded", async () => {
   await aplicarConfiguracaoDoRestaurante();
   verificarEstadoInicial();
   
-  // Carrega o primeiro modelo visível
+  // Carrega o primeiro modelo visÃ­vel
   selectCategory(currentCategory);
 });
 
-// ==================== VERIFICAÇÃO POR QR CODE ====================
+// ==================== VERIFICAÃ‡ÃƒO POR QR CODE ====================
 function verificarEstadoInicial() {
   const urlParams = new URLSearchParams(window.location.search);
   const estadoCodificado = urlParams.get('estado');
@@ -262,7 +264,7 @@ function verificarEstadoInicial() {
     try {
       const estado = JSON.parse(decodeURIComponent(estadoCodificado));
       
-      // Aplica configurações de categorias
+      // Aplica configuraÃ§Ãµes de categorias
       if (estado.categorias) {
         document.querySelectorAll('.category-btn').forEach(btn => {
           const categoria = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
@@ -272,7 +274,7 @@ function verificarEstadoInicial() {
         });
       }
       
-      // Aplica configurações de itens
+      // Aplica configuraÃ§Ãµes de itens
       if (estado.itens) {
         for (const categoria in estado.itens) {
           if (models[categoria]) {
@@ -295,7 +297,7 @@ function verificarEstadoInicial() {
   }
 }
 
-// ==================== ROTAÇÃO AUTOMÁTICA ====================
+// ==================== ROTAÃ‡ÃƒO AUTOMÃTICA ====================
 let rotationInterval = setInterval(() => {
   const model = document.querySelector("#modelContainer");
   if (!model || !model.getAttribute("gltf-model")) return;
@@ -305,7 +307,7 @@ let rotationInterval = setInterval(() => {
   model.setAttribute("rotation", rotation);
 }, 30);
 
-// ==================== ZOOM E ROTAÇÃO COM TOQUE ====================
+// ==================== ZOOM E ROTAÃ‡ÃƒO COM TOQUE ====================
 let initialDistance = null;
 let initialScale = 1;
 let startY = null;
@@ -363,7 +365,7 @@ window.addEventListener("touchend", () => {
   startY = null;
 });
 
-// ==================== BOTÃO DE INFORMAÇÕES ====================
+// ==================== BOTÃƒO DE INFORMAÃ‡Ã•ES ====================
 document.getElementById("infoBtn").addEventListener("click", () => {
   const panel = document.getElementById("infoPanel");
 
@@ -379,18 +381,18 @@ document.getElementById("infoBtn").addEventListener("click", () => {
   loadProductInfoJSON(filename, panel);
 });
 
-// ==================== LER JSON DE INFORMAÇÕES ====================
+// ==================== LER JSON DE INFORMAÃ‡Ã•ES ====================
 async function loadProductInfoJSON(filename, panel) {
   try {
     const modelData = getCurrentModelData();
-    if (!modelData || !modelData.info) throw new Error("Informações não disponíveis");
+    if (!modelData || !modelData.info) throw new Error("InformaÃ§Ãµes nÃ£o disponÃ­veis");
 
     const response = await fetch(modelData.info + "?v=" + Date.now());
-    if (!response.ok) throw new Error("Erro ao carregar informações");
+    if (!response.ok) throw new Error("Erro ao carregar informaÃ§Ãµes");
 
     const data = await response.json();
 
-    // Propriedades que NÃO queremos exibir
+    // Propriedades que NÃƒO queremos exibir
     const ocultar = new Set([ 'preco', 'ultimaAtualizacao' ]);
 
     // Monta linhas apenas com as chaves permitidas
@@ -403,7 +405,7 @@ async function loadProductInfoJSON(filename, panel) {
       linhas.push(`${textoChave}: ${data[key]}`);
     }
 
-    // Junta com duplo \n para separar em parágrafos
+    // Junta com duplo \n para separar em parÃ¡grafos
     const textoFormatado = linhas.join('\n\n');
     const infoDiv = document.getElementById("infoContent");
     infoDiv.innerText = textoFormatado;
@@ -412,7 +414,7 @@ async function loadProductInfoJSON(filename, panel) {
 
   } catch (error) {
     console.error("Erro:", error);
-    document.getElementById("infoContent").innerText = "Informações não disponíveis";
+    document.getElementById("infoContent").innerText = "InformaÃ§Ãµes nÃ£o disponÃ­veis";
     panel.style.display = "block";
     infoVisible = true;
   }

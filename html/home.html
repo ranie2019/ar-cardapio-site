@@ -108,7 +108,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <!-- Scripts principais -->
-  <script src="../java/home.js"></script>
+  <!-- Scripts do sistema divididos em módulos -->
+  <script src="../java/home1.js"></script>
+  <script src="../java/home2.js"></script>
+  <script src="../java/home3.js"></script>
   <script src="../java/cardapio.js"></script>
 
   <!-- CONTROLE DE MODAIS, DROPDOWNS E BROADCAST -->
@@ -186,13 +189,7 @@
       }
 
       document.addEventListener('click', (e) => {
-        // Cardápio
-        if (dropdownCardapio &&
-            !dropdownCardapio.contains(e.target) &&
-            e.target !== cardapioButton) {
-          dropdownCardapio.classList.remove('show');
-        }
-        // Perfil
+        // Perfil - fechar quando clicar fora
         if (dropdownPerfil &&
             !dropdownPerfil.contains(e.target) &&
             e.target !== profileButton) {
@@ -201,6 +198,28 @@
           if (perfilTexto) perfilTexto.textContent = 'Perfil ▼';
         }
       });
+    });
+  </script>
+
+  <!-- Scripts do Sistema ARCardápio -->
+  <script src="../java/objetos3d.js"></script>
+  <script src="../java/home1.js"></script>
+  <script src="../java/home2.js"></script>
+  <script src="../java/home3.js"></script>
+  
+  <!-- Inicialização do Sistema -->
+  <script>
+    // Aguardar carregamento completo antes de inicializar
+    document.addEventListener('DOMContentLoaded', () => {
+      // Aguardar um pouco mais para garantir que todos os scripts carregaram
+      setTimeout(() => {
+        try {
+          window.sistemaCardapio = new SistemaCardapio();
+          console.log('Sistema ARCardápio inicializado com sucesso!');
+        } catch (error) {
+          console.error('Erro ao inicializar sistema:', error);
+        }
+      }, 500);
     });
   </script>
 
