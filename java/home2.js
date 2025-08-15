@@ -86,17 +86,16 @@ class SistemaCardapioItens extends SistemaCardapioBase {
     this.modelModal.style.top = `${rect.top}px`;
     this.modelModal.style.display = 'block';
 
-    // ajuste fino: descer X pixels para não cobrir o botão
-    const OFFSET_TOP = 80; // mude para o valor que preferir (40~80)
-
+    // ajuste fino
+    const OFFSET_TOP = 80;
     this.modelModal.style.left = `${rect.right + 5}px`;
-    this.modelModal.style.top  = `${rect.top + OFFSET_TOP}px`; // << aqui
+    this.modelModal.style.top  = `${rect.top + OFFSET_TOP}px`;
     this.modelModal.style.display = 'block';
 
     const modelURL = `${this.MODEL_BASE_URL}${categoria}/${this.nomeParaArquivo(nome)}`;
     this.escalaAtual = 1;
 
-    // Mostrar loading primeiro
+    // Loading
     this.modelModal.innerHTML = `
       <div style="width: 330px; height: 300px; background: #1a1a1a; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #00f0c0;">
         <div style="text-align: center;">
@@ -109,14 +108,14 @@ class SistemaCardapioItens extends SistemaCardapioBase {
       </style>
     `;
 
-    // Verificar se o modelo existe antes de carregar
+    // Verificar existência do modelo
     fetch(modelURL, { method: 'HEAD' })
       .then(response => {
         if (!response.ok) {
           throw new Error('Modelo não encontrado');
         }
-        
-        // Modelo existe, carregar A-Frame
+
+        // Carregar A-Frame
         this.modelModal.innerHTML = `
           <a-scene 
             embedded 
@@ -144,7 +143,6 @@ class SistemaCardapioItens extends SistemaCardapioBase {
             Preview 3D
           </div>
           <style>
-            /* Esconder completamente elementos VR */
             .a-enter-vr, .a-enter-ar, .a-orientation-modal, [data-aframe-default-ui] { display: none !important; }
             .a-canvas { pointer-events: none !important; }
           </style>
@@ -152,8 +150,8 @@ class SistemaCardapioItens extends SistemaCardapioBase {
 
         this.configurarControlesPreview();
       })
-      .catch(error => {
-        // Modelo não encontrado, mostrar erro
+      .catch(() => {
+        // Erro
         this.modelModal.innerHTML = `
           <div style="width: 330px; height: 300px; background: #1a1a1a; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #ff6b6b; text-align: center; padding: 20px; box-sizing: border-box;">
             <div>
@@ -215,7 +213,8 @@ class SistemaCardapioItens extends SistemaCardapioBase {
     this.modalConfig.querySelector('.modal-titulo').textContent = `Configurar ${nome}`;
 
     let dadosProduto = { preco: 0, descricao: '' };
-    const urlJson = `${this.MODEL_BASE_URL}informacao/${arquivoJson}?v=${Date.now()}`;
+    // Lê do mesmo local onde será salvo
+    const urlJson = `https://ar-cardapio-models.s3.amazonaws.com/informacao/${this.nomeRestaurante}/${arquivoJson}?v=${Date.now()}`;
 
     try {
       const resposta = await fetch(urlJson);
@@ -258,7 +257,10 @@ class SistemaCardapioItens extends SistemaCardapioBase {
       const nomeArquivo = `${nomeProduto}.json`;
 
       const dadosAtualizados = { preco, descricao, ultimaAtualizacao: new Date().toISOString() };
-      const urlCompleta = `${this.MODEL_BASE_URL}informacao/${nomeArquivo}`;
+
+      // >>> CORREÇÃO: salvar no bucket ar-cardapio-models, na pasta informacao/{restaurante}
+      const urlCompleta =
+        `https://ar-cardapio-models.s3.amazonaws.com/informacao/${this.nomeRestaurante}/${nomeArquivo}`;
 
       const resposta = await fetch(urlCompleta, {
         method: 'PUT',
@@ -279,4 +281,3 @@ class SistemaCardapioItens extends SistemaCardapioBase {
     }
   }
 }
-

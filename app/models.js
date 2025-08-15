@@ -15,27 +15,27 @@ const models = {
     { path: `${modelBaseURL}/inicio/tabua_de_carne.glb`, price: 0.00, info: null }
   ],
   bebidas: [
-    { path: `${modelBaseURL}/bebidas/absolut_vodka.glb`, price: 79.90, info: `${modelBaseURL}/informacao/absolut_vodka.json` },
-    { path: `${modelBaseURL}/bebidas/champagne.glb`, price: 98.50, info: `${modelBaseURL}/informacao/champagne.json` },
-    { path: `${modelBaseURL}/bebidas/heineken.glb`, price: 12.90, info: `${modelBaseURL}/informacao/heineken.json` },
-    { path: `${modelBaseURL}/bebidas/jack_daniels.glb`, price: 130.00, info: `${modelBaseURL}/informacao/jack_daniels.json` },
-    { path: `${modelBaseURL}/bebidas/redbull.glb`, price: 9.90, info: `${modelBaseURL}/informacao/redbull.json` }
+    { path: `${modelBaseURL}/bebidas/absolut_vodka.glb`, price: 79.90, info: `${modelBaseURL}/informacao/${nomeRestaurante}/absolut_vodka.json` },
+    { path: `${modelBaseURL}/bebidas/champagne.glb`, price: 98.50, info: `${modelBaseURL}/informacao/${nomeRestaurante}/champagne.json` },
+    { path: `${modelBaseURL}/bebidas/heineken.glb`, price: 12.90, info: `${modelBaseURL}/informacao/${nomeRestaurante}/heineken.json` },
+    { path: `${modelBaseURL}/bebidas/jack_daniels.glb`, price: 130.00, info: `${modelBaseURL}/informacao/${nomeRestaurante}/jack_daniels.json` },
+    { path: `${modelBaseURL}/bebidas/redbull.glb`, price: 9.90, info: `${modelBaseURL}/informacao/${nomeRestaurante}/redbull.json` }
   ],
   pizzas: [
-    { path: `${modelBaseURL}/pizzas/presunto_de_parma_e_rúcula.glb`, price: 45.00, info: `${modelBaseURL}/informacao/presunto_de_parma_e_rúcula.json` },
-    { path: `${modelBaseURL}/pizzas/mussarela.glb`, price: 45.00, info: `${modelBaseURL}/informacao/mussarela.json` },
-    { path: `${modelBaseURL}/pizzas/salami.glb`, price: 45.00, info: `${modelBaseURL}/informacao/salami.json` }
+    { path: `${modelBaseURL}/pizzas/presunto_de_parma_e_rúcula.glb`, price: 45.00, info: `${modelBaseURL}/informacao/${nomeRestaurante}/presunto_de_parma_e_rúcula.json` },
+    { path: `${modelBaseURL}/pizzas/mussarela.glb`, price: 45.00, info: `${modelBaseURL}/informacao/${nomeRestaurante}/mussarela.json` },
+    { path: `${modelBaseURL}/pizzas/salami.glb`, price: 45.00, info: `${modelBaseURL}/informacao/${nomeRestaurante}/salami.json` }
   ],
   sobremesas: [
-    { path: `${modelBaseURL}/sobremesas/cupcake_chocolate.glb`, price: 12.00, info: `${modelBaseURL}/informacao/cupcake_chocolate.json` },
-    { path: `${modelBaseURL}/sobremesas/rosquinha_de_chocolate.glb`, price: 10.50, info: `${modelBaseURL}/informacao/rosquinha_de_chocolate.json` },
-    { path: `${modelBaseURL}/sobremesas/sundae.glb`, price: 10.50, info: `${modelBaseURL}/informacao/sundae.json` }
+    { path: `${modelBaseURL}/sobremesas/cupcake_chocolate.glb`, price: 12.00, info: `${modelBaseURL}/informacao/${nomeRestaurante}/cupcake_chocolate.json` },
+    { path: `${modelBaseURL}/sobremesas/rosquinha_de_chocolate.glb`, price: 10.50, info: `${modelBaseURL}/informacao/${nomeRestaurante}/rosquinha_de_chocolate.json` },
+    { path: `${modelBaseURL}/sobremesas/sundae.glb`, price: 10.50, info: `${modelBaseURL}/informacao/${nomeRestaurante}/sundae.json` }
   ],
   carnes: [
-    { path: `${modelBaseURL}/carnes/bisteca_suina_grelhada.glb`, price: 20.89, info: `${modelBaseURL}/informacao/bisteca_suina_grelhada.json` },
-    { path: `${modelBaseURL}/carnes/costela_bovina_cozida.glb`, price: 39.90, info: `${modelBaseURL}/informacao/costela_bovina_cozida.json` },
-    { path: `${modelBaseURL}/carnes/paleta_cordeiro.glb`, price: 37.90, info: `${modelBaseURL}/informacao/paleta_cordeiro.json` },
-    { path: `${modelBaseURL}/carnes/lombo_de_porco.glb`, price: 35.99, info: `${modelBaseURL}/informacao/lombo_de_porco.json` }
+    { path: `${modelBaseURL}/carnes/bisteca_suina_grelhada.glb`, price: 20.89, info: `${modelBaseURL}/informacao/${nomeRestaurante}/bisteca_suina_grelhada.json` },
+    { path: `${modelBaseURL}/carnes/costela_bovina_cozida.glb`, price: 39.90, info: `${modelBaseURL}/informacao/${nomeRestaurante}/costela_bovina_cozida.json` },
+    { path: `${modelBaseURL}/carnes/paleta_cordeiro.glb`, price: 37.90, info: `${modelBaseURL}/informacao/${nomeRestaurante}/paleta_cordeiro.json` },
+    { path: `${modelBaseURL}/carnes/lombo_de_porco.glb`, price: 35.99, info: `${modelBaseURL}/informacao/${nomeRestaurante}/lombo_de_porco.json` }
   ]
 };
 
