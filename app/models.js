@@ -7,6 +7,8 @@ function obterNomeRestaurante() {
   return urlParams.get("restaurante") || "restaurante-padrao";
 }
 
+const nomeRestaurante = obterNomeRestaurante();
+
 // ==================== CATÁLOGO DE MODELOS 3D ====================
 const models = {
   inicio: [

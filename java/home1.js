@@ -1,14 +1,14 @@
 // ==============================
-// home1.js - ConfiguraÃ§Ã£o Inicial, Modais e Eventos
+// home1.js - Configuração Inicial, Modais e Eventos
 // ==============================
 
 class SistemaCardapioBase {
   constructor() {
     // ------------------------------
-    // VerificaÃ§Ã£o de sessÃ£o e carregamento do nome da empresa
+    // Verificação de sessão e carregamento do nome da empresa
     // ------------------------------
     this.verificarSessao();
-    // Chamar carregarNomeEmpresa apenas se a sessÃ£o for vÃ¡lida
+    // Chamar carregarNomeEmpresa apenas se a sessão for válida
     if (localStorage.getItem("authToken")) {
       this.carregarNomeEmpresa();
     }
@@ -18,8 +18,8 @@ class SistemaCardapioBase {
     // ------------------------------
     this.nomeRestaurante = this.obterNomeRestaurante();
     this.MODEL_BASE_URL = `https://site-arcardapio.s3.us-east-1.amazonaws.com/modelos3d/${this.nomeRestaurante}/`;
-    this.ARQUIVO_CONFIG_CATEGORIAS = `https://site-arcardapio.s3.us-east-1.amazonaws.com/configuracoes/${this.nomeRestaurante}.json`;
-    this.ARQUIVO_CONFIG_ITENS = `https://site-arcardapio.s3.us-east-1.amazonaws.com/configuracoes/${this.nomeRestaurante}-itens.json`;
+    this.ARQUIVO_CONFIG_CATEGORIAS = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${this.nomeRestaurante}.json`;
+    this.ARQUIVO_CONFIG_ITENS = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${this.nomeRestaurante}-itens.json`;
     
     this.dadosRestaurante = {};
     this.categoriaAtiva = null;
@@ -28,12 +28,12 @@ class SistemaCardapioBase {
     this.previewFecharTimeout = null;
     this.previewItemAtual = null;
 
-    // Canais de comunicaÃ§Ã£o
+    // Canais de comunicação
     this.canalStatus = new BroadcastChannel('status-itens');
     this.canalCategorias = new BroadcastChannel('status-categorias');
 
     // ------------------------------
-    // InicializaÃ§Ã£o
+    // Inicialização
     // ------------------------------
     this.inicializarModalConfiguracao();
     this.inicializarModalPreview3D();
@@ -41,7 +41,7 @@ class SistemaCardapioBase {
   }
 
   // ==============================
-  // VERIFICAÃ‡ÃƒO DE SESSÃƒO
+  // VERIFICAÇÃO DE SESSÃO
   // ==============================
   verificarSessao() {
     const authToken = localStorage.getItem("authToken");
@@ -73,14 +73,14 @@ class SistemaCardapioBase {
           const perfilTextoElement = document.getElementById('perfil-texto');
           if (perfilTextoElement) {
             const primeiroNome = userData.user.nome.split(' ')[0];
-            perfilTextoElement.innerHTML = `Perfil â–¼<br><small style="font-size: 12px; color: #ccc;">${primeiroNome}</small>`;
+            perfilTextoElement.innerHTML = `Perfil ▼<br><small style="font-size: 12px; color: #ccc;">${primeiroNome}</small>`;
           }
         }
       } else {
-        console.error('Erro ao carregar dados do usuÃ¡rio:', response.status, response.statusText);
+        console.error('Erro ao carregar dados do usuário:', response.status, response.statusText);
       }
     } catch (error) {
-      console.error('Erro na requisiÃ§Ã£o para carregar dados do usuÃ¡rio:', error);
+      console.error('Erro na requisição para carregar dados do usuário:', error);
     }
   }
 
@@ -90,7 +90,7 @@ class SistemaCardapioBase {
   obterNomeRestaurante() {
     const userEmail = localStorage.getItem("userEmail");
     if (!userEmail) {
-      console.error("E-mail do usuÃ¡rio nÃ£o encontrado no localStorage");
+      console.error("E-mail do usuário não encontrado no localStorage");
       return "restaurante-padrao";
     }
     return userEmail.replace(/[@.]/g, '-').toLowerCase();
@@ -128,7 +128,7 @@ class SistemaCardapioBase {
           <input type="text" id="inputValor" placeholder="0,00">
         </div>
         <div class="grupo-input">
-          <label for="inputDescricao">DescriÃ§Ã£o:</label>
+          <label for="inputDescricao">Descrição:</label>
           <textarea id="inputDescricao" rows="4"></textarea>
         </div>
         <div class="actions">
@@ -138,11 +138,11 @@ class SistemaCardapioBase {
     `;
     document.body.appendChild(this.modalConfig);
 
-    // Impede fechamento ao clicar dentro do conteÃºdo
+    // Impede fechamento ao clicar dentro do conteúdo
     this.modalConfig.querySelector('.modal-content-edicao')
       .addEventListener('click', (event) => event.stopPropagation());
 
-    // FormataÃ§Ã£o monetÃ¡ria
+    // Formatação monetária
     const inputValor = this.modalConfig.querySelector('#inputValor');
     inputValor.addEventListener('input', (event) => this.formatarValorMonetario(event));
 
@@ -154,7 +154,7 @@ class SistemaCardapioBase {
         if (salvou) this.modalConfig.style.display = 'none';
       } catch (error) {
         console.error('Erro ao salvar:', error);
-        alert('Erro ao salvar as configuraÃ§Ãµes: ' + error.message);
+        alert('Erro ao salvar as configurações: ' + error.message);
       }
     });
 
@@ -178,25 +178,19 @@ class SistemaCardapioBase {
   }
 
   // ==============================
-  // 2. EVENTOS DO CARDÃPIO
+  // 2. EVENTOS DO CARDÁPIO
   // ==============================
   configurarEventosCardapio() {
-    const profileButton = document.getElementById('profile-btn');
     const cardapioButton = document.getElementById('cardapio-btn');
     const dropdownCardapio = document.getElementById('dropdownCardapio');
     const container = document.getElementById('itensContainer');
 
-    // Perfil: nÃ£o redireciona (dropdown Ã© controlado no HTML)
-    if (profileButton) {
-      profileButton.addEventListener('click', (e) => {
-        // intencionalmente vazio
-      });
-    }
-
-    // CardÃ¡pio: toggle apenas no clique do botÃ£o
+    // Cardápio: toggle apenas no clique do botão
     if (cardapioButton && dropdownCardapio) {
-      cardapioButton.addEventListener('click', () => {
+      cardapioButton.addEventListener('click', (e) => {
+        e.stopPropagation();
         dropdownCardapio.classList.toggle('show');
+        
         if (!dropdownCardapio.classList.contains('show')) {
           container.style.display = 'none';
           container.innerHTML = '';
@@ -208,9 +202,23 @@ class SistemaCardapioBase {
           container.style.display = 'flex';
         }
       });
+
+      // Fechar dropdown do cardápio quando clicar fora
+      document.addEventListener('click', (e) => {
+        if (dropdownCardapio &&
+            !dropdownCardapio.contains(e.target) &&
+            e.target !== cardapioButton) {
+          dropdownCardapio.classList.remove('show');
+          container.style.display = 'none';
+          container.innerHTML = '';
+          this.categoriaAtiva = null;
+          this.modelModal.style.display = 'none';
+          this.modelModal.innerHTML = '';
+        }
+      });
     }
 
-    // BotÃµes de categoria
+    // Botões de categoria
     document.querySelectorAll('#dropdownCardapio button').forEach(button => {
       const categoria = button.getAttribute('data-categoria');
       const id = 'btnEstado_' + categoria;
@@ -222,7 +230,7 @@ class SistemaCardapioBase {
         this.notificarEstadoCategoria(categoria, true);
       }
 
-      // Clique no botÃ£o da categoria
+      // Clique no botão da categoria
       button.addEventListener('click', () => {
         const desativadoAgora = !button.classList.contains('desativado');
 
@@ -248,7 +256,7 @@ class SistemaCardapioBase {
         }
       });
 
-      // Hover: prÃ©-visualiza itens da categoria (sem mudar estado ativo)
+      // Hover: pré-visualiza itens da categoria (sem mudar estado ativo)
       button.addEventListener('mouseenter', () => {
         if (!button.classList.contains('desativado') && this.categoriaAtiva !== categoria) {
           this.mostrarItens(categoria);
@@ -258,7 +266,7 @@ class SistemaCardapioBase {
   }
 
   // ==============================
-  // UTILITÃRIOS
+  // UTILITÁRIOS
   // ==============================
   formatarValorMonetario(evento) {
     let valor = evento.target.value.replace(/\D/g, '');
@@ -276,3 +284,4 @@ class SistemaCardapioBase {
     });
   }
 }
+

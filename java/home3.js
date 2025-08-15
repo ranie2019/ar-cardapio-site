@@ -1,5 +1,5 @@
 // ==============================
-// home3.js - SincronizaÃ§Ã£o, QR Code e Sistema Principal
+// home3.js - Sincronização, QR Code e Sistema Principal
 // ==============================
 
 class SistemaCardapio extends SistemaCardapioItens {
@@ -7,7 +7,7 @@ class SistemaCardapio extends SistemaCardapioItens {
     super();
     
     // ------------------------------
-    // ConfiguraÃ§Ãµes especÃ­ficas do sistema completo
+    // Configurações específicas do sistema completo
     // ------------------------------
     this.setupQrCode();
     this.configurarSincronizacao();
@@ -15,7 +15,7 @@ class SistemaCardapio extends SistemaCardapioItens {
   }
 
   // ==============================
-  // 6. SINCRONIZAÃ‡ÃƒO COM O APP AR
+  // 6. SINCRONIZAÇÃO COM O APP AR
   // ==============================
   configurarSincronizacao() {
     this.canalStatus.onmessage = (evento) => {
@@ -27,7 +27,7 @@ class SistemaCardapio extends SistemaCardapioItens {
   }
 
   // ==============================
-  // 7. CATEGORIAS E ITENS â†’ S3
+  // 7. CATEGORIAS E ITENS → S3
   // ==============================
   async salvarConfiguracaoNoS3() {
     // 1. Categorias
@@ -45,7 +45,7 @@ class SistemaCardapio extends SistemaCardapioItens {
         body: JSON.stringify(configuracoesCategoria)
       });
     } catch (erro) {
-      console.error('Erro ao salvar configuraÃ§Ãµes de categoria:', erro);
+      console.error('Erro ao salvar configurações de categoria:', erro);
     }
 
     // 2. Itens desativados
@@ -75,6 +75,65 @@ class SistemaCardapio extends SistemaCardapioItens {
   // 8. CARREGAMENTO INICIAL
   // ==============================
   async carregarConfiguracoesIniciais() {
+    // SEMPRE garantir que todos os botões das categorias estejam visíveis primeiro
+    this.garantirBotoesCategoriasVisiveis();
+    
+    try {
+      // Tentar carregar configurações específicas do restaurante (se existirem)
+      await this.carregarConfiguracoesSalvas();
+    } catch (erro) {
+      console.error('Erro ao carregar configurações iniciais:', erro);
+      // Mesmo com erro, os botões já estão visíveis
+    }
+  }
+
+  // Garantir que todos os botões das categorias estejam sempre visíveis
+  garantirBotoesCategoriasVisiveis() {
+    const botoesCategoria = document.querySelectorAll('#dropdownCardapio .btn-categoria');
+    
+    // Se não há botões, criar os botões padrão
+    if (botoesCategoria.length === 0) {
+      this.criarBotoesCategoriaPadrao();
+      return;
+    }
+
+    // Garantir que todos os botões estejam visíveis (remover estado desativado por padrão)
+    botoesCategoria.forEach(botao => {
+      const categoria = botao.getAttribute('data-categoria');
+      if (categoria) {
+        // Não aplicar estado desativado por padrão - deixar todos visíveis
+        botao.style.display = '';
+        botao.classList.remove('hidden');
+      }
+    });
+  }
+
+  // Criar botões de categoria padrão se não existirem
+  criarBotoesCategoriaPadrao() {
+    const dropdown = document.getElementById('dropdownCardapio');
+    if (!dropdown) return;
+
+    const categoriasPadrao = ['bebidas', 'carnes', 'pizzas', 'lanches', 'sobremesas', 'porcoes'];
+    const nomesCategorias = {
+      'bebidas': 'Bebidas',
+      'carnes': 'Carnes', 
+      'pizzas': 'Pizzas',
+      'lanches': 'Lanches',
+      'sobremesas': 'Sobremesas',
+      'porcoes': 'Porções'
+    };
+
+    categoriasPadrao.forEach(categoria => {
+      const botao = document.createElement('button');
+      botao.className = 'btn-categoria';
+      botao.setAttribute('data-categoria', categoria);
+      botao.textContent = nomesCategorias[categoria] || categoria;
+      dropdown.appendChild(botao);
+    });
+  }
+
+  // Carregar configurações salvas (se existirem)
+  async carregarConfiguracoesSalvas() {
     try {
       // Categorias
       const respostaCategorias = await fetch(`${this.ARQUIVO_CONFIG_CATEGORIAS}?v=${Date.now()}`);
@@ -102,12 +161,13 @@ class SistemaCardapio extends SistemaCardapioItens {
         });
       }
     } catch (erro) {
-      console.error('Erro ao carregar configuraÃ§Ãµes iniciais:', erro);
+      console.log('Configurações não encontradas - usando padrões:', erro.message);
+      // Não é um erro crítico - conta nova simplesmente não tem configurações ainda
     }
   }
 
   // ==============================
-  // 9. GERADOR DE QR CODE (VersÃ£o Melhorada)
+  // 9. GERADOR DE QR CODE (Versão Melhorada)
   // ==============================
   setupQrCode() {
     const modalQR = document.getElementById('modalQrCode');
@@ -120,7 +180,7 @@ class SistemaCardapio extends SistemaCardapioItens {
     const botaoGerarQR = document.getElementById('btnGerarQR');
 
     if (!modalQR || !containerQR || !botaoFechar || !inputQuantidade || !botaoMais || !botaoMenos || !botaoImprimir || !botaoGerarQR) {
-      console.error('Elementos do QR Code nÃ£o encontrados.');
+      console.error('Elementos do QR Code não encontrados.');
       return;
     }
 
@@ -189,7 +249,7 @@ class SistemaCardapio extends SistemaCardapioItens {
       containerQR.innerHTML = '';
     });
 
-    // Fecha ao clicar fora do conteÃºdo
+    // Fecha ao clicar fora do conteúdo
     modalQR.addEventListener('click', (evento) => {
       if (evento.target === modalQR) {
         modalQR.classList.remove('ativo');
@@ -197,7 +257,7 @@ class SistemaCardapio extends SistemaCardapioItens {
       }
     });
 
-    // ImpressÃ£o
+    // Impressão
     botaoImprimir.addEventListener('click', () => {
       if (!containerQR.innerHTML.trim()) {
         alert('Gere os QR Codes antes de imprimir.');
@@ -241,3 +301,4 @@ class SistemaCardapio extends SistemaCardapioItens {
 document.addEventListener('DOMContentLoaded', () => {
   new SistemaCardapio();
 });
+

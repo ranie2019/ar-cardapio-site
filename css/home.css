@@ -1,3 +1,623 @@
+/* ====================== */
+/* CABEÇALHO */
+/* ====================== */
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 40px;
+}
+
+/* ====================== */
+/* MENU CARDÁPIO */
+/* ====================== */
+
+.cardapio-menu {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+}
+
+#cardapio-btn {
+  background-color: #e50914;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  font-size: 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.dropdown-cardapio {
+  display: none;
+  position: absolute;
+  top: 60px;
+  left: 0;
+  background: transparent;
+  z-index: 10;
+}
+
+.dropdown-cardapio.show {
+  display: block;
+}
+
+#dropdownCardapio button.desativado {
+  background-color: lightgray;
+  color: #333333;
+}
+
+/* ====================== */
+/* ITENS DO CARDÁPIO */
+/* ====================== */
+
+.itens-container {
+  position: absolute;
+  top: 150px; /* afasta um pouco para baixo */
+  left: 260px; /* alinha horizontalmente com o botão de categoria */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: calc(100% - 280px); /* reduz para acomodar nova margem */
+}
+
+.item-box {
+  background-color: #ffb342;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #000000;
+  opacity: 0;
+  animation: fadeSlideUp 0.4s ease forwards;
+}
+
+.item-box:hover {
+  background-color: #fa951a;
+  color: rgb(0, 0, 0);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.item-box.desativado {
+  opacity: 0.4;
+  pointer-events: auto;
+  background-color: #999999 !important;
+}
+
+@keyframes fadeSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ====================== */
+/* BOTÃO DE CONFIGURAÇÃO */
+/* ====================== */
+
+.btn-configurar-produto {
+  background-color: #999999;
+  color: #000000;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-top: 5px;
+}
+
+.btn-configurar-produto:hover {
+  background-color: #777777;
+}
+
+/* ====================== */
+/* MODAL DE EDIÇÃO */
+/* ====================== */
+
+.modal-edicao {
+  display: none;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  padding: 1rem;
+}
+
+.modal-edicao.show {
+  display: flex;
+}
+
+.modal-content-edicao {
+  background-color: #ffffff;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.close-edicao {
+  float: right;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.grupo-input {
+  margin-bottom: 5px;
+  display: block;
+  font-weight: bold;
+}
+
+
+.grupo-input input,
+.grupo-input textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #dddddd;
+  border-radius: 4px;
+}
+
+.actions {
+  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* ====================== */
+/* PREVIEW 3D */
+/* ====================== */
+
+.model-preview-modal {
+  position: absolute;
+  z-index: 999;
+  padding: 20px;
+  background: rgba(124, 124, 124, 0.95);
+  border-radius: 16px;
+  border: 2px solid #00ffc8;
+  box-shadow: 0 0 20px rgba(0, 255, 200, 0.5);
+  transition: all 0.3s ease;
+  width: 330px;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+}
+
+
+.a-enter-vr-button {
+  display: none !important;
+}
+
+/* Esconder todos os elementos relacionados ao VR */
+.a-enter-vr-button,
+.a-enter-ar-button,
+.a-vr-mode-ui,
+.a-orientation-modal {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Esconder popups de permissão */
+.a-dialog,
+.a-dialog-container,
+.a-orientation-modal-dialog {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+.loading-spinner {
+  width: 80px;
+  height: 80px;
+  margin: 100px auto;
+  display: block;
+}
+
+/* ====================== */
+/* MODAL QR CODE */
+/* ====================== */
+
+#modalQrCode {
+  position: fixed;
+  z-index: 1000;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: none;
+  justify-content: center;
+  align-items: center;
+}
+
+#modalQrCode.ativo {
+  display: flex;
+}
+
+#modalQrCode .conteudo-modal {
+  background-color: white;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  position: relative;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+#modalQrCode .fechar-modal {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 24px;
+  font-weight: bold;
+  color: #333333;
+  cursor: pointer;
+}
+
+
+.qrcode-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+/* ====================== */
+/* CONTROLE DE QUANTIDADE QR CODE */
+/* ====================== */
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ====================== */
+/* BOTÃO IMPRIMIR */
+/* ====================== */
+
+.btn-imprimir {
+  margin-left: 15px;
+  background-color: #a1a2a1;
+  color: rgb(255, 255, 255);
+  border: none;
+  padding: 8px 12px;
+  font-size: 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.btn-imprimir:hover {
+  background-color: #000000;
+}
+
+/* ====================== */
+/* ESTILOS PARA IMPRESSÃO */
+/* ====================== */
+
+@media print {
+  /* Reset e esconder elementos não necessários */
+  body * {
+    visibility: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Mostrar apenas o container dos QR Codes */
+  #qrcodeContainer, 
+  #qrcodeContainer * {
+    visibility: visible !important;
+  }
+
+  /* Container principal */
+  #qrcodeContainer {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: 20mm;
+    background: white !important;
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    gap: 10mm;
+    font-family: Arial, sans-serif;
+  }
+
+  /* QR Code visual */
+  .qrcode {
+    width: 70mm !important;
+    height: 70mm !important;
+    margin: 0 auto 8mm;
+  }
+
+  /* Configurações da página */
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
+}
+
+/* ====================== */
+/* RESPONSIVIDADE */
+/* ====================== */
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    padding: 10px 20px;
+  }
+
+  .titulo {
+    font-size: 24px;
+    margin-top: 10px;
+  }
+
+  .cardapio-menu {
+    top: 10px;
+    left: 10px;
+  }
+
+  .itens-container {
+    top: 100px;
+    left: 10px;
+    max-width: calc(100% - 20px);
+    justify-content: center;
+  }
+}
+
+/* ==============================
+Estilos do modal de configuração
+============================== */
+.modal-configuracao {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0,0,0,0.5);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+.modal-configuracao.active {
+  display: flex;
+}
+.modal-conteudo-config {
+  background-color: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.fechar-modal-config {
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.grupo-input label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+.grupo-input input,
+.grupo-input textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+.grupo-input textarea {
+  min-height: 80px;
+  max-height: 150px;
+  resize: vertical;
+}
+
+.btn-salvar-config {
+  background-color: #d81b60;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-salvar-config:hover {
+  background-color: #b21853;
+}
+
+
+/* Título */
+#modalQrCode h3 {
+  font-size: 2rem;
+  margin-bottom: 20px;
+  color: #222;
+}
+
+.controles-qrcode input[type="number"] {
+  width: 50px;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.controles-qrcode button {
+  padding: 6px 10px;
+  font-size: 0.9rem;
+  border: none;
+  border-radius: 6px;
+  background-color: #cc0000;
+  color: rgb(255, 255, 255);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+/* FUNDO PRETO PADRÃO */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #000000;
+  font-family: Arial, sans-serif;
+  color: #00f0c0; /* cor dos textos */
+}
+
+/* SOBREPOSIÇÃO E VÍDEO (removido ou comentado) */
+.video-bg,
+.overlay {
+  display: none;
+}
+
+/* TÍTULO CENTRAL */
+.titulo {
+  color: #00f0c0;
+  font-size: 32px;
+  font-weight: bold;
+  text-align: center;
+  flex: 1;
+}
+
+/* BOTÕES VERDES */
+.btn-vermelho,
+#cardapio-btn,
+#btnQrCode,
+.btn-categoria,
+.controles-qrcode button,
+.btn-imprimir {
+  background-color: #00f0c0;
+  color: #000000;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 16px;
+  transition: background-color 0.2s ease;
+}
+
+.btn-vermelho:hover,
+#profile-btn:hover,
+#cardapio-btn:hover,
+#btnQrCode:hover,
+.btn-categoria:hover,
+.controles-qrcode button:hover,
+.btn-imprimir:hover {
+  background-color: #00d0a8;
+}
+
+/* BOTÃO DESATIVADO */
+#dropdownCardapio button.desativado {
+  background-color: #555;
+  color: #ccc;
+}
+
+/* MODAL */
+.modal .conteudo-modal {
+  background-color: #111;
+  color: #00f0c0;
+}
+
+/* Fechar modal */
+.fechar-modal {
+  color: #00f0c0;
+}
+
+/* OUTROS ELEMENTOS */
+label, input, h3 {
+  color: #00f0c0;
+}
+input, textarea {
+  background: #222;
+  border: 1px solid #444;
+  color: #00f0c0;
+}
+
+/* VÍDEO DE FUNDO */
+#bg-video {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  z-index: -1;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  color: #00ffd1;
+}
+
+.titulo {
+  font-size: 32px;
+  font-weight: bold;
+}
+
+.menu-lateral {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#btnGerarQR {
+  background-color: #00ffd1;
+  color: black;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+#btnGerarQR .video-hover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+  z-index: 0;
+  border-radius: 20px;
+}
+
+#btnGerarQR span {
+  position: relative;
+  z-index: 1;
+}
+
 #btnGerarQR:hover .video-hover {
   display: block;
 }

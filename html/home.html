@@ -1,22 +1,26 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Home - Sistema</title>
-
-  <!-- CSS da página home -->
-  <link rel="stylesheet" href="../css/home.css" />
-
-  <!-- A-Frame para preview 3D dos modelos GLB -->
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-
+  <link rel="stylesheet" href="../css/home.css">
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <style>
-    body { margin: 0; overflow-x: hidden; }
-
-    /* --- Dropdown do Perfil (estilo leve; o resto já está no home.css) --- */
-    .perfil-menu { position: relative; display: inline-block; }
-    .dropdown-perfil { position: absolute; top: 60px; right: 0; display: none; background: transparent; z-index: 20; }
+    /* Estilos específicos para o dropdown do perfil */
+    .perfil-menu { position: relative; }
+    .dropdown-perfil {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: rgba(0, 0, 0, 0.9);
+      border-radius: 8px;
+      padding: 10px 0;
+      min-width: 160px;
+      z-index: 1000;
+      border: 2px solid #00ffff;
+    }
+    .dropdown-perfil.hidden { display: none; }
     .dropdown-perfil.show { display: block; }
     /* reaproveita .btn-categoria; ajusta largura pra bater com os da esquerda */
     #dropdownPerfil .btn-categoria { width: 160px; margin: 8px 0; }
@@ -200,32 +204,6 @@
       });
     });
   </script>
-
-  <!-- Scripts do Sistema ARCardápio -->
-  <script src="../java/objetos3d.js"></script>
-  <script src="../java/home1.js"></script>
-  <script src="../java/home2.js"></script>
-  <script src="../java/home3.js"></script>
-  
-  <!-- Inicialização do Sistema -->
-  <script>
-    // Aguardar carregamento completo antes de inicializar
-    document.addEventListener('DOMContentLoaded', () => {
-      // Aguardar um pouco mais para garantir que todos os scripts carregaram
-      setTimeout(() => {
-        try {
-          window.sistemaCardapio = new SistemaCardapio();
-          console.log('Sistema ARCardápio inicializado com sucesso!');
-        } catch (error) {
-          console.error('Erro ao inicializar sistema:', error);
-        }
-      }, 500);
-    });
-  </script>
-
-  <!-- RODAPÉ -->
-  <footer>
-    &copy; 2025 ARCardápio. Todos os direitos reservados.
-  </footer>
 </body>
 </html>
+
