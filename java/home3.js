@@ -31,7 +31,7 @@ class SistemaCardapio extends SistemaCardapioItens {
   // ==============================
   async salvarConfiguracaoNoS3() {
     // 1. Categorias
-    const botoesCategoria = document.querySelectorAll('#dropdownCardapio .btn-categoria');
+    const botoesCategoria = document.querySelectorAll('#dropdownCardapio button[data-categoria]');
     const configuracoesCategoria = {};
     botoesCategoria.forEach(botao => {
       const categoria = botao.getAttribute('data-categoria');
@@ -39,14 +39,23 @@ class SistemaCardapio extends SistemaCardapioItens {
     });
 
     try {
-      await fetch(this.ARQUIVO_CONFIG_CATEGORIAS, {
+      const r = await fetch(this.ARQUIVO_CONFIG_CATEGORIAS, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-amz-acl': 'bucket-owner-full-control' // mesmo padrão do home2.js
+        },
         body: JSON.stringify(configuracoesCategoria)
       });
+      if (!r.ok) {
+        const t = await r.text().catch(() => '');
+        throw new Error(`Falha ao salvar categorias (${r.status}) ${t}`);
+      }
     } catch (erro) {
       console.error('Erro ao salvar configurações de categoria:', erro);
+      alert('Falha ao salvar categorias: ' + erro.message);
     }
+
 
     // 2. Itens desativados
     const itensDesativados = {};
@@ -61,13 +70,21 @@ class SistemaCardapio extends SistemaCardapioItens {
     });
 
     try {
-      await fetch(this.ARQUIVO_CONFIG_ITENS, {
+      const r2 = await fetch(this.ARQUIVO_CONFIG_ITENS, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-amz-acl': 'bucket-owner-full-control' // mesmo padrão do home2.js
+        },
         body: JSON.stringify(itensDesativados)
       });
+      if (!r2.ok) {
+        const t2 = await r2.text().catch(() => '');
+        throw new Error(`Falha ao salvar itens (${r2.status}) ${t2}`);
+      }
     } catch (erro) {
       console.error('Erro ao salvar itens desativados:', erro);
+      alert('Falha ao salvar itens desativados: ' + erro.message);
     }
   }
 

@@ -18,9 +18,9 @@ class SistemaCardapioBase {
     // ------------------------------
     this.nomeRestaurante = this.obterNomeRestaurante();
     this.MODEL_BASE_URL = `https://site-arcardapio.s3.us-east-1.amazonaws.com/modelos3d/${this.nomeRestaurante}/`;
-    this.ARQUIVO_CONFIG_CATEGORIAS = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${this.nomeRestaurante}.json`;
-    this.ARQUIVO_CONFIG_ITENS = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${this.nomeRestaurante}-itens.json`;
-    
+    this.ARQUIVO_CONFIG_CATEGORIAS = `https://ar-cardapio-models.s3.amazonaws.com/informacao/${this.nomeRestaurante}/config.json`;
+    this.ARQUIVO_CONFIG_ITENS      = `https://ar-cardapio-models.s3.amazonaws.com/informacao/${this.nomeRestaurante}/itens.json`;
+
     this.dadosRestaurante = {};
     this.categoriaAtiva = null;
     this.itemConfiguracao = null;
@@ -180,90 +180,90 @@ class SistemaCardapioBase {
   // ==============================
   // 2. EVENTOS DO CARDÁPIO
   // ==============================
-  configurarEventosCardapio() {
-    const cardapioButton = document.getElementById('cardapio-btn');
-    const dropdownCardapio = document.getElementById('dropdownCardapio');
-    const container = document.getElementById('itensContainer');
+configurarEventosCardapio() {
+  const cardapioButton   = document.getElementById('cardapio-btn');
+  const dropdownCardapio = document.getElementById('dropdownCardapio');
+  const container        = document.getElementById('itensContainer');
 
-    // Cardápio: toggle apenas no clique do botão
-    if (cardapioButton && dropdownCardapio) {
-      cardapioButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdownCardapio.classList.toggle('show');
-        
-        if (!dropdownCardapio.classList.contains('show')) {
-          container.style.display = 'none';
-          container.innerHTML = '';
-          this.categoriaAtiva = null;
-          this.modelModal.style.display = 'none';
-          this.modelModal.innerHTML = '';
-        } else if (this.categoriaAtiva) {
-          this.mostrarItens(this.categoriaAtiva);
-          container.style.display = 'flex';
-        }
-      });
-
-      // Fechar dropdown do cardápio quando clicar fora
-      document.addEventListener('click', (e) => {
-        if (dropdownCardapio &&
-            !dropdownCardapio.contains(e.target) &&
-            e.target !== cardapioButton) {
-          dropdownCardapio.classList.remove('show');
-          container.style.display = 'none';
-          container.innerHTML = '';
-          this.categoriaAtiva = null;
-          this.modelModal.style.display = 'none';
-          this.modelModal.innerHTML = '';
-        }
-      });
-    }
-
-    // Botões de categoria
-    document.querySelectorAll('#dropdownCardapio button').forEach(button => {
-      const categoria = button.getAttribute('data-categoria');
-      const id = 'btnEstado_' + categoria;
-
-      // Estado inicial
-      const estaDesativado = localStorage.getItem(id) === 'true';
-      if (estaDesativado) {
-        button.classList.add('desativado');
-        this.notificarEstadoCategoria(categoria, true);
+  // Cardápio: toggle apenas no clique do botão
+  if (cardapioButton && dropdownCardapio) {
+    cardapioButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdownCardapio.classList.toggle('show');
+      
+      if (!dropdownCardapio.classList.contains('show')) {
+        container.style.display = 'none';
+        container.innerHTML = '';
+        this.categoriaAtiva = null;
+        this.modelModal.style.display = 'none';
+        this.modelModal.innerHTML = '';
+      } else if (this.categoriaAtiva) {
+        this.mostrarItens(this.categoriaAtiva);
+        container.style.display = 'flex';
       }
+    });
 
-      // Clique no botão da categoria
-      button.addEventListener('click', () => {
-        const desativadoAgora = !button.classList.contains('desativado');
-
-        button.classList.toggle('desativado');
-        localStorage.setItem(id, desativadoAgora);
-        this.notificarEstadoCategoria(categoria, desativadoAgora);
-        this.salvarConfiguracaoNoS3();
-
-        if (desativadoAgora) {
-          if (this.categoriaAtiva === categoria) {
-            this.categoriaAtiva = null;
-            container.innerHTML = '';
-            container.style.display = 'none';
-            this.modelModal.style.display = 'none';
-            this.modelModal.innerHTML = '';
-          }
-        } else {
-          this.categoriaAtiva = categoria;
-          this.mostrarItens(categoria);
-          container.style.display = 'flex';
-          document.querySelectorAll(`.item-box[data-categoria="${categoria}"]`)
-            .forEach(item => item.classList.remove('desativado'));
-        }
-      });
-
-      // Hover: pré-visualiza itens da categoria (sem mudar estado ativo)
-      button.addEventListener('mouseenter', () => {
-        if (!button.classList.contains('desativado') && this.categoriaAtiva !== categoria) {
-          this.mostrarItens(categoria);
-        }
-      });
+    // Fechar dropdown do cardápio quando clicar fora
+    document.addEventListener('click', (e) => {
+      if (dropdownCardapio &&
+          !dropdownCardapio.contains(e.target) &&
+          e.target !== cardapioButton) {
+        dropdownCardapio.classList.remove('show');
+        container.style.display = 'none';
+        container.innerHTML = '';
+        this.categoriaAtiva = null;
+        this.modelModal.style.display = 'none';
+        this.modelModal.innerHTML = '';
+      }
     });
   }
+
+  // --- Delegação de eventos: QUALQUER botão com data-categoria ---
+  const dropdown = document.getElementById('dropdownCardapio');
+  if (!dropdown) return;
+
+  // Clique nas categorias
+  dropdown.addEventListener('click', (e) => {
+    const button = e.target.closest('button[data-categoria]');
+    if (!button || !dropdown.contains(button)) return;
+
+    const categoria       = button.getAttribute('data-categoria');
+    const id              = 'btnEstado_' + categoria;
+    const desativadoAgora = !button.classList.contains('desativado');
+
+    button.classList.toggle('desativado');
+    localStorage.setItem(id, desativadoAgora);
+    this.notificarEstadoCategoria(categoria, desativadoAgora);
+    this.salvarConfiguracaoNoS3();
+
+    if (desativadoAgora) {
+      if (this.categoriaAtiva === categoria) {
+        this.categoriaAtiva = null;
+        container.innerHTML = '';
+        container.style.display = 'none';
+        this.modelModal.style.display = 'none';
+        this.modelModal.innerHTML = '';
+      }
+    } else {
+      this.categoriaAtiva = categoria;
+      this.mostrarItens(categoria);
+      container.style.display = 'flex';
+      document.querySelectorAll(`.item-box[data-categoria="${categoria}"]`)
+        .forEach(item => item.classList.remove('desativado'));
+    }
+  });
+
+  // Hover das categorias (preview itens)
+  dropdown.addEventListener('mouseover', (e) => {
+    const button = e.target.closest('button[data-categoria]');
+    if (!button || !dropdown.contains(button)) return;
+
+    const categoria = button.getAttribute('data-categoria');
+    if (!button.classList.contains('desativado') && this.categoriaAtiva !== categoria) {
+      this.mostrarItens(categoria);
+    }
+  });
+}
 
   // ==============================
   // UTILITÁRIOS
@@ -284,4 +284,3 @@ class SistemaCardapioBase {
     });
   }
 }
-

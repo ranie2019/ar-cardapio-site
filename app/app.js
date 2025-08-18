@@ -5,47 +5,60 @@ const modelCache = {};
 let currentModelPath = '';
 let infoVisible = false;
 
-// ==================== CONFIGURAÃ‡ÃƒO DO RESTAURANTE VIA S3 ====================
+// ==================== CONFIGURAÇÃO DO RESTAURANTE VIA S3 ====================
 async function aplicarConfiguracaoDoRestaurante() {
   const urlParams = new URLSearchParams(window.location.search);
   const nomeRestaurante = urlParams.get("restaurante") || "restaurante-padrao";
-  const urlCategorias = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}.json?v=${Date.now()}`;
-  const urlItens = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}-itens.json?v=${Date.now()}`;
+
+  // sempre usa o mesmo "v" do QR
+  const urlCategorias = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}.json${__bust}`;
+  const urlItens      = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}-itens.json${__bust}`;
 
   try {
-    // Carrega configuraÃ§Ãµes de categorias
-    const responseCategorias = await fetch(urlCategorias);
-    if (!responseCategorias.ok) throw new Error('Erro ao carregar configuraÃ§Ã£o de categorias');
-    const configCategorias = await responseCategorias.json();
+    // Carrega configurações de categorias (sem cache)
+    const configCategorias = await fetchJsonNoStore(urlCategorias);
 
-    // Aplica visibilidade das categorias
-    for (const categoria in configCategorias) {
-      const visivel = configCategorias[categoria];
-      const botao = document.querySelector(`.category-btn[onclick*="${categoria}"]`);
-      if (botao) {
-        botao.style.display = visivel ? 'block' : 'none';
+    // Mapeia todos os botões existentes e decide visibilidade a partir do JSON
+    const container = document.getElementById('categoryButtons');
+    const btns = container ? container.querySelectorAll('.category-btn') : [];
+    btns.forEach(btn => {
+      // extrai a chave do onclick: selectCategory('xxx')
+      const m = btn.getAttribute('onclick')?.match(/'([^']+)'/);
+      if (!m) return;
+      const key = normKey(m[1]);
+
+      // procura no JSON, normalizando a chave também
+      // aceitamos "pizzas" e "Pizzas" e "Pízzás" etc.
+      let visivel = true;
+      for (const k in configCategorias) {
+        if (normKey(k) === key) {
+          visivel = Boolean(configCategorias[k]);
+          break;
+        }
       }
-    }
 
-    // Carrega configuraÃ§Ãµes de itens desativados
-    const responseItens = await fetch(urlItens);
-    if (!responseItens.ok) throw new Error('Erro ao carregar configuraÃ§Ã£o de itens');
-    const configItens = await responseItens.json();
+      btn.style.display = visivel ? 'block' : 'none';
+    });
 
-    // Aplica visibilidade dos itens
+    // Carrega configurações de itens desativados (sem cache)
+    const configItens = await fetchJsonNoStore(urlItens);
+
+    // Aplica visibilidade dos itens por categoria
     for (const categoria in configItens) {
-      if (models[categoria]) {
-        models[categoria].forEach(model => {
-          const modelName = model.path.split('/').pop().replace('.glb', '');
-          if (configItens[categoria].includes(modelName)) {
-            model.visible = false;
-          }
-        });
-      }
+      const catKey = normKey(categoria);
+      const lista = Array.isArray(configItens[categoria]) ? configItens[categoria] : [];
+      if (!models[catKey]) continue;
+
+      models[catKey].forEach(model => {
+        const modelName = model.path.split('/').pop().replace('.glb', '');
+        // normaliza nomes vindos do JSON também
+        const estaDesativado = lista.some(n => normKey(n) === normKey(modelName));
+        if (estaDesativado) model.visible = false;
+      });
     }
 
   } catch (err) {
-    console.warn('âš ï¸ Falha ao aplicar configuraÃ§Ã£o do restaurante:', err);
+    console.warn('⚠️ Falha ao aplicar configuração do restaurante:', err);
   }
 }
 
@@ -428,4 +441,23 @@ function getCurrentModelData() {
     }
   }
   return null;
+}
+
+// Normaliza "Porções", "porcoes", "PORÇÕES" -> "porcoes"
+function normKey(str) {
+  return String(str)
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .replace(/\s+/g, '_'); // espaços -> underscore (se usar)
+}
+
+// Usa o "v" do QR para cache-busting consistente entre dispositivos
+const __qs = new URLSearchParams(location.search);
+const __ver = __qs.get('v') || Date.now().toString();
+const __bust = `?v=${encodeURIComponent(__ver)}`;
+
+async function fetchJsonNoStore(url) {
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Falha ao carregar ${url}: ${res.status}`);
+  return res.json();
 }
