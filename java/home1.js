@@ -202,20 +202,6 @@ configurarEventosCardapio() {
         container.style.display = 'flex';
       }
     });
-
-    // Fechar dropdown do cardápio quando clicar fora
-    document.addEventListener('click', (e) => {
-      if (dropdownCardapio &&
-          !dropdownCardapio.contains(e.target) &&
-          e.target !== cardapioButton) {
-        dropdownCardapio.classList.remove('show');
-        container.style.display = 'none';
-        container.innerHTML = '';
-        this.categoriaAtiva = null;
-        this.modelModal.style.display = 'none';
-        this.modelModal.innerHTML = '';
-      }
-    });
   }
 
   // --- Delegação de eventos: QUALQUER botão com data-categoria ---
