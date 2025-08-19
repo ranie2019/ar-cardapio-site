@@ -842,7 +842,7 @@ footer {
 .modal-content-edicao .modal-titulo{
   margin: 0 0 6px 0;
   color: #00f0c0;
-  font-size: 22px;
+  font-size: 40px;
   line-height: 1.2;
 }
 
@@ -852,6 +852,7 @@ footer {
   font-weight: 700;
   margin-bottom: 6px;
   display: block;
+  font-size: 20px;
 }
 .modal-content-edicao .grupo-input input,
 .modal-content-edicao .grupo-input textarea{
@@ -912,3 +913,28 @@ footer {
   transform: translateY(-1px);
 }
 
+/* ====================== */
+/* Borda/contorno preto para leitura em fundo de imagem */
+/* ====================== */
+.modal-content-edicao .modal-titulo,
+.modal-content-edicao .grupo-input label {
+  color: #00f0c0;            /* cor do texto */
+  font-weight: 800;
+
+  /* espessura da borda (ajuste se quiser) */
+  --stroke: 1.25px;
+
+  /* Navegadores WebKit/Blink (Chrome/Edge/Safari) */
+  -webkit-text-stroke: var(--stroke) rgba(0,0,0,.9);
+
+  /* Fallback universal com múltiplas sombras (contorno) */
+  text-shadow:
+    0   var(--stroke)   0 rgba(0,0,0,.9),
+    0  -var(--stroke)   0 rgba(0,0,0,.9),
+    var(--stroke)  0    0 rgba(0,0,0,.9),
+   -var(--stroke)  0    0 rgba(0,0,0,.9),
+    var(--stroke)  var(--stroke)   0 rgba(0,0,0,.9),
+    var(--stroke) -var(--stroke)   0 rgba(0,0,0,.9),
+   -var(--stroke)  var(--stroke)   0 rgba(0,0,0,.9),
+   -var(--stroke) -var(--stroke)   0 rgba(0,0,0,.9);
+}
