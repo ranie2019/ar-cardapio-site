@@ -17,9 +17,14 @@ class SistemaCardapioBase {
     // Propriedades iniciais
     // ------------------------------
     this.nomeRestaurante = this.obterNomeRestaurante();
-    this.MODEL_BASE_URL = `https://site-arcardapio.s3.us-east-1.amazonaws.com/modelos3d/${this.nomeRestaurante}/`;
     this.ARQUIVO_CONFIG_CATEGORIAS = `https://ar-cardapio-models.s3.amazonaws.com/informacao/${this.nomeRestaurante}/config.json`;
     this.ARQUIVO_CONFIG_ITENS      = `https://ar-cardapio-models.s3.amazonaws.com/informacao/${this.nomeRestaurante}/itens.json`;
+
+    // mesmos modelos usados no app (bucket global)
+    this.MODEL_BASE_URLS = [
+      "https://ar-cardapio-models.s3.amazonaws.com",
+      "https://ar-cardapio-models.s3.us-east-1.amazonaws.com"
+    ];
 
     this.dadosRestaurante = {};
     this.categoriaAtiva = null;
@@ -43,13 +48,15 @@ class SistemaCardapioBase {
   // ==============================
   // VERIFICAÇÃO DE SESSÃO
   // ==============================
+
   verificarSessao() {
     const authToken = localStorage.getItem("authToken");
     if (!authToken) {
       window.location.href = "../html/login.html";
       return;
     }
-  }
+  } 
+  
 
   // ==============================
   // CARREGAR NOME DA EMPRESA

@@ -7,6 +7,9 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px 40px;
+  color: #00ffd1;
+  position: relative;
+  min-height: 140px;           /* reserva espaço para o título */
 }
 
 /* ====================== */
@@ -114,41 +117,6 @@
   background-color: #777777;
 }
 
-/* ====================== */
-/* MODAL DE EDIÇÃO */
-/* ====================== */
-
-.modal-edicao {
-  display: none;
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  justify-content: center;
-  align-items: center;
-  z-index: 10000;
-  padding: 1rem;
-}
-
-.modal-edicao.show {
-  display: flex;
-}
-
-.modal-content-edicao {
-  background-color: #ffffff;
-  padding: 1.5rem;
-  border-radius: 0.5rem;
-  width: 100%;
-  max-width: 400px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
 .close-edicao {
   float: right;
   font-size: 24px;
@@ -160,7 +128,6 @@
   display: block;
   font-weight: bold;
 }
-
 
 .grupo-input input,
 .grupo-input textarea {
@@ -198,7 +165,6 @@
   justify-content: center;
   position: absolute;
 }
-
 
 .a-enter-vr-button {
   display: none !important;
@@ -272,7 +238,6 @@
   color: #333333;
   cursor: pointer;
 }
-
 
 .qrcode-wrapper {
   display: flex;
@@ -363,27 +328,29 @@ input[type=number]::-webkit-outer-spin-button {
 /* RESPONSIVIDADE */
 /* ====================== */
 
-@media (max-width: 768px) {
-  .header {
-    flex-direction: column;
-    padding: 10px 20px;
-  }
+.titulo{
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* centro exato */
+  margin: 0;
+  color: #00f0c0;
+  font-size: 32px;
+  font-weight: bold;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none; /* não bloqueia clique nos botões */
+  z-index: 2;
+}
 
+/* Ajuste para telas menores */
+@media (max-width: 768px) {
   .titulo {
     font-size: 24px;
-    margin-top: 10px;
-  }
-
-  .cardapio-menu {
-    top: 10px;
-    left: 10px;
-  }
-
-  .itens-container {
-    top: 100px;
-    left: 10px;
-    max-width: calc(100% - 20px);
-    justify-content: center;
+    top: 15px;
+    width: 100%;
+    padding: 0 20px;
+    box-sizing: border-box;
   }
 }
 
@@ -448,7 +415,6 @@ Estilos do modal de configuração
   background-color: #b21853;
 }
 
-
 /* Título */
 #modalQrCode h3 {
   font-size: 2rem;
@@ -489,15 +455,6 @@ body {
 .video-bg,
 .overlay {
   display: none;
-}
-
-/* TÍTULO CENTRAL */
-.titulo {
-  color: #00f0c0;
-  font-size: 32px;
-  font-weight: bold;
-  text-align: center;
-  flex: 1;
 }
 
 /* BOTÕES VERDES */
@@ -564,19 +521,6 @@ input, textarea {
   height: 100vh;
   object-fit: cover;
   z-index: -1;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  color: #00ffd1;
-}
-
-.titulo {
-  font-size: 32px;
-  font-weight: bold;
 }
 
 .menu-lateral {
@@ -742,6 +686,11 @@ input, textarea {
   right: 20px;
 }
 
+.menu-lateral,
+.menu-direita{
+  z-index: 3; /* acima do título, se quiser que os botões fiquem clicáveis */
+}
+
 footer {
   position: fixed;
   bottom: 0;
@@ -835,3 +784,131 @@ footer {
 .botao-com-video .texto-botao {
     pointer-events: none; /* Permite que o clique atravesse e ative o botão */
 }
+
+/* Cartão do modal com imagem ao invés do branco puro */
+.modal-content-edicao{
+  /* troque o caminho para a sua imagem */
+  background:
+    url("../img/modal-bg.jpg") center/cover no-repeat,
+    #ffffff;
+  border: 1px solid rgba(0,240,192,.35);
+  box-shadow: 0 12px 40px rgba(0,0,0,.25),
+              inset 0 0 0 6px rgba(0,240,192,.05);
+  border-radius: 16px;
+  color: #222;
+  position: relative; /* necessário para o X posicionado no canto */
+}
+
+/* ====================== */
+/* MODAL DE EDIÇÃO (visual antigo) */
+/* ====================== */
+
+.modal-edicao{
+  display: none;              /* o JS controla abrir/fechar */
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  justify-content: center;
+  align-items: center;
+
+  /* overlay cinza claro */
+  background: rgba(0,0,0,.22);
+  padding: 1rem;
+}
+
+.modal-edicao.show{ display:flex; } /* se você usar classe .show */
+
+/* Cartão do modal */
+.modal-content-edicao{
+  /* imagem de fundo leve + fallback branco */
+  background: url("../imagens/modal_conf.png") center/cover no-repeat, #ffffff;
+
+  width: 100%;
+  max-width: 520px;           /* >>> garante largura bonita */
+  padding: 24px;
+  border-radius: 16px;
+
+  border: 1px solid rgba(0,240,192,.35);
+  box-shadow: 0 12px 40px rgba(0,0,0,.25), inset 0 0 0 6px rgba(0,240,192,.05);
+
+  color: #222;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;         /* para posicionar o X */
+}
+
+/* Título */
+.modal-content-edicao .modal-titulo{
+  margin: 0 0 6px 0;
+  color: #00f0c0;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+/* Labels e campos claros */
+.modal-content-edicao .grupo-input label{
+  color: #00f0c0;
+  font-weight: 700;
+  margin-bottom: 6px;
+  display: block;
+}
+.modal-content-edicao .grupo-input input,
+.modal-content-edicao .grupo-input textarea{
+  width: 100%;
+  background: #f6f7f8;
+  color: #111;
+  border: 1px solid #d6dbe1;
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+}
+
+/* Área de ações à direita */
+.modal-content-edicao .actions{
+  margin-top: 6px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Botão Salvar (pílula verde, sombra suave) */
+.modal-content-edicao .btn-salvar-config{
+  background-color: #00f0c0;
+  color: #000;
+  border: none;
+  padding: 10px 18px;
+  font-weight: 700;
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(0,240,192,.25);
+  cursor: pointer;
+  transition: transform .05s ease, filter .2s ease, background-color .2s ease;
+}
+.modal-content-edicao .btn-salvar-config:hover{
+  background-color: #00d0a8;
+  transform: translateY(-1px);
+}
+
+/* X redondinho no canto */
+.modal-content-edicao .close-edicao{
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+  text-align: center;
+  border-radius: 50%;
+  background: #f3f5f7;
+  color: #222;
+  font-weight: 700;
+  font-size: 18px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  cursor: pointer;
+  transition: filter .2s ease, transform .05s ease;
+}
+.modal-content-edicao .close-edicao:hover{
+  filter: brightness(.95);
+  transform: translateY(-1px);
+}
+
