@@ -118,6 +118,14 @@ class SistemaCardapioBase {
     return this.nomeParaSlug(nome) + '.glb';
   }
 
+  // >>> Helper para remover o botão "Configuração" quando for LOGO
+  removerConfiguracaoSeLogo(categoria) {
+    if (categoria !== 'logo') return;
+    const container = document.getElementById('itensContainer');
+    if (!container) return;
+    container.querySelectorAll('.btn-configurar-produto').forEach(btn => btn.remove());
+  }
+
   // ==============================
   // 1. MODAIS
   // ==============================
@@ -187,76 +195,82 @@ class SistemaCardapioBase {
   // ==============================
   // 2. EVENTOS DO CARDÁPIO
   // ==============================
-configurarEventosCardapio() {
-  const cardapioButton   = document.getElementById('cardapio-btn');
-  const dropdownCardapio = document.getElementById('dropdownCardapio');
-  const container        = document.getElementById('itensContainer');
+  configurarEventosCardapio() {
+    const cardapioButton   = document.getElementById('cardapio-btn');
+    const dropdownCardapio = document.getElementById('dropdownCardapio');
+    const container        = document.getElementById('itensContainer');
 
-  // Cardápio: toggle apenas no clique do botão
-  if (cardapioButton && dropdownCardapio) {
-    cardapioButton.addEventListener('click', (e) => {
-      e.stopPropagation();
-      dropdownCardapio.classList.toggle('show');
-      
-      if (!dropdownCardapio.classList.contains('show')) {
-        container.style.display = 'none';
-        container.innerHTML = '';
-        this.categoriaAtiva = null;
-        this.modelModal.style.display = 'none';
-        this.modelModal.innerHTML = '';
-      } else if (this.categoriaAtiva) {
-        this.mostrarItens(this.categoriaAtiva);
+    // Cardápio: toggle apenas no clique do botão
+    if (cardapioButton && dropdownCardapio) {
+      cardapioButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdownCardapio.classList.toggle('show');
+        
+        if (!dropdownCardapio.classList.contains('show')) {
+          container.style.display = 'none';
+          container.innerHTML = '';
+          this.categoriaAtiva = null;
+          this.modelModal.style.display = 'none';
+          this.modelModal.innerHTML = '';
+        } else if (this.categoriaAtiva) {
+          this.mostrarItens(this.categoriaAtiva);
+          // remove botão de configuração se for logo
+          this.removerConfiguracaoSeLogo(this.categoriaAtiva);
+          container.style.display = 'flex';
+        }
+      });
+    }
+
+    // --- Delegação de eventos: QUALQUER botão com data-categoria ---
+    const dropdown = document.getElementById('dropdownCardapio');
+    if (!dropdown) return;
+
+    // Clique nas categorias
+    dropdown.addEventListener('click', (e) => {
+      const button = e.target.closest('button[data-categoria]');
+      if (!button || !dropdown.contains(button)) return;
+
+      const categoria       = button.getAttribute('data-categoria');
+      const id              = 'btnEstado_' + categoria;
+      const desativadoAgora = !button.classList.contains('desativado');
+
+      button.classList.toggle('desativado');
+      localStorage.setItem(id, desativadoAgora);
+      this.notificarEstadoCategoria(categoria, desativadoAgora);
+      this.salvarConfiguracaoNoS3();
+
+      if (desativadoAgora) {
+        if (this.categoriaAtiva === categoria) {
+          this.categoriaAtiva = null;
+          container.innerHTML = '';
+          container.style.display = 'none';
+          this.modelModal.style.display = 'none';
+          this.modelModal.innerHTML = '';
+        }
+      } else {
+        this.categoriaAtiva = categoria;
+        this.mostrarItens(categoria);
+        // remove botão de configuração se for logo
+        this.removerConfiguracaoSeLogo(categoria);
         container.style.display = 'flex';
+        document.querySelectorAll(`.item-box[data-categoria="${categoria}"]`)
+          .forEach(item => item.classList.remove('desativado'));
+      }
+    });
+
+    // Hover das categorias (preview itens)
+    dropdown.addEventListener('mouseover', (e) => {
+      const button = e.target.closest('button[data-categoria]');
+      if (!button || !dropdown.contains(button)) return;
+
+      const categoria = button.getAttribute('data-categoria');
+      if (!button.classList.contains('desativado') && this.categoriaAtiva !== categoria) {
+        this.mostrarItens(categoria);
+        // remove botão de configuração se for logo (no hover/preview também)
+        this.removerConfiguracaoSeLogo(categoria);
       }
     });
   }
-
-  // --- Delegação de eventos: QUALQUER botão com data-categoria ---
-  const dropdown = document.getElementById('dropdownCardapio');
-  if (!dropdown) return;
-
-  // Clique nas categorias
-  dropdown.addEventListener('click', (e) => {
-    const button = e.target.closest('button[data-categoria]');
-    if (!button || !dropdown.contains(button)) return;
-
-    const categoria       = button.getAttribute('data-categoria');
-    const id              = 'btnEstado_' + categoria;
-    const desativadoAgora = !button.classList.contains('desativado');
-
-    button.classList.toggle('desativado');
-    localStorage.setItem(id, desativadoAgora);
-    this.notificarEstadoCategoria(categoria, desativadoAgora);
-    this.salvarConfiguracaoNoS3();
-
-    if (desativadoAgora) {
-      if (this.categoriaAtiva === categoria) {
-        this.categoriaAtiva = null;
-        container.innerHTML = '';
-        container.style.display = 'none';
-        this.modelModal.style.display = 'none';
-        this.modelModal.innerHTML = '';
-      }
-    } else {
-      this.categoriaAtiva = categoria;
-      this.mostrarItens(categoria);
-      container.style.display = 'flex';
-      document.querySelectorAll(`.item-box[data-categoria="${categoria}"]`)
-        .forEach(item => item.classList.remove('desativado'));
-    }
-  });
-
-  // Hover das categorias (preview itens)
-  dropdown.addEventListener('mouseover', (e) => {
-    const button = e.target.closest('button[data-categoria]');
-    if (!button || !dropdown.contains(button)) return;
-
-    const categoria = button.getAttribute('data-categoria');
-    if (!button.classList.contains('desativado') && this.categoriaAtiva !== categoria) {
-      this.mostrarItens(categoria);
-    }
-  });
-}
 
   // ==============================
   // UTILITÁRIOS

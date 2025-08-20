@@ -20,8 +20,9 @@ const nomeRestaurante = obterNomeRestaurante();
 
 // ==================== CATÁLOGO DE MODELOS 3D ====================
 const models = {
-  inicio: [
-    { path: `${modelBaseURL}/inicio/tabua_de_carne.glb`, price: 0.00, info: null }
+  logo: [
+    { path: `${modelBaseURL}/logo/tabua_de_carne.glb`, price: 0.00, info: null },
+    { path: `${modelBaseURL}/logo/cubo.glb`,           price: 0.00, info: null }
   ],
   bebidas: [
     { path: `${modelBaseURL}/bebidas/absolut_vodka.glb`, price: 79.90, info: `${modelBaseURL}/informacao/${nomeRestaurante}/absolut_vodka.json` },
@@ -31,7 +32,8 @@ const models = {
     { path: `${modelBaseURL}/bebidas/redbull.glb`,       price: 9.90,  info: `${modelBaseURL}/informacao/${nomeRestaurante}/redbull.json` }
   ],
   pizzas: [
-    { path: `${modelBaseURL}/pizzas/presunto_de_parma_e_rúcula.glb`, price: 45.00, info: `${modelBaseURL}/informacao/${nomeRestaurante}/presunto_de_parma_e_rúcula.json` },
+    // ✅ sem acento nos nomes de arquivo/chaves do S3
+    { path: `${modelBaseURL}/pizzas/presunto_de_parma_e_rucula.glb`, price: 45.00, info: `${modelBaseURL}/informacao/${nomeRestaurante}/presunto_de_parma_e_rucula.json` },
     { path: `${modelBaseURL}/pizzas/mussarela.glb`,                   price: 45.00, info: `${modelBaseURL}/informacao/${nomeRestaurante}/mussarela.json` },
     { path: `${modelBaseURL}/pizzas/salami.glb`,                      price: 45.00, info: `${modelBaseURL}/informacao/${nomeRestaurante}/salami.json` }
   ],
@@ -77,6 +79,7 @@ function keyFromPath(fullPath) {
 
 // ==================== CONTROLE DE VISIBILIDADE (categorias) ====================
 const CATEGORIAS_LABELS = {
+  logo:       'Logo',
   bebidas:    'Bebidas',
   pizzas:     'Pizzas',
   sobremesas: 'Sobremesas',
@@ -103,7 +106,6 @@ function esconderCategoria(categoria, label) {
     el.classList.add('categoria-desativada');
     el.style.display = 'none';
   });
-  // fallback por texto
   const alvoNorm = normalizar(label);
   document.querySelectorAll('button, a, [role="button"], .btn, .menu-item, li').forEach((el) => {
     const t = normalizar(el.textContent || el.innerText || "");
@@ -147,7 +149,7 @@ async function carregarConfiguracaoDoRestaurante() {
     return config;
   } catch (e) {
     console.warn('⚠️ Usando configuração padrão. Motivo:', e.message);
-    return { bebidas:true, pizzas:true, sobremesas:true, carnes:true, lanches:true, porcoes:true };
+    return { logo: true, bebidas:true, pizzas:true, sobremesas:true, carnes:true, lanches:true, porcoes:true };
   }
 }
 
@@ -178,7 +180,6 @@ async function carregarStatus() {
 
 // ============= FILTRO GLOBAL DO CATÁLOGO (impacta o app todo) =============
 function filtrarCatalogoPorConfigEStatus(config, desativadosMap) {
-  // zera categorias desativadas e remove itens desativados
   for (const categoria of Object.keys(models)) {
     if (config[categoria] === false) {
       models[categoria] = [];
@@ -188,10 +189,7 @@ function filtrarCatalogoPorConfigEStatus(config, desativadosMap) {
     const filtrados = [];
     for (const produto of lista) {
       const key = keyFromPath(produto.path);
-      if (desativadosMap[key]) {
-        // item está desativado → pula
-        continue;
-      }
+      if (desativadosMap[key]) continue; // item desativado → pula
       filtrados.push(produto);
     }
     models[categoria] = filtrados;
@@ -241,10 +239,9 @@ async function carregarEExibirProdutos() {
     container.innerHTML = '';
 
     for (const categoria in models) {
-      if (config[categoria] === false) continue; // redundância
+      if (config[categoria] === false) continue;
 
       for (const produto of models[categoria]) {
-        // redundância de segurança contra qualquer descompasso
         const key = keyFromPath(produto.path);
         if (desativadosMap[key]) continue;
 

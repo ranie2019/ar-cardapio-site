@@ -130,8 +130,9 @@ class SistemaCardapio extends SistemaCardapioItens {
     const dropdown = document.getElementById('dropdownCardapio');
     if (!dropdown) return;
 
-    const categoriasPadrao = ['bebidas', 'carnes', 'pizzas', 'lanches', 'sobremesas', 'porcoes'];
+    const categoriasPadrao = ['logo','bebidas', 'carnes', 'pizzas', 'lanches', 'sobremesas', 'porcoes'];
     const nomesCategorias = {
+      'logo': 'Logo',
       'bebidas': 'Bebidas',
       'carnes': 'Carnes', 
       'pizzas': 'Pizzas',

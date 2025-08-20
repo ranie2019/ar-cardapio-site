@@ -938,3 +938,14 @@ footer {
    -var(--stroke)  var(--stroke)   0 rgba(0,0,0,.9),
    -var(--stroke) -var(--stroke)   0 rgba(0,0,0,.9);
 }
+
+/* Esconde o botão "Configuração" dos itens da categoria Logo */
+#itensContainer .btn-configurar-produto[data-categoria="logo"] {
+  display: none !important;
+}
+
+/* Caso o botão não receba data-categoria,
+   mas venha logo depois do item-box de Logo */
+#itensContainer .item-box[data-categoria="logo"] + .btn-configurar-produto {
+  display: none !important;
+}

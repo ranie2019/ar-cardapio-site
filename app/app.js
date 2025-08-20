@@ -1,85 +1,101 @@
-// ==================== VARIÃVEIS GLOBAIS ====================
-let currentCategory = 'inicio';
+// ==================== VARIÁVEIS GLOBAIS ====================
+let currentCategory = 'logo';
 let currentIndex = 0;
 const modelCache = {};
 let currentModelPath = '';
 let infoVisible = false;
+
+// Usa o "v" do QR para cache-busting consistente entre dispositivos
+const __qs = new URLSearchParams(location.search);
+const __ver = __qs.get('v') || Date.now().toString();
+const __bust = `?v=${encodeURIComponent(__ver)}`;
 
 // ==================== CONFIGURAÇÃO DO RESTAURANTE VIA S3 ====================
 async function aplicarConfiguracaoDoRestaurante() {
   const urlParams = new URLSearchParams(window.location.search);
   const nomeRestaurante = urlParams.get("restaurante") || "restaurante-padrao";
 
-  // sempre usa o mesmo "v" do QR
-  const urlCategorias = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}.json${__bust}`;
-  const urlItens      = `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}-itens.json${__bust}`;
+  // Candidatos (ordem de prioridade) — tentamos o primeiro que responder OK
+  const CATS_CANDIDATES = [
+    `https://ar-cardapio-models.s3.amazonaws.com/informacao/${nomeRestaurante}/config.json${__bust}`,
+    `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}.json${__bust}`,
+  ];
+  const ITENS_CANDIDATES = [
+    `https://ar-cardapio-models.s3.amazonaws.com/informacao/${nomeRestaurante}/itens.json${__bust}`,
+    `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}-itens.json${__bust}`,
+  ];
+
+  // helper: pega o primeiro JSON disponível
+  const fetchFirstJson = async (urls) => {
+    for (const u of urls) {
+      try {
+        const r = await fetch(u, { cache: 'no-store' });
+        if (r.ok) return await r.json();
+      } catch (_) { /* tenta o próximo */ }
+    }
+    return null;
+  };
 
   try {
-    // Carrega configurações de categorias (sem cache)
-    const configCategorias = await fetchJsonNoStore(urlCategorias);
+    // 1) Categorias (mostrar/esconder botões do menu)
+    const configCategorias = await fetchFirstJson(CATS_CANDIDATES);
+    if (configCategorias) {
+      const container = document.getElementById('categoryButtons');
+      const btns = container ? container.querySelectorAll('.category-btn') : [];
+      btns.forEach(btn => {
+        const m = btn.getAttribute('onclick')?.match(/'([^']+)'/);
+        if (!m) return;
+        const key = normKey(m[1]);
 
-    // Mapeia todos os botões existentes e decide visibilidade a partir do JSON
-    const container = document.getElementById('categoryButtons');
-    const btns = container ? container.querySelectorAll('.category-btn') : [];
-    btns.forEach(btn => {
-      // extrai a chave do onclick: selectCategory('xxx')
-      const m = btn.getAttribute('onclick')?.match(/'([^']+)'/);
-      if (!m) return;
-      const key = normKey(m[1]);
-
-      // procura no JSON, normalizando a chave também
-      // aceitamos "pizzas" e "Pizzas" e "Pízzás" etc.
-      let visivel = true;
-      for (const k in configCategorias) {
-        if (normKey(k) === key) {
-          visivel = Boolean(configCategorias[k]);
-          break;
+        let visivel = true;
+        for (const k in configCategorias) {
+          if (normKey(k) === key) {
+            visivel = Boolean(configCategorias[k]);
+            break;
+          }
         }
-      }
-
-      btn.style.display = visivel ? 'block' : 'none';
-    });
-
-    // Carrega configurações de itens desativados (sem cache)
-    const configItens = await fetchJsonNoStore(urlItens);
-
-    // Aplica visibilidade dos itens por categoria
-    for (const categoria in configItens) {
-      const catKey = normKey(categoria);
-      const lista = Array.isArray(configItens[categoria]) ? configItens[categoria] : [];
-      if (!models[catKey]) continue;
-
-      models[catKey].forEach(model => {
-        const modelName = model.path.split('/').pop().replace('.glb', '');
-        // normaliza nomes vindos do JSON também
-        const estaDesativado = lista.some(n => normKey(n) === normKey(modelName));
-        if (estaDesativado) model.visible = false;
+        btn.style.display = visivel ? 'block' : 'none';
       });
     }
 
+    // 2) Itens desativados por categoria
+    const configItens = await fetchFirstJson(ITENS_CANDIDATES);
+    if (configItens) {
+      for (const categoria in configItens) {
+        const catKey = normKey(categoria);
+        const lista = Array.isArray(configItens[categoria]) ? configItens[categoria] : [];
+        if (!models[catKey]) continue;
+
+        models[catKey].forEach(model => {
+          const modelName = model.path.split('/').pop().replace('.glb', '');
+          const estaDesativado = lista.some(n => normKey(n) === normKey(modelName));
+          if (estaDesativado) model.visible = false;
+        });
+      }
+    }
   } catch (err) {
     console.warn('⚠️ Falha ao aplicar configuração do restaurante:', err);
   }
 }
 
-// ==================== SINCRONIZAÃ‡ÃƒO EM TEMPO REAL ====================
+// ==================== SINCRONIZAÇÃO EM TEMPO REAL ====================
 const canalCardapio = new BroadcastChannel('cardapio_channel');
 
 canalCardapio.onmessage = (event) => {
   const { nome, visivel } = event.data;
   const nomeFormatado = nome.toLowerCase().replace(/\s+/g, '_');
-  
+
   // Atualiza o estado nos modelos
   for (const categoria in models) {
     const itemIndex = models[categoria].findIndex(model => {
       const modelName = model.path.split('/').pop().replace('.glb', '');
       return modelName === nomeFormatado;
     });
-    
+
     if (itemIndex !== -1) {
       models[categoria][itemIndex].visible = visivel;
-      
-      // Se o item atual ficou invisÃ­vel, muda para o prÃ³ximo
+
+      // Se o item atual ficou invisível, muda para o próximo
       if (!visivel && currentModelPath === models[categoria][itemIndex].path) {
         changeModel(1);
       }
@@ -88,36 +104,49 @@ canalCardapio.onmessage = (event) => {
   }
 };
 
-// ==================== ATUALIZAÃ‡Ã•ES DE INTERFACE ====================
+// ==================== ATUALIZAÇÕES DE INTERFACE ====================
 function formatProductName(path) {
   const file = path.split('/').pop().replace('.glb', '');
   return file.replace(/[_-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
 function updateUI(model) {
-  document.getElementById("productNameDisplay").textContent = formatProductName(model.path);
-  document.getElementById("priceDisplay").textContent = `R$ ${model.price.toFixed(2)}`;
-
+  const nameEl = document.getElementById("productNameDisplay");
+  const priceEl = document.getElementById("priceDisplay");
   const infoBtn = document.getElementById("infoBtn");
-  const priceDisplay = document.getElementById("priceDisplay");
 
-  if (["pizzas", "sobremesas", "bebidas", "carnes"].includes(currentCategory)) {
+  nameEl.textContent = formatProductName(model.path);
+
+  const deveMostrarPreco = ["pizzas", "sobremesas", "bebidas", "carnes"].includes(currentCategory);
+
+  if (deveMostrarPreco) {
+    const n = typeof model.price === 'number' && !Number.isNaN(model.price) ? model.price : 0;
+    priceEl.textContent = `R$ ${n.toFixed(2)}`;
     infoBtn.style.display = "block";
-    priceDisplay.style.display = "block";
+    priceEl.style.display = "block";
   } else {
     infoBtn.style.display = "none";
-    priceDisplay.style.display = "none";
-    document.getElementById("infoPanel").style.display = "none";
+    priceEl.style.display = "none";
+    const panel = document.getElementById("infoPanel");
+    if (panel) panel.style.display = "none";
     infoVisible = false;
   }
 }
 
 // ==================== CARREGAMENTO DO MODELO 3D ====================
+function getModelDataByPath(path) {
+  for (const cat in models) {
+    const found = models[cat].find(m => m.path === path);
+    if (found) return found;
+  }
+  return null;
+}
+
 async function loadModel(path) {
-  // Verifica se o modelo estÃ¡ visÃ­vel
-  const modelData = getCurrentModelData();
-  if (modelData && modelData.visible === false) {
-    changeModel(1); // Pula para o prÃ³ximo modelo se este estiver invisÃ­vel
+  // Verifica se o modelo indicado está visível
+  const targetModel = getModelDataByPath(path);
+  if (targetModel && targetModel.visible === false) {
+    changeModel(1); // Pula para o próximo modelo se este estiver invisível
     return;
   }
 
@@ -137,7 +166,7 @@ async function loadModel(path) {
   if (modelCache[path]) {
     container.setAttribute("gltf-model", modelCache[path]);
 
-    // Atualiza o preÃ§o antes de mostrar
+    // Atualiza o preço (se houver JSON vinculado)
     await atualizarPrecoDoModelo(path);
 
     loadingIndicator.style.display = "none";
@@ -158,7 +187,7 @@ async function loadModel(path) {
       modelCache[path] = blobURL;
       container.setAttribute("gltf-model", blobURL);
 
-      // Atualiza o preÃ§o antes de mostrar
+      // Atualiza o preço (se houver JSON vinculado)
       await atualizarPrecoDoModelo(path);
 
       loadingIndicator.style.display = "none";
@@ -175,7 +204,7 @@ async function loadModel(path) {
 }
 
 async function atualizarPrecoDoModelo(path) {
-  const modelData = getCurrentModelData();
+  const modelData = getModelDataByPath(path);
   if (!modelData || !modelData.info) return;
 
   try {
@@ -185,17 +214,16 @@ async function atualizarPrecoDoModelo(path) {
     const data = await response.json();
 
     if (data.preco !== undefined) {
-      modelData.price = parseFloat(data.preco); // Atualiza o preÃ§o com base no JSON do S3
+      modelData.price = parseFloat(data.preco); // Atualiza o preço com base no JSON do S3
     }
   } catch (error) {
-    console.warn("NÃ£o foi possÃ­vel atualizar o preÃ§o a partir do JSON:", error);
+    console.warn("Não foi possível atualizar o preço a partir do JSON:", error);
   }
 }
 
-
 function getModelPrice(path) {
-  for (let cat in models) {
-    for (let model of models[cat]) {
+  for (const cat in models) {
+    for (const model of models[cat]) {
       if (model.path === path) return model.price;
     }
   }
@@ -205,13 +233,12 @@ function getModelPrice(path) {
 // ==================== CONTROLE DE MODELOS ====================
 function changeModel(dir) {
   let tentativas = 0;
-  const maxTentativas = models[currentCategory].length * 2; // PrevenÃ§Ã£o de loop infinito
-  
+  const total = models[currentCategory].length;
+  const maxTentativas = total * 2; // prevenção de loop infinito
+
   do {
-    currentIndex = (currentIndex + dir + models[currentCategory].length) % models[currentCategory].length;
+    currentIndex = (currentIndex + dir + total) % total;
     tentativas++;
-    
-    // Para se encontrou um item visÃ­vel ou excedeu o nÃºmero mÃ¡ximo de tentativas
     if (models[currentCategory][currentIndex].visible !== false || tentativas >= maxTentativas) {
       break;
     }
@@ -220,7 +247,7 @@ function changeModel(dir) {
   loadModel(models[currentCategory][currentIndex].path);
 
   const infoPanel = document.getElementById('infoPanel');
-  if (infoPanel.style.display === 'block') {
+  if (infoPanel && infoPanel.style.display === 'block') {
     infoPanel.style.display = 'none';
     infoVisible = false;
   }
@@ -228,31 +255,65 @@ function changeModel(dir) {
 
 function selectCategory(category) {
   if (!models[category]) return;
-  
+
   currentCategory = category;
   currentIndex = 0;
-  
-  // Encontra o primeiro item visÃ­vel na categoria
+
+  // Encontra o primeiro item visível na categoria
   while (currentIndex < models[category].length && models[category][currentIndex].visible === false) {
     currentIndex++;
   }
-  
-  // Se todos estiverem invisÃ­veis, mostra o primeiro (como fallback)
+
+  // Se todos estiverem invisíveis, mostra o primeiro (como fallback)
   if (currentIndex >= models[category].length) {
     currentIndex = 0;
   }
-  
+
   loadModel(models[category][currentIndex].path);
 }
 
+// ==================== SUPORTE A LOGO INICIAL ====================
+function firstVisibleIndex(cat) {
+  if (!models[cat] || !models[cat].length) return -1;
+  for (let i = 0; i < models[cat].length; i++) {
+    if (models[cat][i].visible !== false) return i;
+  }
+  return -1;
+}
+
+function mostrarLogoInicial() {
+  currentCategory = 'logo';
+
+  // Se a Home salvou a escolha do logo: localStorage.setItem('logoSelecionado', '<slug>');
+  const savedSlug = localStorage.getItem('logoSelecionado'); // ex.: "cubo" ou "tabua_de_carne"
+
+  let idx = -1;
+  if (savedSlug && Array.isArray(models.logo)) {
+    idx = models.logo.findIndex(m => {
+      const slug = m.path.split('/').pop().replace('.glb', '');
+      return slug === savedSlug && m.visible !== false;
+    });
+  }
+
+  if (idx < 0) idx = firstVisibleIndex('logo'); // primeiro logo ativo (pelas configs S3)
+  if (idx < 0) idx = 0;                         // fallback
+
+  currentIndex = Math.max(0, idx);
+
+  if (models.logo && models.logo[currentIndex]) {
+    loadModel(models.logo[currentIndex].path);
+  }
+}
+
+// ==================== MENU LATERAL (MOBILE) ====================
 document.getElementById("menuBtn").addEventListener("click", () => {
   const el = document.getElementById("categoryButtons");
   el.style.display = el.style.display === "flex" ? "none" : "flex";
 });
 
-// ==================== INICIALIZAÃ‡ÃƒO ====================
+// ==================== INICIALIZAÇÃO ====================
 window.addEventListener("DOMContentLoaded", async () => {
-  // Inicializa todos os modelos como visÃ­veis por padrÃ£o
+  // Inicializa todos os modelos como visíveis por padrão
   for (const categoria in models) {
     models[categoria].forEach(model => {
       if (model.visible === undefined) {
@@ -263,21 +324,21 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   await aplicarConfiguracaoDoRestaurante();
   verificarEstadoInicial();
-  
-  // Carrega o primeiro modelo visÃ­vel
-  selectCategory(currentCategory);
+
+  // Carrega o LOGO inicialmente (respeita itens desativados e a escolha salva)
+  mostrarLogoInicial();
 });
 
-// ==================== VERIFICAÃ‡ÃƒO POR QR CODE ====================
+// ==================== VERIFICAÇÃO POR QR CODE ====================
 function verificarEstadoInicial() {
   const urlParams = new URLSearchParams(window.location.search);
   const estadoCodificado = urlParams.get('estado');
-  
+
   if (estadoCodificado) {
     try {
       const estado = JSON.parse(decodeURIComponent(estadoCodificado));
-      
-      // Aplica configuraÃ§Ãµes de categorias
+
+      // Aplica configurações de categorias
       if (estado.categorias) {
         document.querySelectorAll('.category-btn').forEach(btn => {
           const categoria = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
@@ -286,8 +347,8 @@ function verificarEstadoInicial() {
           }
         });
       }
-      
-      // Aplica configuraÃ§Ãµes de itens
+
+      // Aplica configurações de itens (tornar invisíveis)
       if (estado.itens) {
         for (const categoria in estado.itens) {
           if (models[categoria]) {
@@ -296,7 +357,7 @@ function verificarEstadoInicial() {
                 const modelName = model.path.split('/').pop().replace('.glb', '');
                 return modelName === itemNome;
               });
-              
+
               if (itemIndex !== -1) {
                 models[categoria][itemIndex].visible = false;
               }
@@ -310,17 +371,17 @@ function verificarEstadoInicial() {
   }
 }
 
-// ==================== ROTAÃ‡ÃƒO AUTOMÃTICA ====================
+// ==================== ROTAÇÃO AUTOMÁTICA ====================
 let rotationInterval = setInterval(() => {
   const model = document.querySelector("#modelContainer");
   if (!model || !model.getAttribute("gltf-model")) return;
-  
+
   const rotation = model.getAttribute("rotation");
   rotation.y = (rotation.y + 0.5) % 360;
   model.setAttribute("rotation", rotation);
 }, 30);
 
-// ==================== ZOOM E ROTAÃ‡ÃƒO COM TOQUE ====================
+// ==================== ZOOM E ROTAÇÃO COM TOQUE ====================
 let initialDistance = null;
 let initialScale = 1;
 let startY = null;
@@ -329,7 +390,7 @@ let initialRotationX = 0;
 function updateScale(scaleFactor) {
   const model = document.querySelector("#modelContainer");
   if (!model) return;
-  
+
   const newScale = Math.min(Math.max(initialScale * scaleFactor, 0.1), 10);
   model.setAttribute("scale", `${newScale} ${newScale} ${newScale}`);
 }
@@ -378,7 +439,7 @@ window.addEventListener("touchend", () => {
   startY = null;
 });
 
-// ==================== BOTÃƒO DE INFORMAÃ‡Ã•ES ====================
+// ==================== BOTÃO DE INFORMAÇÕES ====================
 document.getElementById("infoBtn").addEventListener("click", () => {
   const panel = document.getElementById("infoPanel");
 
@@ -394,31 +455,31 @@ document.getElementById("infoBtn").addEventListener("click", () => {
   loadProductInfoJSON(filename, panel);
 });
 
-// ==================== LER JSON DE INFORMAÃ‡Ã•ES ====================
+// ==================== LER JSON DE INFORMAÇÕES ====================
 async function loadProductInfoJSON(filename, panel) {
   try {
     const modelData = getCurrentModelData();
-    if (!modelData || !modelData.info) throw new Error("InformaÃ§Ãµes nÃ£o disponÃ­veis");
+    if (!modelData || !modelData.info) throw new Error("Informações não disponíveis");
 
     const response = await fetch(modelData.info + "?v=" + Date.now());
-    if (!response.ok) throw new Error("Erro ao carregar informaÃ§Ãµes");
+    if (!response.ok) throw new Error("Erro ao carregar informações");
 
     const data = await response.json();
 
-    // Propriedades que NÃƒO queremos exibir
-    const ocultar = new Set([ 'preco', 'ultimaAtualizacao' ]);
+    // Propriedades que NÃO queremos exibir
+    const ocultar = new Set(['preco', 'ultimaAtualizacao']);
 
     // Monta linhas apenas com as chaves permitidas
     const linhas = [];
     for (let key in data) {
       if (ocultar.has(key)) continue;           // pula preco e ultimaAtualizacao
       const textoChave = key
-        .replace(/_/g, ' ')                     // opcional: trocar undercores
-        .replace(/\b\w/g, l => l.toUpperCase()); // opcional: capitalizar
+        .replace(/_/g, ' ')                      // trocar underscores
+        .replace(/\b\w/g, l => l.toUpperCase()); // capitalizar
       linhas.push(`${textoChave}: ${data[key]}`);
     }
 
-    // Junta com duplo \n para separar em parÃ¡grafos
+    // Texto final
     const textoFormatado = linhas.join('\n\n');
     const infoDiv = document.getElementById("infoContent");
     infoDiv.innerText = textoFormatado;
@@ -427,34 +488,29 @@ async function loadProductInfoJSON(filename, panel) {
 
   } catch (error) {
     console.error("Erro:", error);
-    document.getElementById("infoContent").innerText = "InformaÃ§Ãµes nÃ£o disponÃ­veis";
+    document.getElementById("infoContent").innerText = "Informações não disponíveis";
     panel.style.display = "block";
     infoVisible = true;
   }
 }
 
-
 function getCurrentModelData() {
-  for (let cat in models) {
-    for (let model of models[cat]) {
+  for (const cat in models) {
+    for (const model of models[cat]) {
       if (model.path === currentModelPath) return model;
     }
   }
   return null;
 }
 
+// ==================== HELPERS ====================
 // Normaliza "Porções", "porcoes", "PORÇÕES" -> "porcoes"
 function normKey(str) {
   return String(str)
     .toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
-    .replace(/\s+/g, '_'); // espaços -> underscore (se usar)
+    .replace(/\s+/g, '_'); // espaços -> underscore
 }
-
-// Usa o "v" do QR para cache-busting consistente entre dispositivos
-const __qs = new URLSearchParams(location.search);
-const __ver = __qs.get('v') || Date.now().toString();
-const __bust = `?v=${encodeURIComponent(__ver)}`;
 
 async function fetchJsonNoStore(url) {
   const res = await fetch(url, { cache: 'no-store' });

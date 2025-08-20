@@ -135,6 +135,7 @@ header {
     header h1 {
       color: #00ffc8;
       font-size: 2.8rem;
+      margin-left: 30px;    /* afasta apenas o h1 */
     }
     .btn-area {
       background-color: #ff0055;
@@ -195,15 +196,15 @@ body {
 }
 
 
-.sobre {
+.sobre{
   text-align: center;
-  padding: 20px 20px 10px; /* reduziu o topo e base */
-  background: rgba(0, 0, 0, 0.6); /* camada escura leve */
+  padding: 24px 20px 48px;    /* ↑ antes 10px, agora 48px */
+  background: rgba(0,0,0,0.6);
   color: #fff;
   max-width: 1000px;
-  margin: 0 auto 10px; /* margem externa mais curta */
+  margin: 0 auto 164px;        /* ↑ antes 10px, agora 64px */
   border-radius: 12px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
 }
 
 .sobre h2 {
@@ -374,5 +375,26 @@ body {
   }
   100% {
     box-shadow: 0 0 8px rgba(0, 255, 200, 0.2);
+  }
+}
+
+/* ---- 4 cards lado a lado no desktop ---- */
+@media (min-width: 1200px){
+  .planos{
+    display: flex;        /* já é flex no seu CSS, aqui só garantimos */
+    flex-wrap: nowrap;    /* não quebra linha */
+    gap: 20px;            /* espaço entre os cards (menor) */
+    justify-content: center;
+    margin-bottom: 180px;   
+  }
+
+  .plano{
+    width: 240px;         /* encolhe a caixa */
+    padding: 20px;        /* padding menor (antes era 30px) */
+  }
+
+  /* opcional: reduz levemente o título pra caber melhor */
+  .plano h2, .plano h3{
+    font-size: 1.3rem;
   }
 }
