@@ -5,7 +5,6 @@
   <title>Assinar Plano Teste</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="../css/vendaTeste.css">
-
   <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
@@ -88,7 +87,7 @@
                 <div id="pix-status" class="muted" style="margin-top:6px"></div>
               </div>
               
-              <div id="qr-placeholder" class="qr-placeholder">QR Code Pix aparece aqui</div>
+              <div id="qr-placeholder" class="qr-placeholder">Preencha e-mail e nome para gerar o QR Code</div>
             </div>
           </div>
 
@@ -129,6 +128,31 @@
     const pixQR      = $("#pix-qr");
     const pixStatus  = $("#pix-status");
     const qrPlaceholder = $("#qr-placeholder");
+    const emailInput = $("#email");
+    const nameInput = $("#name");
+
+    // Função para verificar se os campos estão preenchidos
+    function checkFields() {
+      const email = emailInput.value.trim();
+      const name = nameInput.value.trim();
+      
+      // Verifica se ambos os campos estão preenchidos
+      if (email && name) {
+        // Se estiver na aba Pix, carrega os dados
+        if (currentMethod === "pix") {
+          bootStripeFor("pix");
+        }
+      } else {
+        // Se não estiverem preenchidos, esconde a área do Pix
+        pixArea.classList.add('hidden');
+        qrPlaceholder.classList.remove('hidden');
+        qrPlaceholder.textContent = "Preencha e-mail e nome para gerar o QR Code";
+      }
+    }
+
+    // Adiciona event listeners para os campos
+    emailInput.addEventListener('input', checkFields);
+    nameInput.addEventListener('input', checkFields);
 
     // Troca de abas
     tabs.forEach(tab => {
@@ -140,7 +164,22 @@
         if (target) target.classList.add("show");
 
         currentMethod = tab.textContent.trim().toLowerCase() === "pix" ? "pix" : "card";
-        await bootStripeFor(currentMethod);
+        
+        if (currentMethod === "pix") {
+          // Verifica se os campos estão preenchidos antes de carregar o Pix
+          const email = emailInput.value.trim();
+          const name = nameInput.value.trim();
+          
+          if (email && name) {
+            await bootStripeFor(currentMethod);
+          } else {
+            pixArea.classList.add('hidden');
+            qrPlaceholder.classList.remove('hidden');
+            qrPlaceholder.textContent = "Preencha e-mail e nome para gerar o QR Code";
+          }
+        } else {
+          await bootStripeFor(currentMethod);
+        }
       });
     });
 
@@ -166,7 +205,9 @@
           body: JSON.stringify({
             amount: AMOUNT,
             currency: CURRENCY,
-            payment_method_types: [method]
+            payment_method_types: [method],
+            email: emailInput.value.trim(),
+            name: nameInput.value.trim()
           })
         });
 
@@ -239,8 +280,8 @@
 
       if (currentMethod === "pix") return;
 
-      const email = $("#email").value.trim();
-      const name  = $("#name").value.trim();
+      const email = emailInput.value.trim();
+      const name  = nameInput.value.trim();
 
       btn.disabled = true;
       errBox.textContent = "";
