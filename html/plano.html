@@ -1,60 +1,79 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Planos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Planos - ARCardápio</title>
 
-  <!-- CSS específicos para esta página -->
-  <link rel="stylesheet" href="../css/plano.css" />
-  <link rel="stylesheet" href="index.css" />
+  <!-- Tema global + estilos desta página -->
+  <link rel="stylesheet" href="../css/home.css"/>
+  <link rel="stylesheet" href="../css/plano.css"/>
+
+  <!-- Fallback rápido: caso seu CSS global não tenha esse seletor -->
+  <style>
+    #bg-image{
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: -1;
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body>
-  <!-- Cabeçalho da página, com a barra de navegação -->
-  <header class="top-bar">
-    <div class="btn-container">
-      <!-- Botão "login" redirecionando para a página login.html -->
-      <button class="btn-vermelho" onclick="window.location.href='../html/login.html'">login</button>
-    </div>
-  </header>
 
-  <!-- Conteúdo principal da página -->
-  <main class="conteudo-planos">
-    <h1>Escolha o seu plano</h1>
-    <!-- Seção com os cards de planos -->
-    <section class="cards">
+  <!-- Topo com botão de login -->
+  <div class="topo-planos">
+    <button class="btn-entrar" onclick="window.location.href='../html/login.html'">Entrar</button>
+  </div>
 
-      <!-- Card do plano Teste -->
-      <div class="card">
-        <h2>Teste (1 Semana)</h2>
-        <p class="preco">R$ 5,00</p>
-        <button class="btn-vermelho" onclick="window.location.href='../html/vendaPlus.html'">Assine</button>
-      </div>
-    
-      <!-- Card do plano Plus -->
-      <div class="card">
-        <h2>Plus (1 Mês)</h2>
-        <p class="preco">R$ 200,00</p>
-        <button class="btn-vermelho" onclick="window.location.href='../html/vendaPlus.html'">Assine</button>
-      </div>
+  <!-- Título e subtítulo -->
+  <h1 class="titulo-planos">Escolha o seu plano</h1>
+  <p class="subtitulo-planos">Todos os planos dão acesso completo ao sistema durante o período contratado.</p>
 
-      <!-- Card do plano Pro, que é destacado -->
-      <div class="card destaque">
-        <h2>Pro (1 ano)</h2>
-        <p class="preco">R$ 2.200,00</p>
-        <button class="btn-vermelho" onclick="window.location.href='../html/vendaPro.html'">Assine</button>
-      </div>
+  <!-- Área de planos -->
+  <main class="area-planos">
+    <section class="grade-planos">
 
-      <!-- Card do plano Ultra -->
-      <div class="card">
-        <h2>Ultra (5 anos)</h2>
-        <p class="preco">R$ 12.500,00</p>
-        <button class="btn-vermelho" onclick="window.location.href='../html/vendaUltra.html'">Assine</button>
-      </div>
+      <!-- Teste (1 semana) -->
+      <article class="plano-card">
+        <h3 class="plano-titulo">Teste (1 semana)</h3>
+        <div class="plano-preco">R$ 5,00</div>
+        <p class="plano-detalhe">Ideal para experimentar o sistema.</p>
+        <button class="btn-assinar" onclick="window.location.href='../html/vendaTeste.html'">Assinar</button>
+      </article>
+
+      <!-- Plus (1 mês) -->
+      <article class="plano-card">
+        <h3 class="plano-titulo">Plus (1 mês)</h3>
+        <div class="plano-preco">R$ 200,00</div>
+        <p class="plano-detalhe">Perfeito para o dia a dia do restaurante.</p>
+        <button class="btn-assinar" onclick="window.location.href='../html/vendaPlus.html'">Assinar</button>
+      </article>
+
+      <!-- Pro (1 ano) – destaque -->
+      <article class="plano-card destaque">
+        <h3 class="plano-titulo">Pro (1 ano)</h3>
+        <div class="plano-preco">R$ 2.200,00</div>
+        <p class="plano-detalhe">Melhor custo-benefício, com suporte prioritário.</p>
+        <button class="btn-assinar" onclick="window.location.href='../html/vendaPro.html'">Assinar</button>
+      </article>
+
+      <!-- Ultra (5 anos) -->
+      <article class="plano-card">
+        <h3 class="plano-titulo">Ultra (5 anos)</h3>
+        <div class="plano-preco">R$ 12.500,00</div>
+        <p class="plano-detalhe">Licença estendida para tranquilidade total.</p>
+        <button class="btn-assinar" onclick="window.location.href='../html/vendaUltra.html'">Assinar</button>
+      </article>
+
     </section>
   </main>
 
-  <!-- Link para o arquivo JavaScript que define as funcionalidades da página -->
-  <script src="../java/main.js"></script>
+  <footer>
+    <div style="text-align:center;padding:10px 0;">ARCardápio • Todos os direitos reservados</div>
+  </footer>
 </body>
 </html>

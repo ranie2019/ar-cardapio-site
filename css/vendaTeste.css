@@ -1,0 +1,133 @@
+/* ====== vendaTeste.css ====== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+
+:root {
+  --bg:#0b1514;
+  --card:#0f1f1e;
+  --text:#eafff7;
+  --muted:#b9d8cf;
+  --line:#17322e;
+  --field:#0b1a18;
+  --field-border:#133a34;
+  --accent:#00d1a2;
+  --accent-2:#00b892;
+  --danger:#ff7070;
+  --glow:0 18px 40px rgba(0,0,0,.35);
+}
+
+*{ box-sizing:border-box; }
+html,body{ height:100%; margin:0; }
+body {
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+
+/* ====== Layout base ====== */
+.container { max-width:1120px; margin:40px auto; padding:0 20px; }
+.header { display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+.h1 { margin:0; font-size:28px; letter-spacing:.2px; }
+.badge {
+  padding:4px 10px; border-radius:999px; font-size:12px;
+  background:#09201d; border:1px solid #113832; color:#86ffe6;
+}
+
+.grid {
+  display:grid;
+  grid-template-columns: 1.08fr .92fr;
+  gap:28px;
+}
+@media (max-width: 960px){ .grid{ grid-template-columns:1fr; } }
+
+.card {
+  background:var(--card);
+  border-radius:16px;
+  padding:22px;
+  box-shadow:var(--glow);
+}
+
+/* ====== Coluna esquerda (resumo) ====== */
+.h2 { margin:0 0 10px; font-size:22px; }
+.price { font-size:40px; line-height:1.1; margin:6px 0 16px; font-weight:700; }
+.muted { color:var(--muted); }
+
+.bullets { list-style:none; padding:0; margin:14px 0 16px; }
+.bullets li { display:flex; gap:10px; margin:8px 0; }
+.dot { width:8px; height:8px; border-radius:50%; background:#2be7c8; margin-top:.7em; }
+
+.divider { height:1px; background:var(--line); margin:18px 0; }
+
+.row { display:flex; justify-content:space-between; font-size:15px; gap:12px; }
+.total { font-weight:800; font-size:18px; }
+
+.secure { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:12px; }
+.secure svg { width:16px; height:16px; }
+
+/* Link voltar */
+.back { display:inline-block; margin-top:14px; color:#8ff; text-decoration:none; }
+.back:hover { text-decoration:underline; }
+
+/* ====== Coluna direita (formulário) ====== */
+label { display:block; font-size:13px; margin:12px 0 6px; color:#c8fff0; }
+.input {
+  width:100%;
+  background:var(--field);
+  color:var(--text);
+  border:1px solid var(--field-border);
+  border-radius:12px;
+  padding:12px 14px;
+  outline:none;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.input::placeholder { color:#9ad9cb; opacity:.6; }
+.input:focus {
+  border-color:#1dd7b3;
+  box-shadow:0 0 0 3px rgba(29,215,179,.18);
+}
+
+#payment-element { margin-top:12px; }
+
+/* Botão */
+.btn {
+  margin-top:16px; width:100%;
+  padding:14px 16px; border:0; border-radius:12px;
+  background:var(--accent); color:#042; font-weight:800; cursor:pointer;
+  transition: transform .02s ease, background .15s ease;
+}
+.btn:hover { background:var(--accent-2); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity:.6; cursor:not-allowed; }
+
+.err { color:var(--danger); margin-top:8px; min-height:18px; }
+
+/* ====== Abas visuais (fallback Pix/Cartão) ====== */
+.pay-tabs { display:flex; gap:12px; margin-top:12px; }
+.tab {
+  flex:1; padding:12px 14px; border-radius:12px; cursor:pointer;
+  background:var(--field); border:1px solid var(--field-border);
+  color:var(--text); font-weight:700; text-align:center;
+}
+.tab.active {
+  outline:2px solid #19d1aa;
+  background:#0f2623;
+}
+.pay-panel { display:none; margin-top:12px; }
+.pay-panel.show { display:block; }
+
+/* Placeholder Pix (enquanto sem backend) */
+.qr-placeholder {
+  height:180px; border:1px dashed #2b7468; border-radius:12px;
+  display:grid; place-items:center; color:#9ad9cb; opacity:.75;
+}
+
+/* Fake fields do cartão no fallback */
+.fake-card .input { background:#0e1e1b; }
+
+/* Melhor espaçamento do Stripe Payment Element quando ativo */
+#stripe-wrapper #payment-element { margin-top:14px; }
+
+/* ===== Responsividade ===== */
+@media (max-width:860px){
+  .grid { grid-template-columns:1fr; }
+}
+

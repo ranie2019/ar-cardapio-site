@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>Assinar Plano Pro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- CSS (ajuste o caminho se necessário) -->
+  <link rel="stylesheet" href="../css/vendaPro.css">
+  <!-- Stripe -->
+  <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 class="h1">Finalizar compra</h1>
+    </div>
+
+    <div class="grid">
+      <!-- ESQUERDA: resumo -->
+      <section class="card">
+        <h2 class="h2">Plano Pro (1 Ano)</h2>
+        <div class="price">R$ 2.200,00</div>
+        <p class="muted">Acesso completo ao ARCardápio por 30 dias. Renovação opcional.</p>
+
+        <ul class="bullets">
+          <li><span class="dot"></span><span>Acesso a todos os recursos e modelos 3D</span></li>
+          <li><span class="dot"></span><span>Suporte por e-mail com prioridade</span></li>
+          <li><span class="dot"></span><span>Sem taxa de adesão. Cancele quando quiser</span></li>
+        </ul>
+
+        <div class="divider"></div>
+
+        <div class="row"><span>Subtotal</span><span>R$ 2.200,00</span></div>
+        <div class="row"><span>Descontos</span><span>R$ 0,00</span></div>
+        <div class="divider"></div>
+        <div class="row total"><span>Total</span><span>R$ 2.200,00</span></div>
+
+        <div class="divider"></div>
+
+        <div class="secure">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2l7 4v6c0 5-3.5 9-7 10-3.5-1-7-5-7-10V6l7-4z" stroke="#86ffe6"/></svg>
+          Pagamentos processados de forma segura. Pix e Cartão disponíveis.
+        </div>
+
+        <a class="back" href="plano.html">Voltar para planos</a>
+      </section>
+
+      <!-- DIREITA: pagamento -->
+      <section class="card">
+        <h2 class="h2">Pagamento</h2>
+        <p class="muted">Selecione <b>Pix</b> ou <b>Cartão</b> nas abas do formulário.</p>
+
+        <form id="payment-form">
+          <label for="email">Seu e-mail</label>
+          <input id="email" class="input" type="email" placeholder="voce@exemplo.com" required>
+
+          <label for="name">Nome completo</label>
+          <input id="name" class="input" type="text" placeholder="Nome impresso no cartão" required>
+
+          <!-- ===== Fallback visual (aparece se o backend ainda não estiver configurado) ===== -->
+          <div id="fallback-wrapper" class="custom">
+            <!-- Abas visuais -->
+            <div class="pay-tabs" role="tablist">
+              <button class="tab active" type="button" data-target="#cardPanel">Cartão de crédito</button>
+              <button class="tab" type="button" data-target="#pixPanel">Pix</button>
+            </div>
+
+            <div class="pay-panel show" id="cardPanel">
+              <div class="fake-card">
+                <label style="margin-top:10px">Número do cartão</label>
+                <input class="input" type="text" placeholder="0000 0000 0000 0000">
+                <div style="display:flex; gap:10px; margin-top:10px">
+                  <input class="input" type="text" placeholder="MM/AA" style="flex:1">
+                  <input class="input" type="text" placeholder="CVV" style="flex:1">
+                </div>
+                <label style="margin-top:10px">Nome do titular</label>
+                <input class="input" type="text" placeholder="Nome impresso no cartão">
+              </div>
+            </div>
+
+            <div class="pay-panel" id="pixPanel">
+              <p class="muted" style="margin-top:8px">Após confirmar com Pix, será exibido o QR Code / “copia e cola”.</p>
+              <div class="qr-placeholder">QR Code Pix aparece aqui</div>
+            </div>
+          </div>
+          <!-- ===== /Fallback visual ===== -->
+
+          <!-- ===== Stripe real (aparece quando há clientSecret válido) ===== -->
+          <div id="stripe-wrapper" style="display:none">
+            <div id="payment-element"></div>
+          </div>
+          <!-- ===== /Stripe real ===== -->
+
+          <button id="submitBtn" class="btn" type="submit">Pagar e assinar</button>
+          <div id="error" class="err"></div>
+        </form>
+      </section>
+    </div>
+  </div>
+
+  <noscript>Ative o JavaScript para concluir o pagamento.</noscript>
+
+  <script>
+    // ======= CONFIGURE =======
+    const API_BASE = "https://SEU-API-GATEWAY/dev";
+    const STRIPE_PUBLISHABLE_KEY = "pk_test_SUA_PUBLISHABLE_KEY";
+    const PLAN_ID = "pro"; // nas outras páginas: teste | pro | ultra
+    // =========================
+
+    let stripe = null, elements = null, orderId = null, stripeReady = false;
+
+    // Alternância das abas do fallback visual
+    (function setupFallbackTabs(){
+      const tabs = document.querySelectorAll('.pay-tabs .tab');
+      const panels = document.querySelectorAll('.pay-panel');
+      tabs.forEach(btn => {
+        btn.addEventListener('click', () => {
+          tabs.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          panels.forEach(p => p.classList.remove('show'));
+          const target = document.querySelector(btn.dataset.target);
+          if (target) target.classList.add('show');
+        });
+      });
+    })();
+
+    async function init() {
+      try {
+        // Cria PaymentIntent + Order (se seu backend já estiver ativo)
+        const res = await fetch(`${API_BASE}/checkout/create-intent`, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            planId: PLAN_ID,
+            customerEmail: localStorage.getItem('email') || undefined
+          })
+        });
+
+        if (!res.ok) {
+          // Sem backend: mantém o fallback visual
+          const data = await res.json().catch(()=>({}));
+          if (data?.error) document.getElementById('error').innerText = data.error;
+          return;
+        }
+
+        const data = await res.json();
+        orderId = data.orderId;
+
+        // Esconde fallback e mostra Stripe real
+        document.getElementById('fallback-wrapper').style.display = 'none';
+        document.getElementById('stripe-wrapper').style.display = 'block';
+
+        // Stripe
+        stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+        elements = stripe.elements({
+          clientSecret: data.clientSecret,
+          appearance: { theme: 'night' }
+        });
+
+        // Abas reais (Pix/Cartão) renderizadas pelo próprio Stripe
+        const paymentElement = elements.create('payment', { layout: { type: 'tabs' } });
+        paymentElement.mount('#payment-element');
+
+        stripeReady = true;
+      } catch (e) {
+        console.error(e);
+        document.getElementById('error').innerText = 'Não foi possível iniciar o pagamento.';
+      }
+    }
+
+    async function onSubmit(e){
+      e.preventDefault();
+
+      const email = document.getElementById('email').value.trim();
+      const name  = document.getElementById('name').value.trim();
+
+      const btn = document.getElementById('submitBtn');
+      const err = document.getElementById('error');
+      btn.disabled = true; err.innerText = '';
+
+      if (!stripeReady) {
+        // Fallback somente visual
+        err.innerText = 'Pagamento de demonstração: conecte o backend Stripe para concluir.';
+        btn.disabled = false;
+        return;
+      }
+
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${location.origin}/thanks.html?orderId=${encodeURIComponent(orderId)}`,
+          payment_method_data: { billing_details: { email, name } }
+        }
+      });
+
+      if (error) {
+        err.innerText = error.message || 'Não foi possível confirmar o pagamento.';
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('payment-form').addEventListener('submit', onSubmit);
+    init();
+  </script>
+</body>
+</html>

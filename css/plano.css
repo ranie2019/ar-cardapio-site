@@ -1,99 +1,257 @@
-/* Estiliza o topo da página com espaço para o botão "Entrar" à direita */
-.top-bar {
-  width: 100%;                        /* Ocupa toda a largura da tela */
-  display: flex;                      /* Flexbox para alinhar conteúdo */
-  justify-content: flex-end;         /* Alinha conteúdo (botão) à direita */
-  padding: 20px;                      /* Espaçamento interno */
-  box-sizing: border-box;            /* Inclui padding no cálculo do tamanho */
-  position: relative;                /* Permite controle sobre posicionamento interno */
-  background-color: #e28080;         /* 🎯 Cor de fundo da barra (altere aqui como quiser: branco, cinza, etc.) */
+/* =========================================================
+   plano.css — Página de Planos (mesmo padrão do index.css)
+   - Fundo no BODY com gradiente + imagem
+   - Mantém imagem “como um todo” na largura (100% auto)
+   - Controles finos via variáveis: escala e foco vertical
+   ========================================================= */
+
+/* ---------- Variáveis para controle do fundo ---------- */
+:root{
+  /* Escala horizontal do fundo (como no index: 100% auto) */
+  --bg-scale-x: 100%;
+  /* Foco vertical do fundo: 0% topo, 50% centro, 100% base */
+  --bg-pos-y: 18%;
+  /* Opacidade do escurecimento (0 = sem, 1 = bem escuro) */
+  --bg-darken: 0.70;
 }
 
-/* Container do botão no topo (permite fácil controle visual) */
-.btn-container {
-  position: static;                  /* Remove qualquer posicionamento absoluto */
+/* ---------- Fundo no body (mesma lógica do index.css) ---------- */
+body {
+  /* Gradiente por cima + imagem abaixo (uma única declaração) */
+  background:
+    linear-gradient(
+      rgba(0, 0, 0, var(--bg-darken)),
+      rgba(0, 0, 0, var(--bg-darken))
+    ),
+    url('../imagens/plano.png') no-repeat center var(--bg-pos-y) fixed;
+
+  /* Mantém a imagem “como um todo” na largura da tela */
+  background-size: var(--bg-scale-x) auto;
+
+  /* Padrão visual global */
+  font-family: 'Inter', sans-serif;
+  color: #fff;
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-/* Modificação para o botão "login" */
-.top-bar .btn-vermelho {
-  background-color: #e50914;         /* Cor de fundo vermelha */
-  color: white;                      /* Texto branco */
-  border: none;                      /* Sem bordas */
-  padding: 10px 20px;                /* Ajuste do tamanho do botão */
-  font-size: 16px;                   /* Tamanho da fonte */
-  border-radius: 5px;                /* Cantos arredondados */
-  cursor: pointer;                   /* Cursor de mão */
-  transition: background-color 0.3s; /* Transição suave ao passar o mouse */
-  margin-left: 10px;                 /* Espaço lateral para não grudar */
-  width: auto;                       /* Largura automática conforme o conteúdo */
-  height: auto;                      /* Altura automática */
-  display: inline-block;             /* Faz com que o botão tenha apenas o espaço necessário */
+/* Ajustes responsivos opcionais
+   - Em telas muito largas, subimos um pouco o foco
+   - Em telas mais altas, baixamos um pouco o foco para equilibrar */
+@media (min-aspect-ratio: 16/9){
+  :root{ --bg-pos-y: 14%; }
+}
+@media (max-aspect-ratio: 4/3){
+  :root{ --bg-pos-y: 22%; }
 }
 
-/* Efeito ao passar o mouse sobre o botão login */
-.top-bar .btn-vermelho:hover {
-  background-color: #c2080b;         /* Cor mais escura no hover */
+/* =========================================================
+   Header fino com botão “Entrar” (ou “Área do cliente”)
+   ========================================================= */
+.topo-planos{
+  width:100%;
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  padding:16px 20px;
+  box-sizing:border-box;
+  z-index:3;
 }
 
-/* Conteúdo principal da seção de planos */
-.conteudo-planos {
-  text-align: center;                /* Centraliza todo o conteúdo */
-  padding: 40px 20px;                /* Espaçamento geral */
-}
-
-/* Container de todos os cards */
-.cards {
-  display: flex;                     /* Usa flexbox */
-  justify-content: center;          /* Centraliza os cards horizontalmente */
-  gap: 20px;                         /* Espaço entre os cards */
-  flex-wrap: wrap;                   /* Permite quebra de linha em telas menores */
-  margin-top: 30px;
-}
-
-/* Estilo base para todos os cards de plano */
-.card {
-  background-color: rgb(255, 255, 255);
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  padding: 30px 20px;
-  width: 250px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s;
-}
-
-/* Destaca o plano Pro */
-.card.destaque {
-  border: 2px solid #e50914;
-  box-shadow: 0 6px 12px rgba(229, 9, 20, 0.3);
-}
-
-/* Animação ao passar o mouse no card */
-.card:hover {
-  transform: scale(1.05);
-}
-
-/* Estilo para o preço */
-.card .preco {
-  font-size: 24px;
-  font-weight: bold;
-  color: #e50914;
-  margin: 15px 0;
-}
-
-/* Botão "SE CADASTRE" dentro dos cards */
-.card .btn-vermelho {
-  background-color: #e50914;
-  color: white;
+.btn-entrar{
+  position: fixed;                                   /* fica preso na viewport */
+  top: max(16px, env(safe-area-inset-top));          /* respeita notches do iOS */
+  right: max(16px, env(safe-area-inset-right));
+  z-index: 9999;                                     /* acima de tudo */
+  
+  background: #00f0c0;
+  color: #001f33;
+  font-weight: 800;
   border: none;
-  padding: 10px 16px;
-  font-size: 14px;
-  border-radius: 5px;
+  padding: 12px 20px;
+  border-radius: 28px;
+  font-size: 15px;
   cursor: pointer;
-  transition: background-color 0.3s;
+  box-shadow: 0 6px 22px rgba(0, 240, 192, .35);
+  transition: filter .2s ease, transform .05s ease, box-shadow .25s ease;
 }
 
-/* Efeito ao passar o mouse no botão do card */
-.card .btn-vermelho:hover {
-  background-color: #c2080b;
+.btn-entrar:hover{
+  filter: brightness(.95);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(141, 235, 255, .45);
 }
 
+.btn-entrar:focus-visible{
+  outline: 2px solid #8DEBFF;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 4px rgba(141, 235, 255, .25);
+}
+
+@media (max-width: 560px){
+  .btn-entrar{
+    top: auto;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    right: max(16px, env(safe-area-inset-right));
+    padding: 14px 22px;
+    font-size: 16px;
+    border-radius: 999px;
+  }
+} 
+ 
+/* =========================================================
+   Títulos
+   ========================================================= */
+.titulo-planos{
+  margin:90px auto 10px;
+  color:#00f0c0;
+  font-size:36px;
+  font-weight:800;
+  text-align:center;
+  letter-spacing:.3px;
+  text-shadow:0 0 12px rgba(0,240,192,.35);
+}
+.subtitulo-planos{
+  text-align:center;
+  color:#8DEBFF;
+  opacity:.9;
+  margin-bottom:22px;
+  font-size:14px;
+}
+
+/* =========================================================
+   Container principal
+   ========================================================= */
+.area-planos{
+  max-width:1200px;
+  width: 100%;
+  margin:0 auto;
+  padding:10px 20px 80px;
+  box-sizing: border-box;
+}
+
+/* =========================================================
+   Grade de cards
+   ========================================================= */
+.grade-planos{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(220px,1fr));
+  gap:22px;
+  align-items:stretch;
+}
+
+/* Responsivo: 3/2/1 colunas conforme largura */
+@media (max-width:1100px){
+  .grade-planos{ grid-template-columns:repeat(3, minmax(220px,1fr)); }
+}
+@media (max-width:820px){
+  .grade-planos{ grid-template-columns:repeat(2, minmax(220px,1fr)); }
+}
+@media (max-width:520px){
+  .grade-planos{ grid-template-columns:1fr; }
+}
+
+/* =========================================================
+   Card com “glass” + borda neon (mesmo mood do sistema)
+   ========================================================= */
+.plano-card{
+  background:linear-gradient(180deg, rgba(20,20,20,.88), rgba(10,10,10,.88));
+  border:2px solid rgba(0,240,192,.35);
+  border-radius:16px;
+  box-shadow:
+    0 0 0 6px rgba(0,240,192,.05) inset,
+    0 18px 50px rgba(0,0,0,.35),
+    0 0 28px rgba(0,240,192,.15);
+  padding:22px 18px;
+  color:#cde;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  transition:transform .2s ease, box-shadow .25s ease, border-color .2s ease;
+}
+.plano-card:hover{
+  transform:translateY(-2px);
+  box-shadow:
+    0 0 0 6px rgba(0,240,192,.07) inset,
+    0 24px 60px rgba(0,0,0,.45),
+    0 0 38px rgba(0,240,192,.28);
+  border-color:#00f0c0;
+}
+
+/* Destaque (ex.: anual) */
+.plano-card.destaque{
+  border-color:#00ffd1;
+  box-shadow:
+    0 0 0 6px rgba(0,255,209,.07) inset,
+    0 24px 60px rgba(0,0,0,.45),
+    0 0 42px rgba(0,255,209,.32);
+}
+
+/* Tipografia interna do card */
+.plano-titulo{
+  margin:4px 0 0;
+  color:#8DEBFF;
+  font-weight:800;
+  font-size:20px;
+  text-align:center;
+  letter-spacing:.2px;
+  text-shadow:0 0 10px rgba(141,235,255,.28);
+}
+.plano-preco{
+  color:#00ffd1;
+  font-weight:900;
+  font-size:24px;
+  letter-spacing:.3px;
+  text-shadow:0 0 10px rgba(0,255,209,.25);
+  margin:6px 0 14px;
+}
+.plano-detalhe{
+  color:#a9f7e9;
+  font-size:13px;
+  opacity:.95;
+  text-align:center;
+  line-height:1.4;
+  min-height:36px;
+}
+
+/* Botão “Assinar” */
+.btn-assinar{
+  background:#00f0c0;
+  color:#001f33;
+  font-weight:800;
+  border:none;
+  padding:12px 20px;
+  border-radius:30px;
+  font-size:15px;
+  letter-spacing:.2px;
+  cursor:pointer;
+  transition:all .25s ease;
+  box-shadow:0 0 10px rgba(141,235,255,.25);
+  position:relative;
+  overflow:hidden;
+}
+.btn-assinar::before{
+  content:"";
+  position:absolute; inset:0;
+  background:linear-gradient(120deg, rgba(255,255,255,.25), rgba(255,255,255,0));
+  transform:translateX(-120%) skewX(-20deg);
+  transition:transform .55s ease;
+}
+.btn-assinar:hover{
+  transform:translateY(-1px);
+  box-shadow:0 0 15px #8DEBFF, 0 0 25px #8DEBFF;
+}
+.btn-assinar:hover::before{ transform:translateX(110%) skewX(-20deg); }
+
+/* Rodapé */
+footer{
+  position:static;
+  margin-top:30px;
+  color:#8DEBFF;
+  opacity:.6;
+  text-align:center;
+}

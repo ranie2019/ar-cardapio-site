@@ -172,13 +172,6 @@ header {
       transition: transform 0.3s, box-shadow 0.3s, border 0.3s;
     }
 
-body, html {
-  margin: 0;
-  padding: 0;
-  overflow-x: hidden; /* Oculta rolagem horizontal */
-  width: 100%;
-}
-
 body {
   background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
               url('../imagens/bgindex.jpg') no-repeat center center fixed;
