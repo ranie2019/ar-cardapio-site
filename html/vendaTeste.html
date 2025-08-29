@@ -5,6 +5,7 @@
   <title>Assinar Plano Teste</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="../css/vendaTeste.css">
+
   <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
@@ -77,15 +78,17 @@
             <!-- Painel Pix -->
             <div class="pay-panel" id="pixPanel">
               <p class="muted" style="margin-top:8px">
-                Ao continuar com Pix, será exibido o QR Code / “copia e cola”.
+                Ao continuar com Pix, será exibido o QR Code.
               </p>
-              <div id="pix-area" style="display:none">
-                <img id="pix-qr" alt="QR Pix" style="width:220px;height:220px;border:1px solid #333;border-radius:8px"/>
-                <pre id="pix-copy" style="white-space:pre-wrap;word-break:break-all"></pre>
-                <button type="button" id="btnCopy">Copiar código Pix</button>
+              
+              <!-- Área do Pix (começa oculta) -->
+              <div id="pix-area" class="pix-box hidden">
+                <img id="pix-qr" class="pix-qr" alt="QR Pix" />
+                <button type="button" id="btnCopy" class="btn-mini">Copiar código Pix</button>
                 <div id="pix-status" class="muted" style="margin-top:6px"></div>
               </div>
-              <div class="qr-placeholder">QR Code Pix aparece aqui</div>
+              
+              <div id="qr-placeholder" class="qr-placeholder">QR Code Pix aparece aqui</div>
             </div>
           </div>
 
@@ -114,7 +117,7 @@
     let stripe, elements, paymentElement;
     let currentMethod = "card";
     let clientSecret = null;
-    let lastPix = null; // guarda dados do último Pix {qr_code_base64, copy_paste, ticket_url}
+    let lastPix = null;
 
     const $ = (sel) => document.querySelector(sel);
     const errBox     = $("#error");
@@ -124,9 +127,8 @@
     const stripeWrap = $("#stripe-wrapper");
     const pixArea    = $("#pix-area");
     const pixQR      = $("#pix-qr");
-    const pixCopy    = $("#pix-copy");
     const pixStatus  = $("#pix-status");
-    const qrPlaceholder = document.querySelector(".qr-placeholder");
+    const qrPlaceholder = $("#qr-placeholder");
 
     // Troca de abas
     tabs.forEach(tab => {
@@ -149,14 +151,13 @@
         btn.disabled = true;
 
         // limpa UI Pix/Cartão
-        pixArea.style.display = "none";
-        qrPlaceholder.style.display = "block";
+        pixArea.classList.add('hidden');
+        qrPlaceholder.classList.remove('hidden');
         pixQR.removeAttribute("src");
-        pixCopy.textContent = "";
         pixStatus.textContent = "";
         stripeWrap.style.display = "none";
-        btn.textContent = method === "pix" ? "Abrir comprovante Pix" : "Pagar e assinar";
-        btn.onclick = null; // comportamento padrão (submit)
+        btn.textContent = "Pagar e assinar";
+        btn.onclick = null;
 
         // chama seu backend
         const res = await fetch(API_URL, {
@@ -198,11 +199,11 @@
           paymentElement = elements.create("payment", { layout: { type: "tabs" } });
           paymentElement.mount("#payment-element");
         }
-        // PIX (Mercado Pago)
+        // PIX
         else {
-          clientSecret = null; // não usamos Stripe aqui
+          clientSecret = null;
           if (!data.qr_code_base64 || !data.copy_paste) {
-            throw new Error("Não recebi os dados do Pix (QR/copia-e-cola).");
+            throw new Error("Não recebi os dados do Pix.");
           }
 
           lastPix = {
@@ -211,19 +212,12 @@
             ticket_url: data.ticket_url || ""
           };
 
-          qrPlaceholder.style.display = "none";
-          pixArea.style.display = "block";
+          qrPlaceholder.classList.add('hidden');
+          pixArea.classList.remove('hidden');
           pixQR.src = "data:image/png;base64," + data.qr_code_base64;
-          pixCopy.textContent = data.copy_paste;
           pixStatus.textContent = "Aguarde a confirmação após concluir o pagamento no seu banco.";
 
-          // botão vira "Abrir comprovante Pix"
-          btn.onclick = (ev) => {
-            ev.preventDefault();
-            if (lastPix.ticket_url) window.open(lastPix.ticket_url, "_blank");
-          };
-
-          // copiar
+          // copiar código PIX
           $("#btnCopy").onclick = () => {
             navigator.clipboard.writeText(lastPix.copy_paste);
             pixStatus.textContent = "Código Pix copiado!";
@@ -243,10 +237,7 @@
     async function onSubmit(e){
       e.preventDefault();
 
-      if (currentMethod === "pix") {
-        // já tratamos no onclick do botão (abrir comprovante).
-        return;
-      }
+      if (currentMethod === "pix") return;
 
       const email = $("#email").value.trim();
       const name  = $("#name").value.trim();
@@ -286,7 +277,7 @@
     // inicia em "cartão"
     (async () => { await bootStripeFor(currentMethod); })();
 
-    // Formatadores visuais do cartão (opcional)
+    // Formatadores visuais do cartão
     const ccNum = document.getElementById("cc-number");
     if (ccNum) ccNum.addEventListener("input", (e) => {
       let val = e.target.value.replace(/\D/g, "").slice(0, 16);

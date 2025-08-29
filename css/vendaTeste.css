@@ -116,8 +116,55 @@ label { display:block; font-size:13px; margin:12px 0 6px; color:#c8fff0; }
 
 /* Placeholder Pix (enquanto sem backend) */
 .qr-placeholder {
-  height:180px; border:1px dashed #2b7468; border-radius:12px;
-  display:grid; place-items:center; color:#9ad9cb; opacity:.75;
+  height:180px; 
+  border:1px dashed #2b7468; 
+  border-radius:12px;
+  display:grid; 
+  place-items:center; 
+  color:#9ad9cb; 
+  opacity:.75;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height:260px;
+  border:1px dashed #2a2f2f;
+  border-radius:12px;
+  color:#96a0a0;
+}
+
+/* Caixa do Pix centralizada */
+.pix-box{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+  margin-top: 20px;
+}
+
+/* QR bonito e centralizado */
+.pix-qr{
+  width:260px;
+  height:260px;
+  border:1px solid #2a2f2f;
+  border-radius:12px;
+  object-fit:contain;  
+}
+
+/* Botão copiar pequeno e centralizado */
+.btn-mini{
+  min-width: 180px;
+  padding: 8px 14px;
+  font-size: 14px;
+  align-self: center;
+}
+
+.btn-wide{ width:100%; }
+.hidden { display: none; }
+.validation-message {
+  color: #ff7070;
+  font-size: 12px;
+  margin-top: 5px;
+  display: none;
 }
 
 /* Fake fields do cartão no fallback */
@@ -130,4 +177,3 @@ label { display:block; font-size:13px; margin:12px 0 6px; color:#c8fff0; }
 @media (max-width:860px){
   .grid { grid-template-columns:1fr; }
 }
-
