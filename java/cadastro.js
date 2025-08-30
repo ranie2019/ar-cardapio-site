@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await response.json();
 
         if (response.ok) {
-          showNotification("âœ… Cadastro realizado com sucesso!");
+          showNotification("Cadastro realizado com sucesso!");
           formCadastro.reset();
           botaoCadastro.disabled = true;
           setTimeout(() => {
@@ -117,36 +117,41 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function showNotification(message, isError = false) {
-    let notification = document.getElementById('custom-notification');
-    if (!notification) {
-      notification = document.createElement('div');
-      notification.id = 'custom-notification';
-      document.body.appendChild(notification);
-    }
-
-    notification.textContent = message;
-    notification.style.cssText = `
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 15px 25px;
-      border-radius: 8px;
-      color: white;
-      font-size: 16px;
-      font-weight: bold;
-      z-index: 1000;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-      transition: opacity 0.5s ease-in-out;
-      opacity: 1;
-      background-color: ${isError ? '#dc3545' : '#28a745'};
+  function showNotification(message, isError = false, durationMs = 1800) {
+  let n = document.getElementById('custom-notification');
+  if (!n) {
+    n = document.createElement('div');
+    n.id = 'custom-notification';
+    n.style.cssText = `
+      position:fixed; top:20px; left:50%;
+      transform:translate(-50%,-6px); /* levinho para cima ao iniciar */
+      opacity:0;
+      padding:12px 18px; border-radius:10px;
+      color:#fff; font:600 14px/1.3 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      z-index:10000; box-shadow:0 12px 32px rgba(0,0,0,.35);
+      transition:opacity .18s ease-out, transform .18s ease-out;
+      pointer-events:none;
     `;
-
-    // Remove a notificaÃ§Ã£o apÃ³s 5 segundos
-    setTimeout(() => {
-      notification.style.opacity = '0';
-      setTimeout(() => notification.remove(), 500); // Remove do DOM apÃ³s a transiÃ§Ã£o
-    }, 5000);
+    document.body.appendChild(n);
   }
+
+  n.textContent = message;
+  n.style.backgroundColor = isError ? '#dc3545' : '#28a745';
+
+  // animação de ENTRADA (rápida)
+  requestAnimationFrame(() => {
+    n.style.opacity = '1';
+    n.style.transform = 'translate(-50%, 0)';
+  });
+
+  // limpa timers e agenda a SAÍDA (rápida)
+  clearTimeout(n._hideTimer);
+  if (durationMs > 0) {
+    n._hideTimer = setTimeout(() => {
+      n.style.opacity = '0';
+      n.style.transform = 'translate(-50%, -6px)';
+    }, durationMs);
+  }
+}
+
 });

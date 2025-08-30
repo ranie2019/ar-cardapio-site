@@ -2,23 +2,19 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
-  <title>Assinar Plano Pro</title>
+  <title>Assinar Plano Teste</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- CSS (ajuste o caminho se necessário) -->
-  <link rel="stylesheet" href="../css/vendaPro.css">
-  <!-- Stripe -->
+  <link rel="stylesheet" href="../css/vendaTeste.css">
   <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h1 class="h1">Finalizar compra</h1>
-    </div>
+    <h1 class="h1">Finalizar compra</h1>
 
     <div class="grid">
-      <!-- ESQUERDA: resumo -->
+      <!-- ESQUERDA -->
       <section class="card">
-        <h2 class="h2">Plano Pro (1 Ano)</h2>
+        <h2 class="h2">Plano Teste (7 Dias)</h2>
         <div class="price">R$ 2.200,00</div>
         <p class="muted">Acesso completo ao ARCardápio por 30 dias. Renovação opcional.</p>
 
@@ -29,23 +25,21 @@
         </ul>
 
         <div class="divider"></div>
-
         <div class="row"><span>Subtotal</span><span>R$ 2.200,00</span></div>
         <div class="row"><span>Descontos</span><span>R$ 0,00</span></div>
         <div class="divider"></div>
         <div class="row total"><span>Total</span><span>R$ 2.200,00</span></div>
-
         <div class="divider"></div>
 
         <div class="secure">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2l7 4v6c0 5-3.5 9-7 10-3.5-1-7-5-7-10V6l7-4z" stroke="#86ffe6"/></svg>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l7 4v6c0 5-3.5 9-7 10-3.5-1-7-5-7-10V6l7-4z" stroke="#86ffe6"/></svg>
           Pagamentos processados de forma segura. Pix e Cartão disponíveis.
         </div>
 
         <a class="back" href="plano.html">Voltar para planos</a>
       </section>
 
-      <!-- DIREITA: pagamento -->
+      <!-- DIREITA -->
       <section class="card">
         <h2 class="h2">Pagamento</h2>
         <p class="muted">Selecione <b>Pix</b> ou <b>Cartão</b> nas abas do formulário.</p>
@@ -53,43 +47,55 @@
         <form id="payment-form">
           <label for="email">Seu e-mail</label>
           <input id="email" class="input" type="email" placeholder="voce@exemplo.com" required>
+          <div id="email-validation" class="validation-message"></div>
 
           <label for="name">Nome completo</label>
           <input id="name" class="input" type="text" placeholder="Nome impresso no cartão" required>
 
-          <!-- ===== Fallback visual (aparece se o backend ainda não estiver configurado) ===== -->
+          <!-- Abas -->
           <div id="fallback-wrapper" class="custom">
-            <!-- Abas visuais -->
             <div class="pay-tabs" role="tablist">
               <button class="tab active" type="button" data-target="#cardPanel">Cartão de crédito</button>
               <button class="tab" type="button" data-target="#pixPanel">Pix</button>
             </div>
 
+            <!-- Painel cartão (apenas visual) -->
             <div class="pay-panel show" id="cardPanel">
               <div class="fake-card">
                 <label style="margin-top:10px">Número do cartão</label>
-                <input class="input" type="text" placeholder="0000 0000 0000 0000">
+                <input id="cc-number" class="input" type="text" inputmode="numeric" autocomplete="cc-number" placeholder="0000 0000 0000 0000" maxlength="19">
+
                 <div style="display:flex; gap:10px; margin-top:10px">
-                  <input class="input" type="text" placeholder="MM/AA" style="flex:1">
-                  <input class="input" type="text" placeholder="CVV" style="flex:1">
+                  <input id="cc-exp" class="input" style="flex:1" type="text" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/AA" maxlength="5">
+                  <input id="cc-cvc" class="input" style="flex:1" type="text" inputmode="numeric" autocomplete="cc-csc" placeholder="CVV" maxlength="4">
                 </div>
+
                 <label style="margin-top:10px">Nome do titular</label>
-                <input class="input" type="text" placeholder="Nome impresso no cartão">
+                <input id="cc-name" class="input" type="text" placeholder="Nome impresso no cartão" autocomplete="cc-name">
               </div>
             </div>
 
+            <!-- Painel Pix -->
             <div class="pay-panel" id="pixPanel">
-              <p class="muted" style="margin-top:8px">Após confirmar com Pix, será exibido o QR Code / “copia e cola”.</p>
-              <div class="qr-placeholder">QR Code Pix aparece aqui</div>
+              <p class="muted" style="margin-top:8px">
+                Ao continuar com Pix, será exibido o QR Code.
+              </p>
+              
+              <!-- Área do Pix (começa oculta) -->
+              <div id="pix-area" class="pix-box hidden">
+                <img id="pix-qr" class="pix-qr" alt="QR Pix" />
+                <button type="button" id="btnCopy" class="btn-mini">Copiar código Pix</button>
+                <div id="pix-status" class="muted" style="margin-top:6px"></div>
+              </div>
+              
+              <div id="qr-placeholder" class="qr-placeholder">Preencha e-mail e nome para gerar o QR Code</div>
             </div>
           </div>
-          <!-- ===== /Fallback visual ===== -->
 
-          <!-- ===== Stripe real (aparece quando há clientSecret válido) ===== -->
+          <!-- Stripe real (monta quando cartão) -->
           <div id="stripe-wrapper" style="display:none">
             <div id="payment-element"></div>
           </div>
-          <!-- ===== /Stripe real ===== -->
 
           <button id="submitBtn" class="btn" type="submit">Pagar e assinar</button>
           <div id="error" class="err"></div>
@@ -101,86 +107,244 @@
   <noscript>Ative o JavaScript para concluir o pagamento.</noscript>
 
   <script>
-    // ======= CONFIGURE =======
-    const API_BASE = "https://SEU-API-GATEWAY/dev";
-    const STRIPE_PUBLISHABLE_KEY = "pk_test_SUA_PUBLISHABLE_KEY";
-    const PLAN_ID = "pro"; // nas outras páginas: teste | pro | ultra
-    // =========================
+    /* ==== CONFIG ==== */
+    const API_URL = "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/createPaymentIntent";
+    const VALIDATE_EMAIL_URL = "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/validateEmail";
+    const STRIPE_PUBLISHABLE_KEY = "pk_live_51S0B6wGbgLl07gQJwX0bYSIoQtIwUldeAjFFsE0RrGTRM5OeNSwczgjuQa7c3cgJdtYtESm9dl7L8SafNyQVENNL00R0nk2VVU";
+    const AMOUNT   = 20000;   // em centavos
+    const CURRENCY = "brl";
 
-    let stripe = null, elements = null, orderId = null, stripeReady = false;
+    // Emails de teste somente em localhost
+    const VALID_EMAILS_FOR_TESTING = [
+      "restaurante.teste@gmail.com",
+      "zane.klas422@gmail.com",
+      "ranie.soares@exemplo.com"
+    ];
+    /* =============== */
 
-    // Alternância das abas do fallback visual
-    (function setupFallbackTabs(){
-      const tabs = document.querySelectorAll('.pay-tabs .tab');
-      const panels = document.querySelectorAll('.pay-panel');
-      tabs.forEach(btn => {
-        btn.addEventListener('click', () => {
-          tabs.forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          panels.forEach(p => p.classList.remove('show'));
-          const target = document.querySelector(btn.dataset.target);
-          if (target) target.classList.add('show');
+    let stripe, elements, paymentElement;
+    let currentMethod = "card";
+    let clientSecret = null;
+    let lastPix = null;
+
+    const $ = (sel) => document.querySelector(sel);
+    const errBox     = $("#error");
+    const btn        = $("#submitBtn");
+    const tabs       = document.querySelectorAll(".pay-tabs .tab");
+    const panels     = document.querySelectorAll(".pay-panel");
+    const stripeWrap = $("#stripe-wrapper");
+    const pixArea    = $("#pix-area");
+    const pixQR      = $("#pix-qr");
+    const pixStatus  = $("#pix-status");
+    const qrPlaceholder = $("#qr-placeholder");
+    const emailInput = $("#email");
+    const nameInput  = $("#name");
+    const emailValidation = $("#email-validation");
+
+    /* -------- helpers UI -------- */
+    function showValidationMessage(msg, ok=false){
+      emailValidation.textContent = msg || "";
+      emailValidation.style.display = msg ? "block" : "none";
+      emailValidation.style.color = ok ? "#00d1a2" : "#ff7070";
+    }
+    function showPlaceholder(msg){
+      pixArea.classList.add("hidden");
+      qrPlaceholder.classList.remove("hidden");
+      if (msg) qrPlaceholder.textContent = msg;
+    }
+    function showPix(qrBase64){
+      qrPlaceholder.classList.add("hidden");
+      pixArea.classList.remove("hidden");
+      pixQR.removeAttribute("src");
+      pixQR.src = "data:image/png;base64," + qrBase64;
+    }
+
+    /* -------- validação no DynamoDB -------- */
+    async function validateEmailInDynamoDB(emailRaw){
+      const email = (emailRaw||"").trim().toLowerCase();
+
+      if (["localhost","127.0.0.1"].includes(location.hostname)) {
+        return VALID_EMAILS_FOR_TESTING.map(e=>e.toLowerCase()).includes(email);
+      }
+      try{
+        const resp = await fetch(VALIDATE_EMAIL_URL, {
+          method: "POST",
+          headers: { "Content-Type":"application/json" },
+          body: JSON.stringify({ email })
         });
-      });
-    })();
-
-    async function init() {
-      try {
-        // Cria PaymentIntent + Order (se seu backend já estiver ativo)
-        const res = await fetch(`${API_BASE}/checkout/create-intent`, {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({
-            planId: PLAN_ID,
-            customerEmail: localStorage.getItem('email') || undefined
-          })
-        });
-
-        if (!res.ok) {
-          // Sem backend: mantém o fallback visual
-          const data = await res.json().catch(()=>({}));
-          if (data?.error) document.getElementById('error').innerText = data.error;
-          return;
-        }
-
-        const data = await res.json();
-        orderId = data.orderId;
-
-        // Esconde fallback e mostra Stripe real
-        document.getElementById('fallback-wrapper').style.display = 'none';
-        document.getElementById('stripe-wrapper').style.display = 'block';
-
-        // Stripe
-        stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
-        elements = stripe.elements({
-          clientSecret: data.clientSecret,
-          appearance: { theme: 'night' }
-        });
-
-        // Abas reais (Pix/Cartão) renderizadas pelo próprio Stripe
-        const paymentElement = elements.create('payment', { layout: { type: 'tabs' } });
-        paymentElement.mount('#payment-element');
-
-        stripeReady = true;
-      } catch (e) {
-        console.error(e);
-        document.getElementById('error').innerText = 'Não foi possível iniciar o pagamento.';
+        if (!resp.ok) throw new Error("Erro na validação de e-mail");
+        const data = await resp.json();
+        return !!(data?.isValid);
+      }catch(err){
+        console.error("validateEmail error:", err);
+        return false; // em produção, não libera Pix se não validar
       }
     }
 
+    /* -------- checar campos + validar email -------- */
+    async function checkFields() {
+      const email = (emailInput.value||"").trim().toLowerCase();
+      const name  = (nameInput.value||"").trim();
+
+      showValidationMessage("");
+
+      if (!email || !name) {
+        showPlaceholder("Preencha e-mail e nome para gerar o QR Code");
+        return false;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        showValidationMessage("Por favor, insira um e-mail válido");
+        showPlaceholder("E-mail inválido");
+        return false;
+      }
+
+      showValidationMessage("Validando e-mail...", true);
+      const ok = await validateEmailInDynamoDB(email);
+      if (!ok) {
+        showValidationMessage("E-mail não encontrado. Verifique seu cadastro.");
+        showPlaceholder("E-mail não cadastrado no sistema");
+        return false;
+      }
+
+      showValidationMessage("E-mail validado.", true);
+      // Se estiver na aba Pix e validou, podemos gerar o QR
+      if (currentMethod === "pix") {
+        await bootStripeFor("pix");
+      }
+      return true;
+    }
+
+    // valida ao sair do campo ou mudar valor
+    emailInput.addEventListener("blur", checkFields);
+    nameInput.addEventListener("blur", checkFields);
+    emailInput.addEventListener("input", () => { emailValidation.style.display="none"; });
+
+    // Troca de abas
+    tabs.forEach(tab => {
+      tab.addEventListener("click", async () => {
+        tabs.forEach(b => b.classList.remove("active"));
+        tab.classList.add("active");
+        panels.forEach(p => p.classList.remove("show"));
+        const target = document.querySelector(tab.dataset.target);
+        if (target) target.classList.add("show");
+
+        currentMethod = tab.textContent.trim().toLowerCase() === "pix" ? "pix" : "card";
+        
+        if (currentMethod === "pix") {
+          const ok = await checkFields();     // só libera Pix com e-mail válido
+          if (ok) await bootStripeFor("pix");
+        } else {
+          await bootStripeFor("card");
+        }
+      });
+    });
+
+    // Cria/atualiza intenção conforme método
+    async function bootStripeFor(method) {
+      try {
+        errBox.textContent = "Carregando opções de pagamento…";
+        btn.disabled = true;
+
+        // limpa UI Pix/Cartão
+        showPlaceholder("Preencha e-mail e nome para gerar o QR Code");
+        pixStatus.textContent = "";
+        pixQR.removeAttribute("src");
+        stripeWrap.style.display = "none";
+        btn.textContent = "Pagar e assinar";
+        btn.onclick = null;
+
+        // chama seu backend
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type":"application/json" },
+          body: JSON.stringify({
+            amount: AMOUNT,
+            currency: CURRENCY,
+            payment_method_types: [method],
+            email: emailInput.value.trim(),
+            name: nameInput.value.trim()
+          })
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.message || data?.error || `Falha na API (${res.status})`);
+        }
+
+        if (method === "card") {
+          clientSecret = data.client_secret;
+          if (!clientSecret) throw new Error("Resposta sem client_secret do Stripe.");
+
+          stripeWrap.style.display = "block";
+          if (!stripe) stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+
+          if (paymentElement) {
+            paymentElement.unmount();
+            paymentElement.destroy();
+            paymentElement = null;
+          }
+
+          elements = stripe.elements({
+            clientSecret,
+            appearance: { theme: "night" },
+            locale: "pt-BR"
+          });
+
+          paymentElement = elements.create("payment", { layout: { type: "tabs" } });
+          paymentElement.mount("#payment-element");
+        } else {
+          // PIX (Mercado Pago no backend)
+          clientSecret = null;
+          if (!data.qr_code_base64 || !data.copy_paste) {
+            throw new Error("Não recebi os dados do Pix.");
+          }
+
+          lastPix = {
+            qr_code_base64: data.qr_code_base64,
+            copy_paste: data.copy_paste,
+            ticket_url: data.ticket_url || ""
+          };
+
+          showPix(data.qr_code_base64);
+          pixStatus.textContent = "Aguarde a confirmação após concluir o pagamento no seu banco.";
+
+          $("#btnCopy").onclick = () => {
+            navigator.clipboard.writeText(lastPix.copy_paste);
+            pixStatus.textContent = "Código Pix copiado!";
+          };
+        }
+
+        errBox.textContent = "";
+        btn.disabled = false;
+      } catch (e) {
+        console.error(e);
+        errBox.textContent = e.message || "Não foi possível iniciar o pagamento.";
+        btn.disabled = false;
+      }
+    }
+
+    // Submit (apenas cartão usa Stripe)
     async function onSubmit(e){
       e.preventDefault();
+      if (currentMethod === "pix") return;
 
-      const email = document.getElementById('email').value.trim();
-      const name  = document.getElementById('name').value.trim();
+      const email = emailInput.value.trim();
+      const name  = nameInput.value.trim();
 
-      const btn = document.getElementById('submitBtn');
-      const err = document.getElementById('error');
-      btn.disabled = true; err.innerText = '';
+      btn.disabled = true;
+      errBox.textContent = "";
 
-      if (!stripeReady) {
-        // Fallback somente visual
-        err.innerText = 'Pagamento de demonstração: conecte o backend Stripe para concluir.';
+      if (!elements) {
+        errBox.textContent = "Pagamento não inicializado. Tente novamente.";
+        btn.disabled = false;
+        return;
+      }
+
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        errBox.textContent = submitError.message;
         btn.disabled = false;
         return;
       }
@@ -188,19 +352,41 @@
       const { error } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${location.origin}/thanks.html?orderId=${encodeURIComponent(orderId)}`,
+          return_url: `${location.origin}/thanks.html`,
           payment_method_data: { billing_details: { email, name } }
         }
       });
 
       if (error) {
-        err.innerText = error.message || 'Não foi possível confirmar o pagamento.';
+        errBox.textContent = error.message || "Não foi possível confirmar o pagamento.";
         btn.disabled = false;
       }
     }
 
-    document.getElementById('payment-form').addEventListener('submit', onSubmit);
-    init();
+    document.getElementById("payment-form").addEventListener("submit", onSubmit);
+
+    // inicia em "cartão"
+    (async () => { await bootStripeFor(currentMethod); })();
+
+    // Formatadores visuais do cartão (apenas efeito visual no fallback fake)
+    const ccNum = document.getElementById("cc-number");
+    if (ccNum) ccNum.addEventListener("input", (e) => {
+      let val = e.target.value.replace(/\D/g, "").slice(0, 16);
+      val = val.replace(/(\d{4})(?=\d)/g, "$1 ");
+      e.target.value = val.trim();
+    });
+
+    const ccExp = document.getElementById("cc-exp");
+    if (ccExp) ccExp.addEventListener("input", (e) => {
+      let v = e.target.value.replace(/\D/g, "").slice(0, 4);
+      if (v.length >= 3) v = v.replace(/(\d{2})(\d{1,2})/, "$1/$2");
+      e.target.value = v;
+    });
+
+    const ccCvc = document.getElementById("cc-cvc");
+    if (ccCvc) ccCvc.addEventListener("input", (e) => {
+      e.target.value = e.target.value.replace(/\D/g, "").slice(0, 4);
+    });
   </script>
 </body>
 </html>

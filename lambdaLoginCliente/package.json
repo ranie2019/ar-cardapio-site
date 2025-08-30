@@ -5,6 +5,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "dependencies": {
+    "aws-sdk": "^2.1692.0",
+    "bcryptjs": "^2.4.3"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ranie2019/ar-cardapio-site.git"
@@ -16,8 +20,5 @@
     "url": "https://github.com/ranie2019/ar-cardapio-site/issues"
   },
   "homepage": "https://github.com/ranie2019/ar-cardapio-site#readme",
-  "description": "",
-  "dependencies": {
-    "aws-sdk": "^2.1692.0"
-  }
+  "description": ""
 }

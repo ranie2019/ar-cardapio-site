@@ -4,7 +4,11 @@
   <meta charset="utf-8" />
   <title>Assinar Plano Teste</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- CSS -->
   <link rel="stylesheet" href="../css/vendaTeste.css">
+
+  <!-- Stripe.js (usado somente quando pagar com cartão) -->
   <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
@@ -12,7 +16,7 @@
     <h1 class="h1">Finalizar compra</h1>
 
     <div class="grid">
-      <!-- ESQUERDA -->
+      <!-- COLUNA ESQUERDA (resumo) -->
       <section class="card">
         <h2 class="h2">Plano Teste (7 Dias)</h2>
         <div class="price">R$ 5,00</div>
@@ -32,34 +36,37 @@
         <div class="divider"></div>
 
         <div class="secure">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l7 4v6c0 5-3.5 9-7 10-3.5-1-7-5-7-10V6l7-4z" stroke="#86ffe6"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 2l7 4v6c0 5-3.5 9-7 10-3.5-1-7-5-7-10V6l7-4z" stroke="#86ffe6"/>
+          </svg>
           Pagamentos processados de forma segura. Pix e Cartão disponíveis.
         </div>
 
         <a class="back" href="plano.html">Voltar para planos</a>
       </section>
 
-      <!-- DIREITA -->
+      <!-- COLUNA DIREITA (pagamento) -->
       <section class="card">
         <h2 class="h2">Pagamento</h2>
         <p class="muted">Selecione <b>Pix</b> ou <b>Cartão</b> nas abas do formulário.</p>
 
-        <form id="payment-form">
+        <form id="payment-form" novalidate>
           <label for="email">Seu e-mail</label>
-          <input id="email" class="input" type="email" placeholder="voce@exemplo.com" required>
+          <input id="email" class="input" type="email" placeholder="voce@exemplo.com" autocomplete="email" required>
+          <div id="email-validation" class="validation-message"></div>
 
           <label for="name">Nome completo</label>
-          <input id="name" class="input" type="text" placeholder="Nome impresso no cartão" required>
+          <input id="name" class="input" type="text" placeholder="Nome impresso no cartão" autocomplete="name" required>
 
           <!-- Abas -->
           <div id="fallback-wrapper" class="custom">
-            <div class="pay-tabs" role="tablist">
-              <button class="tab active" type="button" data-target="#cardPanel">Cartão de crédito</button>
-              <button class="tab" type="button" data-target="#pixPanel">Pix</button>
+            <div class="pay-tabs" role="tablist" aria-label="Escolha a forma de pagamento">
+              <button class="tab active" type="button" data-target="#cardPanel" aria-selected="true">Cartão de crédito</button>
+              <button class="tab" type="button" data-target="#pixPanel" aria-selected="false">Pix</button>
             </div>
 
-            <!-- Painel cartão (apenas visual) -->
-            <div class="pay-panel show" id="cardPanel">
+            <!-- Painel Cartão (visual/fallback) -->
+            <div class="pay-panel show" id="cardPanel" role="tabpanel">
               <div class="fake-card">
                 <label style="margin-top:10px">Número do cartão</label>
                 <input id="cc-number" class="input" type="text" inputmode="numeric" autocomplete="cc-number" placeholder="0000 0000 0000 0000" maxlength="19">
@@ -75,29 +82,36 @@
             </div>
 
             <!-- Painel Pix -->
-            <div class="pay-panel" id="pixPanel">
+            <div class="pay-panel" id="pixPanel" role="tabpanel" aria-hidden="true">
               <p class="muted" style="margin-top:8px">
                 Ao continuar com Pix, será exibido o QR Code.
               </p>
-              
+
               <!-- Área do Pix (começa oculta) -->
               <div id="pix-area" class="pix-box hidden">
                 <img id="pix-qr" class="pix-qr" alt="QR Pix" />
                 <button type="button" id="btnCopy" class="btn-mini">Copiar código Pix</button>
                 <div id="pix-status" class="muted" style="margin-top:6px"></div>
               </div>
-              
-              <div id="qr-placeholder" class="qr-placeholder">Preencha e-mail e nome para gerar o QR Code</div>
+
+              <div id="qr-placeholder" class="qr-placeholder">
+                Preencha e-mail e nome para gerar o QR Code
+              </div>
             </div>
           </div>
 
-          <!-- Stripe real (monta quando cartão) -->
+          <!-- Stripe real (montado quando Cartão) -->
           <div id="stripe-wrapper" style="display:none">
             <div id="payment-element"></div>
           </div>
 
-          <button id="submitBtn" class="btn" type="submit">Pagar e assinar</button>
+          <!-- Mensagens -->
           <div id="error" class="err"></div>
+
+          <!-- Botão principal -->
+          <button id="submitBtn" class="btn" type="submit">
+            Pagar e assinar
+          </button>
         </form>
       </section>
     </div>
@@ -105,238 +119,7 @@
 
   <noscript>Ative o JavaScript para concluir o pagamento.</noscript>
 
-  <script>
-    /* ==== CONFIG ==== */
-    const API_URL = "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/createPaymentIntent";
-    const STRIPE_PUBLISHABLE_KEY = "pk_live_51S0B6wGbgLl07gQJwX0bYSIoQtIwUldeAjFFsE0RrGTRM5OeNSwczgjuQa7c3cgJdtYtESm9dl7L8SafNyQVENNL00R0nk2VVU";
-    const AMOUNT   = 500;   // em centavos
-    const CURRENCY = "brl";
-    /* =============== */
-
-    let stripe, elements, paymentElement;
-    let currentMethod = "card";
-    let clientSecret = null;
-    let lastPix = null;
-
-    const $ = (sel) => document.querySelector(sel);
-    const errBox     = $("#error");
-    const btn        = $("#submitBtn");
-    const tabs       = document.querySelectorAll(".pay-tabs .tab");
-    const panels     = document.querySelectorAll(".pay-panel");
-    const stripeWrap = $("#stripe-wrapper");
-    const pixArea    = $("#pix-area");
-    const pixQR      = $("#pix-qr");
-    const pixStatus  = $("#pix-status");
-    const qrPlaceholder = $("#qr-placeholder");
-    const emailInput = $("#email");
-    const nameInput = $("#name");
-
-    // Função para verificar se os campos estão preenchidos
-    function checkFields() {
-      const email = emailInput.value.trim();
-      const name = nameInput.value.trim();
-      
-      // Verifica se ambos os campos estão preenchidos
-      if (email && name) {
-        // Se estiver na aba Pix, carrega os dados
-        if (currentMethod === "pix") {
-          bootStripeFor("pix");
-        }
-      } else {
-        // Se não estiverem preenchidos, esconde a área do Pix
-        pixArea.classList.add('hidden');
-        qrPlaceholder.classList.remove('hidden');
-        qrPlaceholder.textContent = "Preencha e-mail e nome para gerar o QR Code";
-      }
-    }
-
-    // Adiciona event listeners para os campos
-    emailInput.addEventListener('input', checkFields);
-    nameInput.addEventListener('input', checkFields);
-
-    // Troca de abas
-    tabs.forEach(tab => {
-      tab.addEventListener("click", async () => {
-        tabs.forEach(b => b.classList.remove("active"));
-        tab.classList.add("active");
-        panels.forEach(p => p.classList.remove("show"));
-        const target = document.querySelector(tab.dataset.target);
-        if (target) target.classList.add("show");
-
-        currentMethod = tab.textContent.trim().toLowerCase() === "pix" ? "pix" : "card";
-        
-        if (currentMethod === "pix") {
-          // Verifica se os campos estão preenchidos antes de carregar o Pix
-          const email = emailInput.value.trim();
-          const name = nameInput.value.trim();
-          
-          if (email && name) {
-            await bootStripeFor(currentMethod);
-          } else {
-            pixArea.classList.add('hidden');
-            qrPlaceholder.classList.remove('hidden');
-            qrPlaceholder.textContent = "Preencha e-mail e nome para gerar o QR Code";
-          }
-        } else {
-          await bootStripeFor(currentMethod);
-        }
-      });
-    });
-
-    // Cria/atualiza intenção conforme método
-    async function bootStripeFor(method) {
-      try {
-        errBox.textContent = "Carregando opções de pagamento…";
-        btn.disabled = true;
-
-        // limpa UI Pix/Cartão
-        pixArea.classList.add('hidden');
-        qrPlaceholder.classList.remove('hidden');
-        pixQR.removeAttribute("src");
-        pixStatus.textContent = "";
-        stripeWrap.style.display = "none";
-        btn.textContent = "Pagar e assinar";
-        btn.onclick = null;
-
-        // chama seu backend
-        const res = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type":"application/json" },
-          body: JSON.stringify({
-            amount: AMOUNT,
-            currency: CURRENCY,
-            payment_method_types: [method],
-            email: emailInput.value.trim(),
-            name: nameInput.value.trim()
-          })
-        });
-
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(data?.message || data?.error || `Falha na API (${res.status})`);
-        }
-
-        // CARTÃO (Stripe)
-        if (method === "card") {
-          clientSecret = data.client_secret;
-          if (!clientSecret) throw new Error("Resposta sem client_secret do Stripe.");
-
-          stripeWrap.style.display = "block";
-
-          if (!stripe) stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
-
-          if (paymentElement) {
-            paymentElement.unmount();
-            paymentElement.destroy();
-            paymentElement = null;
-          }
-
-          elements = stripe.elements({
-            clientSecret,
-            appearance: { theme: "night" },
-            locale: "pt-BR"
-          });
-
-          paymentElement = elements.create("payment", { layout: { type: "tabs" } });
-          paymentElement.mount("#payment-element");
-        }
-        // PIX
-        else {
-          clientSecret = null;
-          if (!data.qr_code_base64 || !data.copy_paste) {
-            throw new Error("Não recebi os dados do Pix.");
-          }
-
-          lastPix = {
-            qr_code_base64: data.qr_code_base64,
-            copy_paste: data.copy_paste,
-            ticket_url: data.ticket_url || ""
-          };
-
-          qrPlaceholder.classList.add('hidden');
-          pixArea.classList.remove('hidden');
-          pixQR.src = "data:image/png;base64," + data.qr_code_base64;
-          pixStatus.textContent = "Aguarde a confirmação após concluir o pagamento no seu banco.";
-
-          // copiar código PIX
-          $("#btnCopy").onclick = () => {
-            navigator.clipboard.writeText(lastPix.copy_paste);
-            pixStatus.textContent = "Código Pix copiado!";
-          };
-        }
-
-        errBox.textContent = "";
-        btn.disabled = false;
-      } catch (e) {
-        console.error(e);
-        errBox.textContent = e.message || "Não foi possível iniciar o pagamento.";
-        btn.disabled = false;
-      }
-    }
-
-    // Submit (apenas cartão usa Stripe)
-    async function onSubmit(e){
-      e.preventDefault();
-
-      if (currentMethod === "pix") return;
-
-      const email = emailInput.value.trim();
-      const name  = nameInput.value.trim();
-
-      btn.disabled = true;
-      errBox.textContent = "";
-
-      if (!elements) {
-        errBox.textContent = "Pagamento não inicializado. Tente novamente.";
-        btn.disabled = false;
-        return;
-      }
-
-      const { error: submitError } = await elements.submit();
-      if (submitError) {
-        errBox.textContent = submitError.message;
-        btn.disabled = false;
-        return;
-      }
-
-      const { error } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${location.origin}/thanks.html`,
-          payment_method_data: { billing_details: { email, name } }
-        }
-      });
-
-      if (error) {
-        errBox.textContent = error.message || "Não foi possível confirmar o pagamento.";
-        btn.disabled = false;
-      }
-    }
-
-    document.getElementById("payment-form").addEventListener("submit", onSubmit);
-
-    // inicia em "cartão"
-    (async () => { await bootStripeFor(currentMethod); })();
-
-    // Formatadores visuais do cartão
-    const ccNum = document.getElementById("cc-number");
-    if (ccNum) ccNum.addEventListener("input", (e) => {
-      let val = e.target.value.replace(/\D/g, "").slice(0, 16);
-      val = val.replace(/(\d{4})(?=\d)/g, "$1 ");
-      e.target.value = val.trim();
-    });
-
-    const ccExp = document.getElementById("cc-exp");
-    if (ccExp) ccExp.addEventListener("input", (e) => {
-      let v = e.target.value.replace(/\D/g, "").slice(0, 4);
-      if (v.length >= 3) v = v.replace(/(\d{2})(\d{1,2})/, "$1/$2");
-      e.target.value = v;
-    });
-
-    const ccCvc = document.getElementById("cc-cvc");
-    if (ccCvc) ccCvc.addEventListener("input", (e) => {
-      e.target.value = e.target.value.replace(/\D/g, "").slice(0, 4);
-    });
-  </script>
+  <!-- use defer para garantir que o DOM exista quando o JS rodar -->
+  <script src="../java/vendaTeste.js?v=4" defer></script>
 </body>
 </html>

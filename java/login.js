@@ -1,123 +1,148 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('form-login');
+// login.js — versão completa, organizada e sem abreviações
+
+document.addEventListener("DOMContentLoaded", () => {
+  // ----- Seletores da interface -----
+  const formularioLogin = document.getElementById("form-login");
+  const elementoMensagemErro = document.getElementById("mensagem-erro");
+  const botaoEnviar = document.getElementById("Acessar");
+  const campoEmail = document.getElementById("email");
+  const campoSenha = document.getElementById("senha");
+
   console.log("login.js carregado!");
 
-  if (!form) {
-    console.error('Formulário de login não encontrado!');
+  if (!formularioLogin) {
+    console.error("Formulário de login não encontrado na página.");
     return;
   }
 
-  // Elementos do DOM
-  const mensagemErro = document.getElementById('mensagem-erro');
-  const botaoAcessar = document.getElementById('Acessar');
-  const emailInput = document.getElementById('email');
-  const senhaInput = document.getElementById('senha');
+  // ----- Configuração geral -----
+  const URL_API_LOGIN = "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/loginCliente";
+  const URL_PAGINA_HOME = "/html/home.html"; // use caminho absoluto para evitar erros de pasta
 
-  // Constantes
-  const API_URL = 'https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/loginCliente';
-  const HOME_URL = '../html/home.html'; // ou sistema.html, dependendo da sua lógica
-  const TOKEN_KEY = 'authToken';
-  const EMAIL_KEY = 'userEmail';
+  // Chaves padronizadas para armazenamento local
+  const CHAVE_TOKEN = "ar.token";
+  const CHAVE_EMAIL = "ar.email";
+  const CHAVE_EXPIRACAO = "ar.exp";
 
-  // Validação de e-mail
-  function validarEmail(email) {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(String(email).toLowerCase());
+  // Duração padrão da sessão (em horas)
+  const DURACAO_SESSAO_EM_HORAS = 24;
+
+  // ----- Utilitários -----
+  function validarEmail(enderecoEmail) {
+    const padraoEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return padraoEmail.test(String(enderecoEmail).toLowerCase());
   }
 
-  // Exibir erro
-  function mostrarErro(mensagem) {
-    if (!mensagemErro) return;
-
-    mensagemErro.textContent = mensagem;
-    mensagemErro.style.display = 'block';
-
-    setTimeout(() => {
-      mensagemErro.style.display = 'none';
-    }, 5000);
+  function exibirMensagemDeErro(mensagem) {
+    if (!elementoMensagemErro) return;
+    elementoMensagemErro.textContent = mensagem;
+    elementoMensagemErro.style.display = "block";
   }
 
-  // Ativar/desativar botão com texto de carregamento
-  function toggleBotaoCarregamento(estaCarregando) {
-    if (!botaoAcessar) return;
+  function ocultarMensagemDeErro() {
+    if (!elementoMensagemErro) return;
+    elementoMensagemErro.style.display = "none";
+    elementoMensagemErro.textContent = "";
+  }
 
-    const textoBotao = botaoAcessar.querySelector('.texto-botao');
-    if (textoBotao) {
-      textoBotao.textContent = estaCarregando ? 'Autenticando...' : 'Acessar';
+  function atualizarEstadoDoBotao(estaCarregando) {
+    if (!botaoEnviar) return;
+    const textoDoBotao = botaoEnviar.querySelector(".texto-botao");
+    if (textoDoBotao) {
+      textoDoBotao.textContent = estaCarregando ? "Autenticando..." : "Acessar";
     }
-
-    botaoAcessar.disabled = estaCarregando;
+    botaoEnviar.disabled = estaCarregando;
   }
 
-  // Submissão do formulário
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
+  function salvarSessao(email, token) {
+    const instanteDeExpiracao = Date.now() + DURACAO_SESSAO_EM_HORAS * 60 * 60 * 1000;
+    localStorage.setItem(CHAVE_EMAIL, email);
+    localStorage.setItem(CHAVE_TOKEN, token);
+    localStorage.setItem(CHAVE_EXPIRACAO, String(instanteDeExpiracao));
+  }
 
-    if (mensagemErro) mensagemErro.style.display = 'none';
+  // Opcional: esconder a mensagem de erro ao digitar novamente
+  [campoEmail, campoSenha].forEach((entrada) => {
+    if (!entrada) return;
+    entrada.addEventListener("input", ocultarMensagemDeErro);
+  });
 
-    const email = emailInput?.value.trim().toLowerCase();
-    const senha = senhaInput?.value.trim();
+  // ----- Envio do formulário -----
+  formularioLogin.addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+    ocultarMensagemDeErro();
 
+    const email = (campoEmail?.value || "").trim().toLowerCase();
+    const senha = (campoSenha?.value || "").trim();
+
+    // Validações de entrada
     if (!email || !senha) {
-      mostrarErro("Por favor, preencha todos os campos.");
+      exibirMensagemDeErro("Por favor, preencha todos os campos.");
       return;
     }
 
     if (!validarEmail(email)) {
-      mostrarErro("Por favor, insira um e-mail válido.");
+      exibirMensagemDeErro("Por favor, insira um e-mail válido.");
       return;
     }
 
     try {
-      toggleBotaoCarregamento(true);
+      atualizarEstadoDoBotao(true);
 
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        mode: 'cors',
+      const resposta = await fetch(URL_API_LOGIN, {
+        method: "POST",
+        mode: "cors",
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          "Content-Type": "application/json",
+          Accept: "application/json",
         },
-        body: JSON.stringify({ email, senha })
+        body: JSON.stringify({ email, senha }),
       });
 
-      if (response.type === 'opaque' || response.type === 'error') {
-        throw new Error('Erro de conexão ou CORS');
+      // Trata respostas de rede incomuns
+      if (resposta.type === "opaque" || resposta.type === "error") {
+        throw new Error("Erro de conexão ou CORS.");
       }
 
-      const data = await response.json();
+      // Tenta interpretar o corpo como JSON (pode lançar exceção)
+      const corpo = await resposta.json().catch(() => ({}));
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || `Erro HTTP: ${response.status}`);
+      // Quando a API retorna erro (status não-2xx) OU success=false
+      if (!resposta.ok || corpo.success === false) {
+        const mensagemApi =
+          (corpo && (corpo.message || corpo.mensagem)) ||
+          `Erro HTTP: ${resposta.status}`;
+        throw new Error(mensagemApi);
       }
 
-      if (data.success && data.user?.token) {
-        localStorage.setItem('authToken', data.user.token);
-        localStorage.setItem('userEmail', data.user.email);
-        // Espera pequena para garantir que o armazenamento finalize antes do redirecionamento
-        setTimeout(() => {
-          window.location.href = HOME_URL;
-        }, 100); // 100 milissegundos
-      } else {
-        throw new Error('Autenticação falhou');
+      // Sucesso: espera `corpo.user.token` e `corpo.user.email`
+      const tokenRecebido = corpo?.user?.token;
+      const emailConfirmado = corpo?.user?.email || email;
+
+      if (!tokenRecebido) {
+        throw new Error("Resposta sem token de autenticação.");
       }
-      console.log('Token salvo, redirecionando para:', HOME_URL);
 
-    } catch (error) {
-      console.error('Erro no login:', error);
+      // Salva sessão e redireciona
+      salvarSessao(emailConfirmado, tokenRecebido);
+      console.log("Login bem-sucedido. Redirecionando para:", URL_PAGINA_HOME);
+      window.location.assign(URL_PAGINA_HOME);
+    } catch (erro) {
+      console.error("Erro no login:", erro);
 
-      const mensagem =
-        error.message.includes('fetch') || error.message.includes('CORS')
-          ? "Erro de conexão com o servidor. Tente novamente mais tarde."
-          : error.message.includes('HTTP')
-            ? `Erro do servidor: ${error.message}`
-            : error.message || "E-mail ou senha incorretos.";
+      const mensagemAmigavel =
+        String(erro?.message || "")
+          .toLowerCase()
+          .includes("cors") || String(erro?.message || "").toLowerCase().includes("conex")
+          ? "Erro de conexão com o servidor. Tente novamente."
+          : erro?.message || "E-mail ou senha incorretos.";
 
-      mostrarErro(mensagem);
+      exibirMensagemDeErro(mensagemAmigavel);
 
-      if (senhaInput) senhaInput.value = '';
+      if (campoSenha) campoSenha.value = "";
+      campoSenha?.focus?.();
     } finally {
-      toggleBotaoCarregamento(false);
+      atualizarEstadoDoBotao(false);
     }
   });
 });
