@@ -15,14 +15,9 @@
   --glow: 0 18px 40px rgba(0,0,0,.35);
 }
 
-* { 
-  box-sizing: border-box; 
-}
+* { box-sizing: border-box; }
 
-html, body { 
-  height: 100%; 
-  margin: 0; 
-}
+html, body { height: 100%; margin: 0; }
 
 body {
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -67,9 +62,7 @@ body {
 }
 
 @media (max-width: 960px) { 
-  .grid { 
-    grid-template-columns: 1fr; 
-  } 
+  .grid { grid-template-columns: 1fr; } 
 }
 
 .card {
@@ -92,9 +85,7 @@ body {
   font-weight: 700; 
 }
 
-.muted { 
-  color: var(--muted); 
-}
+.muted { color: var(--muted); }
 
 .bullets { 
   list-style: none; 
@@ -143,10 +134,7 @@ body {
   font-size: 12px; 
 }
 
-.secure svg { 
-  width: 16px; 
-  height: 16px; 
-}
+.secure svg { width: 16px; height: 16px; }
 
 /* Link voltar */
 .back { 
@@ -156,10 +144,7 @@ body {
   text-decoration: none; 
   transition: opacity 0.2s ease;
 }
-
-.back:hover { 
-  opacity: 0.8; 
-}
+.back:hover { opacity: 0.8; }
 
 /* ====== Coluna direita (formulário) ====== */
 label { 
@@ -174,17 +159,14 @@ label {
   background: var(--field);
   color: var(--text);
   border: 1px solid var(--field-border);
-  borderRadius: 12px;
+  border-radius: 12px; /* fix: correct property name */
   padding: 12px 14px;
   outline: none;
   transition: border-color .15s ease, box-shadow .15s ease;
   font-family: inherit;
 }
 
-.input::placeholder { 
-  color: #9ad9cb; 
-  opacity: .6; 
-}
+.input::placeholder { color: #9ad9cb; opacity: .6; }
 
 .input:focus {
   border-color: #1dd7b3;
@@ -205,19 +187,9 @@ label {
   transition: transform .02s ease, background .15s ease, opacity .15s ease;
   font-family: inherit;
 }
-
-.btn:hover { 
-  background: var(--accent-2); 
-}
-
-.btn:active { 
-  transform: translateY(1px); 
-}
-
-.btn:disabled { 
-  opacity: .6; 
-  cursor: not-allowed; 
-}
+.btn:hover { background: var(--accent-2); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
 
 .err { 
   color: var(--danger); 
@@ -246,24 +218,14 @@ label {
   transition: all .15s ease;
   font-family: inherit;
 }
-
 .tab.active {
   outline: 2px solid #19d1aa;
   background: #0f2623;
 }
+.tab:hover:not(.active) { background: #0c201d; }
 
-.tab:hover:not(.active) {
-  background: #0c201d;
-}
-
-.pay-panel { 
-  display: none; 
-  margin-top: 12px; 
-}
-
-.pay-panel.show { 
-  display: block; 
-}
+.pay-panel { display: none; margin-top: 12px; }
+.pay-panel.show { display: block; }
 
 /* Área do Pix */
 .pix-box {
@@ -273,7 +235,6 @@ label {
   gap: 12px;
   margin-top: 20px;
 }
-
 .pix-qr {
   width: 260px;
   height: 260px;
@@ -281,7 +242,6 @@ label {
   border-radius: 12px;
   object-fit: contain;
 }
-
 .btn-mini {
   min-width: 180px;
   padding: 8px 14px;
@@ -296,14 +256,8 @@ label {
   transition: background .15s ease;
   font-family: inherit;
 }
-
-.btn-mini:hover {
-  background: var(--accent-2);
-}
-
-.btn-wide { 
-  width: 100%; 
-}
+.btn-mini:hover { background: var(--accent-2); }
+.btn-wide { width: 100%; }
 
 .qr-placeholder {
   display: flex;
@@ -317,9 +271,7 @@ label {
   padding: 20px;
 }
 
-.hidden { 
-  display: none; 
-}
+.hidden { display: none; }
 
 .validation-message {
   color: var(--danger);
@@ -327,78 +279,31 @@ label {
   margin-top: 5px;
   display: none;
 }
-
-.validation-message.success {
-  color: var(--success);
-}
+.validation-message.success { color: var(--success); }
 
 /* Campos do cartão (fallback) */
-.fake-card .input { 
-  background: #0e1e1b; 
-}
+.fake-card .input { background: #0e1e1b; }
 
 /* Elementos do Stripe */
-#stripe-wrapper { 
-  margin-top: 12px; 
-}
-
-#payment-element {
-  margin-top: 12px;
-}
+#stripe-wrapper { margin-top: 12px; }
+#payment-element { margin-top: 12px; }
 
 /* ===== Responsividade ===== */
 @media (max-width: 860px) {
-  .grid { 
-    grid-template-columns: 1fr; 
-  }
-  
-  .container {
-    margin: 20px auto;
-    padding: 0 15px;
-  }
-  
-  .card {
-    padding: 18px;
-  }
-  
-  .h1 {
-    font-size: 24px;
-  }
-  
-  .h2 {
-    font-size: 20px;
-  }
-  
-  .price {
-    font-size: 32px;
-  }
-  
-  .pix-qr {
-    width: 220px;
-    height: 220px;
-  }
+  .grid { grid-template-columns: 1fr; }
+  .container { margin: 20px auto; padding: 0 15px; }
+  .card { padding: 18px; }
+  .h1 { font-size: 24px; }
+  .h2 { font-size: 20px; }
+  .price { font-size: 32px; }
+  .pix-qr { width: 220px; height: 220px; }
 }
 
 @media (max-width: 480px) {
-  .pay-tabs {
-    flex-direction: column;
-  }
-  
-  .tab {
-    padding: 10px 12px;
-    font-size: 14px;
-  }
-  
-  .pix-qr {
-    width: 200px;
-    height: 200px;
-  }
-  
-  .btn-mini {
-    min-width: 160px;
-    padding: 7px 12px;
-    font-size: 13px;
-  }
+  .pay-tabs { flex-direction: column; }
+  .tab { padding: 10px 12px; font-size: 14px; }
+  .pix-qr { width: 200px; height: 200px; }
+  .btn-mini { min-width: 160px; padding: 7px 12px; font-size: 13px; }
 }
 
 /* ===== Blindagens críticas ===== */
@@ -407,6 +312,157 @@ label {
 
 /* Evita ícone quebrado se não houver src */
 #pix-qr:not([src]), 
-#pix-qr[src=""] { 
-  display: none !important; 
+#pix-qr[src=""] { display: none !important; }
+
+/* Dígitos alinhados e aparência consistente */
+#cc-number,
+#cc-exp,
+#cc-cvc {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .03em;
+}
+
+/* feedback de foco bonito */
+#cc-number:focus,
+#cc-exp:focus,
+#cc-cvc:focus {
+  border-color: #1dd7b3;
+  box-shadow: 0 0 0 3px rgba(29,215,179,.18);
+}
+
+/* ==== Modal de feedback (#pay-modal) ==== */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.5);
+  z-index: 9999;
+  padding: 16px;
+}
+.modal.hidden { display: none; }
+.modal-box {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  width: min(420px, 92vw);
+  padding: 18px;
+  box-shadow: var(--glow);
+}
+.modal-box h3 { margin: 0 0 8px 0; font-size: 18px; }
+.modal-box.success h3 { color: var(--success); }
+.modal-box.error h3 { color: var(--danger); }
+
+/* ==== Popup genérico (se usado) ==== */
+.popup.hidden { display: none; }
+.popup {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,.5);
+  z-index: 9999;
+}
+.popup-card {
+  background: #0f1f1e;
+  border: 1px solid #17322e;
+  border-radius: 14px;
+  max-width: 420px;
+  width: 92%;
+  padding: 20px;
+  box-shadow: 0 18px 40px rgba(0,0,0,.35);
+}
+.popup-card h3 { margin: 0 0 8px; color: #eafff7; }
+.popup-card p { margin: 0 0 14px; color: #b9d8cf; }
+.popup-card button {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #00d1a2;
+  color: #062522;
+  cursor: pointer;
+  font-weight: 600;
+}
+.stripe-card {
+  background: #0b1a18;
+  border: 1px solid #133a34;
+  border-radius: 12px;
+  padding: 12px;
+}
+.input-hint { color: #ff7070; margin-top: 6px; min-height: 18px; }
+
+/* ========================= Campos de Cartão ========================= */
+.card-fields {
+  margin-top: 16px;
+}
+
+.card-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.card-col {
+  flex: 1;
+}
+
+.card-col label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #e0e0e0;
+}
+
+.card-fields label {
+  display: block;
+  margin-bottom: 4px;
+  margin-top: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #e0e0e0;
+}
+
+.card-fields label:first-child {
+  margin-top: 0;
+}
+
+.card-fields .input {
+  width: 100%;
+  padding: 12px 16px;
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 16px;
+  transition: border-color 0.2s;
+}
+
+.card-fields .input:focus {
+  outline: none;
+  border-color: #00d1a2;
+  box-shadow: 0 0 0 2px rgba(0, 209, 162, 0.1);
+}
+
+.card-fields .input::placeholder {
+  color: #888;
+}
+
+.card-fields .input.error {
+  border-color: #ff4757;
+}
+
+.card-fields .muted {
+  font-size: 12px;
+  color: #888;
+  line-height: 1.4;
+}
+
+/* Responsivo para campos de cartão */
+@media (max-width: 480px) {
+  .card-row {
+    flex-direction: column;
+    gap: 8px;
+  }
 }

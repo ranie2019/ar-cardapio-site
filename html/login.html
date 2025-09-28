@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Página de acesso ao sistema">
+  <meta name="description" content="Página de acesso ao sistema" />
   <title>Acesso - Sistema</title>
 
+  <!-- CSS -->
   <link rel="stylesheet" href="../css/login.css" />
   <link rel="icon" href="../images/favicon.ico" type="image/x-icon" />
 </head>
@@ -14,6 +15,7 @@
     <div class="container">
       <h1>Acesso ao Sistema</h1>
 
+      <!-- Formulário -->
       <form id="form-login" novalidate>
         <div id="mensagem-erro" class="mensagem-erro" style="display:none" role="alert" aria-live="assertive"></div>
 
@@ -45,146 +47,26 @@
 
         <button type="submit" class="botao-com-video" id="Acessar" aria-label="Acessar sistema">
           <video autoplay muted loop playsinline class="video-hover" preload="auto" aria-hidden="true">
-            <source src="../videos/login.mp4" type="video/mp4">
+            <source src="../videos/login.mp4" type="video/mp4" />
           </video>
           <span class="texto-botao">Acessar</span>
         </button>
       </form>
 
+      <!-- Links extras -->
       <div class="links-container">
-        <a href="../html/esqueci_senha.html" class="link-acesso">Esqueci minha senha</a>
+        <a href="../html/esqueciSenha.html" class="link-acesso">Esqueci minha senha</a>
         <p>Não tem uma conta? <a href="../html/cadastro.html" class="link-acesso">Cadastre-se</a></p>
       </div>
     </div>
   </div>
 
+  <!-- Mensagem caso JS esteja desativado -->
   <noscript>
     <p class="erro">Por favor, habilite o JavaScript para acessar o sistema.</p>
   </noscript>
 
-  <!-- SCRIPT EMBUTIDO COM GUARDA PARA NÃO DUPLICAR LISTENERS -->
-  <script>
-  (function () {
-    'use strict';
-
-    // evita registrar duas vezes se o .js externo também chamar
-    if (window.__LOGIN_BOUND) return;
-
-    function initLogin() {
-      if (window.__LOGIN_BOUND) return;
-      window.__LOGIN_BOUND = true;
-
-      var form    = document.getElementById('form-login');
-      var msgBox  = document.getElementById('mensagem-erro');
-      var btn     = document.getElementById('Acessar');
-      var emailEl = document.getElementById('email');
-      var senhaEl = document.getElementById('senha');
-
-      var API_URL   = 'https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/loginCliente';
-      var HOME_URL  = '../html/home.html';
-      var TOKEN_KEY = 'authToken';
-      var EMAIL_KEY = 'userEmail';
-
-      function validarEmail(email) {
-        return /^\S+@\S+\.\S+$/.test(String(email || '').toLowerCase());
-      }
-
-      function exibirErro(texto) {
-        if (!msgBox) return;
-        msgBox.textContent = texto;
-        msgBox.style.display = 'block';
-        setTimeout(function () {
-          msgBox.style.display = 'none';
-        }, 5000);
-      }
-
-      function setCarregando(ativo) {
-        if (!btn) return;
-        var texto = btn.querySelector('.texto-botao');
-        if (texto) texto.textContent = ativo ? 'Autenticando...' : 'Acessar';
-        btn.disabled = ativo;
-      }
-
-      // (opcional) pular login se já existir token
-      try {
-        var t = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
-        if (t) {
-          // window.location.replace(HOME_URL);
-        }
-      } catch (e) {}
-
-      if (!form) return;
-
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        if (msgBox) msgBox.style.display = 'none';
-
-        var email = (emailEl && emailEl.value ? emailEl.value : '').trim().toLowerCase();
-        var senha = (senhaEl && senhaEl.value ? senhaEl.value : '').trim();
-
-        if (!email || !senha) { exibirErro('Por favor, preencha todos os campos.'); return; }
-        if (!validarEmail(email)) { exibirErro('Por favor, insira um e-mail válido.'); return; }
-
-        setCarregando(true);
-
-        fetch(API_URL, {
-          method: 'POST',
-          mode: 'cors',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({ email: email, senha: senha })
-        })
-        .then(function (res) {
-          return res.json().catch(function(){ return {}; }).then(function (data) {
-            return { ok: res.ok, status: res.status, data: data };
-          });
-        })
-        .then(function (res) {
-          if (!res.ok || !res.data || !res.data.success) {
-            var serverMsg = (res.data && res.data.message) ? res.data.message : ('Erro HTTP: ' + res.status);
-            throw new Error(serverMsg);
-          }
-
-          var token = (res.data.user && res.data.user.token) ? res.data.user.token : 'simulated-jwt-token';
-          var userEmail = (res.data.user && res.data.user.email) ? res.data.user.email : email;
-
-          try {
-            localStorage.setItem(TOKEN_KEY, token);
-            localStorage.setItem(EMAIL_KEY, userEmail);
-            sessionStorage.setItem(TOKEN_KEY, token);
-            sessionStorage.setItem(EMAIL_KEY, userEmail);
-          } catch (e) {}
-
-          var params = new URLSearchParams(window.location.search);
-          var nextUrl = params.get('next');
-
-          setTimeout(function () {
-            window.location.href = nextUrl || HOME_URL;
-          }, 120);
-        })
-        .catch(function (err) {
-          console.error('Erro no login:', err);
-          var msg = err && err.message ? err.message : 'E-mail ou senha incorretos.';
-          exibirErro(msg);
-          if (senhaEl) senhaEl.value = '';
-        })
-        .finally(function () {
-          setCarregando(false);
-        });
-      });
-    }
-
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initLogin);
-    } else {
-      initLogin();
-    }
-
-    // expõe para o arquivo externo poder chamar também (sem duplicar por causa do guarda)
-    window.initLogin = initLogin;
-  })();
-  </script>
-
-  <!-- REFERÊNCIA AO ARQUIVO EXTERNO -->
+  <!-- Script de login -->
   <script src="../java/login.js" defer></script>
 </body>
 </html>

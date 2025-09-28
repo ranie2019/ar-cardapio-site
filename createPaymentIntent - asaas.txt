@@ -1,0 +1,217 @@
+createPaymentIntent - asaas
+
+// index.mjs — Node 18+ (ESM)
+// Versão atualizada: normaliza 'plano', aceita variações, usa amount_brl se presente,
+// logs úteis, CORS e integração com endpoint de QR estático do Asaas.
+
+// ===== Variáveis de ambiente =====
+const {
+  ASAAS_API_KEY,                // chave do Asaas (obrigatória)
+  ASAAS_ENV = "prod",           // "prod" | "sandbox"
+} = process.env;
+
+// ===== Base da API Asaas =====
+const ASAAS_BASE =
+  ASAAS_ENV === "prod"
+    ? "https://www.asaas.com/api/v3"
+    : "https://sandbox.asaas.com/api/v3";
+
+// ===== CORS =====
+const corsHeaders = {
+  "Content-Type": "application/json",
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type,Authorization",
+};
+
+// ===== Planos =====
+const PLANS = {
+  Teste: { name: "Plano Teste", value: 5.00, durationDays: 7, code: "teste_7_dias" },
+  Plus:  { name: "Plano Plus",  value: 200.00, durationDays: 30, code: "plus_30_dias" },
+  Pro:   { name: "Plano Pro",   value: 2200.00, durationDays: 365, code: "pro_365_dias" },
+  Ultra: { name: "Plano Ultra", value: 12500.00, durationDays: 1825, code: "ultra_5_anos" }, // 5 anos
+};
+const PLANO_SLUG_TO_KEY = {
+  "teste_7_dias":  "Teste",
+  "plus_30_dias":  "Plus",
+  "pro_12_meses":  "Pro",
+  "pro_365_dias":  "Pro",
+  "ultra_5_anos":  "Ultra",
+};
+
+// ===== Helpers =====
+const res = (statusCode, body) => ({
+  statusCode,
+  headers: corsHeaders,
+  body: JSON.stringify(body),
+});
+
+const isOptions = (event) =>
+  event?.requestContext?.http?.method === "OPTIONS" ||
+  event?.httpMethod === "OPTIONS";
+
+function safeJsonParse(str) {
+  try { return JSON.parse(str); } catch { return {}; }
+}
+
+function decodeBodyIfNeeded(event) {
+  if (!event) return {};
+  if (typeof event.body === "string") {
+    if (event.isBase64Encoded) {
+      try {
+        const decoded = Buffer.from(event.body, "base64").toString("utf8");
+        return safeJsonParse(decoded);
+      } catch { return {}; }
+    }
+    return safeJsonParse(event.body);
+  }
+  if (event?.body && typeof event.body === "object") return event.body;
+  return event || {};
+}
+
+async function callAsaas(path, { method = "GET", body } = {}) {
+  const token = (ASAAS_API_KEY ?? "").trim();
+  if (!token) {
+    throw { status: 500, details: "ASAAS_API_KEY não configurada na Lambda." };
+  }
+
+  console.log("[Asaas] env:", ASAAS_ENV, "tokenLen:", token.length, "tokenStart:", token.slice(0, 7));
+
+  const r = await fetch(`${ASAAS_BASE}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "access_token": token,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  const text = await r.text();
+  let data = null;
+  try { data = JSON.parse(text); } catch {}
+
+  if (!r.ok) {
+    console.error("[Asaas] erro", r.status, data || text);
+    throw { status: r.status, details: data || text };
+  }
+  return data;
+}
+
+// ===== DetectPlan (melhorado) =====
+function detectPlan(raw) {
+  const description = String(raw?.description || "");
+  let planoRaw = String(raw?.plano || raw?.plan || raw?.planoSlug || "").trim().toLowerCase();
+
+  // Normaliza: remove prefixo 'plano_' caso exista, troca espaços por underscore
+  if (planoRaw.startsWith("plano_")) planoRaw = planoRaw.replace(/^plano_/, "");
+  planoRaw = planoRaw.replace(/\s+/g, "_");
+
+  // 1) tenta por slug/variante no campo planoRaw
+  if (planoRaw) {
+    if (planoRaw.includes("ultra")) return { key: "Ultra", ...PLANS.Ultra };
+    if (planoRaw.includes("pro"))   return { key: "Pro",   ...PLANS.Pro };
+    if (planoRaw.includes("plus"))  return { key: "Plus",  ...PLANS.Plus };
+    if (planoRaw.includes("teste") || planoRaw.includes("test")) return { key: "Teste", ...PLANS.Teste };
+
+    // tentar mapear slugs exatos
+    const mappedKey = PLANO_SLUG_TO_KEY[planoRaw];
+    if (mappedKey && PLANS[mappedKey]) return { key: mappedKey, ...PLANS[mappedKey] };
+  }
+
+  // 2) fallback por descrição (ex.: "Plano Ultra (5 Anos)")
+  if (description) {
+    const d = description.toLowerCase();
+    if (d.includes("ultra")) return { key: "Ultra", ...PLANS.Ultra };
+    if (d.includes("pro"))   return { key: "Pro",   ...PLANS.Pro };
+    if (d.includes("plus"))  return { key: "Plus",  ...PLANS.Plus };
+    if (d.includes("teste") || d.includes("test")) return { key: "Teste", ...PLANS.Teste };
+  }
+
+  // 3) não identificado
+  return { key: null, name: raw?.plano || "avulso", value: null, durationDays: "n/a" };
+}
+
+// ===== Handler =====
+export const handler = async (event) => {
+  try {
+    if (isOptions(event)) return res(200, { ok: true });
+
+    const raw = decodeBodyIfNeeded(event);
+    console.log("REQ:", JSON.stringify(raw));
+
+    // health ping
+    if (raw?.ping === "asaas") {
+      const list = await callAsaas("/customers");
+      return res(200, { ok: true, base: ASAAS_BASE, preview: list?.object || "ok" });
+    }
+
+    // fallback provider/type detection (tolerante)
+    let provider = raw?.provider;
+    let type     = raw?.type;
+    const looksLikePix = raw?.email && (raw?.amount_brl || raw?.amount || raw?.description || raw?.plano);
+    if (!provider && looksLikePix) provider = "asaas";
+    if (!type && looksLikePix)     type     = "pix";
+
+    // PIX flow
+    if (provider === "asaas" && type === "pix") {
+      const email = String(raw?.email || "").trim();
+      if (!email) return res(400, { error: "missing_email", message: "O e-mail é obrigatório." });
+
+      // detecta o plano
+      const plan = detectPlan(raw);
+      console.log("PLAN:", plan);
+
+      // valor: prioriza amount_brl (útil para testes), senão valor do plano, senão 1
+      let value = Number(raw?.amount_brl ?? raw?.amount);
+      if (!Number.isFinite(value) || value <= 0) {
+        value = plan?.value ?? 1;
+      }
+      // garantir duas casas
+      value = Number((Math.round(value * 100) / 100).toFixed(2));
+
+      const externalReference = `email:${email}|plano:${plan.key ?? plan.name}|dias:${plan.durationDays}|ts:${Date.now()}`;
+
+      const payload = {
+        value,
+        description: raw?.description || plan?.name || "Pagamento Pix",
+        externalReference,
+      };
+
+      console.log("PIX payload->Asaas:", payload);
+
+      // Chamada ao endpoint de QR estático (nova API Asaas)
+      const qr = await callAsaas("/pix/qrCodes/static", { method: "POST", body: payload });
+
+      // resposta padronizada para frontend
+      return res(200, {
+        ok: true,
+        provider: "asaas",
+        payload: qr?.payload || null,
+        encodedImage: qr?.encodedImage || null,
+        original: qr || null,
+      });
+    }
+
+    // fluxo não suportado
+    return res(400, { error: "invalid_params", message: "Parâmetros inválidos. Forneça 'provider' e 'type'." });
+
+  } catch (e) {
+    console.error("Lambda error:", e);
+    const status = Number(e?.status) || 500;
+    return res(status, {
+      error: "lambda_execution_error",
+      details: e?.details ?? e?.message ?? String(e),
+    });
+  }
+};
+
+
+
+test 
+
+
+
+{
+  "httpMethod": "POST",
+  "body": "{\"provider\":\"asaas\",\"type\":\"pix\",\"amount_brl\":1.00,\"email\":\"seu@email.com\",\"name\":\"Seu Nome\"}"
+}

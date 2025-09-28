@@ -13,7 +13,7 @@
       position: absolute;
       top: 100%;
       right: 0;
-      background: rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.9 );
       border-radius: 8px;
       padding: 10px 0;
       min-width: 160px;
@@ -121,25 +121,25 @@
 
   <!-- CONTROLE DE MODAIS, DROPDOWNS E BROADCAST -->
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener("DOMContentLoaded", ( ) => {
       // -------- Modal de configuração (se existir no DOM) ----------
-      const modalConfig = document.getElementById('modalConfiguracao');
-      const btnFechar = modalConfig?.querySelector('.fechar-modal-config');
+      const modalConfig = document.getElementById("modalConfiguracao");
+      const btnFechar = modalConfig?.querySelector(".fechar-modal-config");
 
       if (btnFechar) {
-        btnFechar.addEventListener('click', () => modalConfig.classList.remove('active'));
-        const btnSalvar = modalConfig.querySelector('#btnSalvarModal');
-        btnSalvar.addEventListener('click', () => modalConfig.classList.remove('active'));
+        btnFechar.addEventListener("click", () => modalConfig.classList.remove("active"));
+        const btnSalvar = modalConfig.querySelector("#btnSalvarModal");
+        btnSalvar.addEventListener("click", () => modalConfig.classList.remove("active"));
       }
 
       // -------- Modal de QR: botão fechar ----------
-      const modalQr = document.getElementById('modalQrCode');
-      const btnFecharQr = modalQr.querySelector('#fecharModal');
-      btnFecharQr.addEventListener('click', () => modalQr.classList.add('hidden'));
+      const modalQr = document.getElementById("modalQrCode");
+      const btnFecharQr = modalQr.querySelector("#fecharModal");
+      btnFecharQr.addEventListener("click", () => modalQr.classList.add("hidden"));
 
       // -------- Broadcast para botões de item ----------
-      if ('BroadcastChannel' in window) {
-        window.canalStatus = new BroadcastChannel('cardapio_channel');
+      if ("BroadcastChannel" in window) {
+        window.canalStatus = new BroadcastChannel("cardapio_channel");
         canalStatus.onmessage = event => {
           const { nome, visivel } = event.data;
           const btn = document.querySelector(`button[data-nome="${nome}"]`);
@@ -150,56 +150,58 @@
       // ============================================================
       // PERFIL COMO DROPDOWN (sem navegação de página)
       // ============================================================
-      const profileButtonOriginal = document.getElementById('profile-btn');
-      const dropdownPerfil = document.getElementById('dropdownPerfil');
-      const perfilTexto = document.getElementById('perfil-texto');
+      const profileButtonOriginal = document.getElementById("profile-btn");
+      const dropdownPerfil = document.getElementById("dropdownPerfil");
+      const perfilTexto = document.getElementById("perfil-texto");
 
       // Remove qualquer listener antigo (ex.: de home.js) clonando o botão
       const profileButton = profileButtonOriginal.cloneNode(true);
       profileButtonOriginal.parentNode.replaceChild(profileButton, profileButtonOriginal);
 
       // Abre/fecha o dropdown do Perfil
-      profileButton.addEventListener('click', (e) => {
+      profileButton.addEventListener("click", (e) => {
         e.stopPropagation();
-        dropdownPerfil.classList.toggle('show');
-        dropdownPerfil.classList.toggle('hidden');
+        dropdownPerfil.classList.toggle("show");
+        dropdownPerfil.classList.toggle("hidden");
         // alterna o ▼/▲ no texto
         if (perfilTexto) {
-          perfilTexto.textContent = dropdownPerfil.classList.contains('show') ? 'Perfil ▲' : 'Perfil ▼';
+          perfilTexto.textContent = dropdownPerfil.classList.contains("show") ? "Perfil ▲" : "Perfil ▼";
         }
       });
 
       // Ações do dropdown do Perfil
-      const btnPerfilDados = document.getElementById('perfil-dados');
-      const btnPerfilSair  = document.getElementById('perfil-sair');
+      const btnPerfilDados = document.getElementById("perfil-dados");
+      const btnPerfilSair  = document.getElementById("perfil-sair");
 
       if (btnPerfilDados) {
-        btnPerfilDados.addEventListener('click', (e) => {
+        btnPerfilDados.addEventListener("click", (e) => {
           e.stopPropagation();
           // aqui você pode abrir um modal de dados futuramente
-          alert('Em breve: Dados da Conta');
-          dropdownPerfil.classList.remove('show');
-          dropdownPerfil.classList.add('hidden');
+          alert("Em breve: Dados da Conta");
+          dropdownPerfil.classList.remove("show");
+          dropdownPerfil.classList.add("hidden");
           if (perfilTexto) perfilTexto.textContent = 'Perfil ▼';
         });
       }
 
       if (btnPerfilSair) {
-        btnPerfilSair.addEventListener('click', (e) => {
+        btnPerfilSair.addEventListener("click", (e) => {
           e.stopPropagation();
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('userEmail');
+          localStorage.removeItem('ar.token');
+          localStorage.removeItem('ar.email');
+          localStorage.removeItem('ar.exp');
+          localStorage.removeItem('ar.statusPlano');
           window.location.href = "../html/login.html";
         });
       }
 
-      document.addEventListener('click', (e) => {
+      document.addEventListener("click", (e) => {
         // Perfil - fechar quando clicar fora
         if (dropdownPerfil &&
             !dropdownPerfil.contains(e.target) &&
             e.target !== profileButton) {
-          dropdownPerfil.classList.remove('show');
-          dropdownPerfil.classList.add('hidden');
+          dropdownPerfil.classList.remove("show");
+          dropdownPerfil.classList.add("hidden");
           if (perfilTexto) perfilTexto.textContent = 'Perfil ▼';
         }
       });

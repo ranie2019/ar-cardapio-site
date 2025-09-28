@@ -395,39 +395,46 @@ class SistemaCardapioItens extends SistemaCardapioBase {
     try {
       const campoValor = this.modalConfig.querySelector('#inputValor');
       const campoDescricao = this.modalConfig.querySelector('#inputDescricao');
-      if (!campoValor || !campoDescricao) throw new Error('Campos de configuração não encontrados');
+      if (!campoValor || !campoDescricao) throw new Error('Campos de configuração não encontrados.');
 
-      const textoValor = campoValor.value;
-      const precoNumero = parseFloat(textoValor.replace(/\./g, '').replace(',', '.')) || 0;
-      const descricaoTexto = campoDescricao.value.trim();
+      const [categoria, nomeItemSlug] = this.itemConfiguracao.split('/');
+      const nomeItemOriginal = objetos3D[categoria].find(item => this.nomeParaSlug(item) === nomeItemSlug);
 
-      const [, nomeProduto] = this.itemConfiguracao.split('/');
-      const nomeArquivo = `${nomeProduto}.json`;
+      const novoPreco = parseFloat(campoValor.value.replace('.', '').replace(',', '.'));
+      const novaDescricao = campoDescricao.value;
 
-      const dadosAtualizados = {
-        preco: precoNumero,
-        descricao: descricaoTexto,
-        ultimaAtualizacao: new Date().toISOString()
+      const dadosParaSalvar = {
+        preco: novoPreco,
+        descricao: novaDescricao,
+        nome: nomeItemOriginal // Adiciona o nome original para facilitar a identificação
       };
 
-      const urlCompleta = `https://ar-cardapio-models.s3.amazonaws.com/informacao/${this.nomeRestaurante}/${nomeArquivo}`;
+      const urlUpload = `https://ar-cardapio-models.s3.amazonaws.com/informacao/${this.nomeRestaurante}/${nomeItemSlug}.json`;
 
-      const resposta = await fetch(urlCompleta, {
+      const response = await fetch(urlUpload, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'x-amz-acl': 'bucket-owner-full-control'
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         },
-        body: JSON.stringify(dadosAtualizados)
+        body: JSON.stringify(dadosParaSalvar)
       });
 
-      if (!resposta.ok) throw new Error(`Erro ${resposta.status}: ${await resposta.text()}`);
+      if (!response.ok) {
+        const erroTexto = await response.text();
+        throw new Error(`Erro ao salvar no S3: ${response.status} - ${erroTexto}`);
+      }
 
-      this.dadosRestaurante[this.itemConfiguracao] = dadosAtualizados;
+      console.log('Configuração salva com sucesso no S3:', dadosParaSalvar);
+      alert('Configurações salvas com sucesso!');
       return true;
-    } catch (erro) {
-      console.error('Falha ao salvar configuração:', erro);
-      throw erro;
+
+    } catch (error) {
+      console.error('Erro ao salvar configuração:', error);
+      alert('Erro ao salvar as configurações: ' + error.message);
+      return false;
     }
   }
 }
+
+

@@ -1,366 +1,430 @@
-// ===================== Configuração =====================
-const ARCARDAPIO_PAYMENT = {
-  PUBLISHABLE_KEY: "pk_live_51S0B6wGbgLl07gQJwX0bYSIoQtIwUlDeAjFFsE0RrGTRM50eNswczgjuQa7c3cgJdtYtESm9dl7L8SafNyQVENNL00R0nk2VVU",
-  CREATE_INTENT_URL: "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/createPaymentIntent",
-  VALIDATE_EMAIL_URL: "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/validateEmail",
-  GET_INTENT_URL_BASE: "",           // opcional (para polling Pix)
-  SUCCESS_URL: "./sucesso.html",
-  AMOUNT: 500,
-  CURRENCY: "brl",
-  PAYMENT_METHOD_TYPES: ["card", "pix"]
-};
+/* ============================================================
+   vendaPlus.js — Final, pronto para Plano Plus (30 dias)
+   - Força slug: "plano_plus_30_dias"
+   - Envia provider/type e payload robusto para createPaymentIntent
+   - Usa amountCents do HTML quando disponível
+   ============================================================ */
 
-// ===================== Variáveis globais =====================
-let stripe, elements, clientSecret, paymentIntentId;
-let emailIsValid = false;
+/* ========================== Config ========================== */
+const API_CREATE_PAYMENT_INTENT =
+  "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/createPaymentIntent";
 
-// ===================== Utilidades de DOM/UI =====================
-function $(id){ return document.getElementById(id); }
+const API_VALIDATE_EMAIL =
+  "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/cliente";
 
-function showMessage(message, type = "error") {
-  $("error-message") && ($("error-message").style.display = "none");
-  $("success-message") && ($("success-message").style.display = "none");
-  $("warning-message") && ($("warning-message").style.display = "none");
+/* Mercado Pago (cartão) – deixe vazio para desativar cartão */
+const MP_PUBLIC_KEY = ""; // ex.: "TEST-xxxxxxxxxxxxxxxxxxxx"
 
-  if (type === "error" && $("error-message")) {
-    $("error-message").textContent = message;
-    $("error-message").style.display = message ? "block" : "none";
-  } else if (type === "success" && $("success-message")) {
-    $("success-message").textContent = message;
-    $("success-message").style.display = "block";
-  } else if (type === "warning" && $("warning-message")) {
-    $("warning-message").textContent = message;
-    $("warning-message").style.display = "block";
-  }
+/* Valores padrão (fallback) */
+const PURCHASE_AMOUNT = 120.0; // R$ — fallback
+const PURCHASE_CURRENCY = "BRL";
+const ASAAS_PIX_AMOUNT_BRL = 120.0; // R$ — fallback
+
+/* ========================== Estado ========================== */
+let currentPaymentMethod = "pix"; // padrão para esta página
+let mp = null;
+let mpCardForm = null;
+
+/* ========================== DOM ========================== */
+const formElement = document.getElementById("payment-form");
+const inputEmail = document.getElementById("email");
+const inputName = document.getElementById("name");
+const inputDesc = document.getElementById("description"); // hidden / description
+const inputAmountCents = document.getElementById("amountCents"); // hidden (centavos)
+const inputPlanoSlug = document.getElementById("planoSlug"); // optional hidden
+
+const errorBox = document.getElementById("error");
+const emailValidationBox = document.getElementById("email-validation");
+const buttonSubmit = document.getElementById("submitBtn");
+
+const tabsButtons = document.querySelectorAll(".pay-tabs .tab");
+const panels = document.querySelectorAll(".pay-panel");
+
+/* PIX UI */
+const pixArea = document.getElementById("pix-area");
+const pixQrImage = document.getElementById("pix-qr");
+const pixStatusText = document.getElementById("pix-status");
+const buttonCopyPix = document.getElementById("btnCopy");
+const qrPlaceholder = document.getElementById("qr-placeholder");
+
+/* Campos cartão (fallback simples) */
+const ccNumberEl = document.getElementById("cc-number");
+const ccExpEl = document.getElementById("cc-exp");
+const ccCvcEl = document.getElementById("cc-cvc");
+const ccNameEl = document.getElementById("cc-name");
+
+/* ========================== Helpers UI ========================== */
+function showError(message) {
+  if (!errorBox) return;
+  errorBox.textContent = message || "";
+  errorBox.style.display = message ? "block" : "none";
+}
+function showEmailValidation(message, isOk = false) {
+  if (!emailValidationBox) return;
+  emailValidationBox.textContent = message || "";
+  emailValidationBox.style.display = message ? "block" : "none";
+  emailValidationBox.style.color = isOk ? "#10b981" : "#ef4444";
+}
+function setSubmit(text, disabled = false) {
+  if (!buttonSubmit) return;
+  buttonSubmit.textContent = text;
+  buttonSubmit.disabled = !!disabled;
 }
 
-function setLoading(isLoading, message = "") {
-  const button = $("submit-btn");
-  const buttonText = $("button-text");
-  const spinner = $("button-spinner");
-  if (!button || !buttonText || !spinner) return;
-
-  if (isLoading) {
-    button.disabled = true;
-    if (message) buttonText.textContent = message;
-    spinner.style.display = "inline-block";
-  } else {
-    button.disabled = !emailIsValid; // só habilita quando e-mail estiver válido
-    buttonText.textContent = message || "Pagar R$ 5,00";
-    spinner.style.display = "none";
+/* PIX placeholder/QR */
+function showPixPlaceholder(message) {
+  if (message && qrPlaceholder) qrPlaceholder.textContent = message;
+  qrPlaceholder?.classList.remove("hidden");
+  pixArea?.classList.add("hidden");
+  if (pixQrImage) {
+    pixQrImage.removeAttribute("src");
+    pixQrImage.alt = "QR Code Pix";
   }
+  if (pixStatusText) pixStatusText.textContent = "";
 }
-
-function setEmailValidation(msg, ok = false) {
-  const box = $("email-validation");
-  if (!box) return;
-  if (!msg) {
-    box.style.display = "none";
-    return;
+function showPixQr(base64, copyPaste) {
+  qrPlaceholder?.classList.add("hidden");
+  pixArea?.classList.remove("hidden");
+  if (pixQrImage) {
+    pixQrImage.src = "data:image/png;base64," + base64;
+    pixQrImage.alt = "QR Code Pix";
   }
-  box.style.display = "block";
-  box.textContent = msg;
-  box.classList.toggle("success", !!ok);
-  box.style.color = ok ? "#00d1a2" : "#ff7070";
-}
-
-// ===================== Validação de e-mail (DynamoDB) =====================
-async function validateEmailInDynamoDB(emailRaw) {
-  const email = (emailRaw || "").trim().toLowerCase();
-  if (!email) return false;
-
-  // Ambiente local: lista de teste (opcional)
-  const TEST_LIST = [
-    "restaurante.teste@gmail.com",
-    "zane.klas422@gmail.com",
-    "ranie.soares@exemplo.com"
-  ].map(e => e.toLowerCase());
-
-  if (["localhost", "127.0.0.1"].includes(location.hostname)) {
-    return TEST_LIST.includes(email);
+  if (pixStatusText) {
+    pixStatusText.textContent =
+      "Abra o app do seu banco, leia o QR ou use o código copia-e-cola.";
   }
 
-  try {
-    const resp = await fetch(ARCARDAPIO_PAYMENT.VALIDATE_EMAIL_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email })
-    });
-
-    let data = {};
-    const text = await resp.text().catch(() => "");
-    try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
-
-    // aceita chaves comuns de backends
-    const candidates = [
-      data.isValid, data.valid, data.exists, data.found, data.ok,
-      (typeof data === "boolean" ? data : undefined)
-    ].filter(v => typeof v !== "undefined");
-
-    if (candidates.length) return !!(candidates.find(v => v === true || v === "true"));
-    if (data.item || data.Item || data.count === 1 || data.Count === 1) return true;
-
-    return false;
-  } catch (err) {
-    console.error("validateEmail error:", err);
-    return false; // em produção, não liberar por fallback
-  }
-}
-
-async function revalidateEmailAndToggle() {
-  const email = ($("email")?.value || "").trim().toLowerCase();
-  const name  = ($("name")?.value  || "").trim();
-
-  showMessage(""); // limpa mensagens
-  emailIsValid = false;
-  setEmailValidation("");
-
-  if (!email || !name) { setLoading(false); return false; }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    setEmailValidation("Por favor, insira um e-mail válido", false);
-    setLoading(false);
-    return false;
-  }
-
-  setEmailValidation("Validando e-mail...", true);
-  const ok = await validateEmailInDynamoDB(email);
-  emailIsValid = ok;
-
-  if (ok) setEmailValidation("E-mail validado. Você pode prosseguir.", true);
-  else setEmailValidation("E-mail não encontrado. Verifique seu cadastro.", false);
-
-  setLoading(false);
-  return ok;
-}
-
-// ===================== Inicialização do Checkout =====================
-document.addEventListener("DOMContentLoaded", () => {
-  initCheckout().catch((error) => {
-    console.error("Erro na inicialização:", error);
-    showMessage("Falha ao inicializar o pagamento. Recarregue a página e tente novamente.", "error");
-    setLoading(false);
-  });
-
-  // validação em tempo real
-  ["input", "blur"].forEach(evt => {
-    $("email")?.addEventListener(evt, revalidateEmailAndToggle);
-    $("name")?.addEventListener(evt, revalidateEmailAndToggle);
-  });
-});
-
-async function initCheckout() {
-  setLoading(true, "Preparando pagamento...");
-
-  // 1) cria PaymentIntent
-  try {
-    const result = await createPaymentIntent();
-    clientSecret = result.clientSecret;
-    paymentIntentId = result.paymentIntentId;
-  } catch (error) {
-    console.error("Erro ao criar PaymentIntent:", error);
-    showMessage(error.message || "Erro ao iniciar pagamento", "error");
-    setLoading(false);
-    return;
-  }
-
-  // 2) Stripe/Elements
-  stripe = Stripe(ARCARDAPIO_PAYMENT.PUBLISHABLE_KEY);
-
-  elements = stripe.elements({
-    clientSecret,
-    appearance: {
-      theme: 'stripe',
-      variables: {
-        colorPrimary: '#5469d4',
-        colorBackground: '#0f1f1e',
-        colorText: '#eafff7',
-        colorDanger: '#df1b41',
-        fontFamily: 'Inter, system-ui, sans-serif',
-        spacingUnit: '6px',
-        borderRadius: '12px'
+  if (buttonCopyPix) {
+    buttonCopyPix.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(copyPaste);
+        if (pixStatusText) pixStatusText.textContent = "Código Pix copiado!";
+      } catch {
+        if (pixStatusText) pixStatusText.textContent =
+          "Não foi possível copiar automaticamente.";
       }
-    },
-    locale: 'pt-BR'
-  });
-
-  const paymentElement = elements.create('payment', {
-    layout: { type: 'tabs', defaultCollapsed: false },
-    paymentMethodOrder: ['card', 'pix']
-  });
-
-  paymentElement.mount('#payment-element');
-  setLoading(false, "Pagar R$ 5,00");
-
-  // submit
-  $("payment-form")?.addEventListener("submit", handleSubmit);
-}
-
-// ===================== Backend: criar PaymentIntent =====================
-async function createPaymentIntent() {
-  const email = ($("email")?.value || "cliente@exemplo.com").trim().toLowerCase();
-  const name  = ($("name")?.value  || "Cliente Exemplo").trim();
-
-  try {
-    const response = await fetch(ARCARDAPIO_PAYMENT.CREATE_INTENT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: ARCARDAPIO_PAYMENT.AMOUNT,
-        currency: ARCARDAPIO_PAYMENT.CURRENCY,
-        payment_method_types: ARCARDAPIO_PAYMENT.PAYMENT_METHOD_TYPES,
-        email, name
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Erro ${response.status}: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const clientSecret = data.client_secret || data.clientSecret;
-    const paymentIntentId = data.id || data.paymentIntentId;
-
-    if (!clientSecret) throw new Error("Resposta da API não contém client_secret");
-    return { clientSecret, paymentIntentId };
-  } catch (error) {
-    console.error("Erro ao criar PaymentIntent:", error);
-    throw new Error(error.message || "Falha na comunicação com o servidor");
+    };
   }
 }
 
-// ===================== Submit / Confirmação =====================
-async function handleSubmit(event) {
-  event.preventDefault();
+/* ========================== Validação ========================== */
+function isValidEmail(v) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").toLowerCase());
+}
+async function validateEmailInDynamoDB(rawEmail) {
+  const email = (rawEmail || "").trim().toLowerCase();
+  if (!email) return false;
+  try {
+    const url = `${API_VALIDATE_EMAIL}?email=${encodeURIComponent(email)}`;
+    const resp = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!resp.ok) return false;
+    const data = await resp.json().catch(() => ({}));
+    if (data?.name && inputName && !inputName.value) inputName.value = data.name;
+    return Boolean(
+      data?.found ?? data?.exists ?? data?.isValid ?? data?.valido ?? false
+    );
+  } catch {
+    return false;
+  }
+}
 
-  const email = ($("email")?.value || "").trim().toLowerCase();
-  const name  = ($("name")?.value  || "").trim();
+/* ========================== Planos (fallbacks úteis) */
+function planSlugFromDescription(desc) {
+  const d = String(desc || "").toLowerCase();
+  if (d.includes("ultra")) return "plano_ultra_5_anos";
+  if (d.includes("pro"))   return "plano_pro_1_ano";
+  if (d.includes("plus"))  return "plano_plus_30_dias";
+  return "teste_7_dias";
+}
+
+/* Read numeric amount from hidden input if present (centavos) */
+function getAmountBrlFromInputs() {
+  const cents = inputAmountCents?.value;
+  if (cents) {
+    const n = Number(String(cents).replace(/[^0-9\-\.]/g, ""));
+    if (!Number.isNaN(n)) return n / 100.0;
+  }
+  return ASAAS_PIX_AMOUNT_BRL || PURCHASE_AMOUNT || 1.0;
+}
+
+/* ========================== Pix (Asaas) ========================== */
+async function checkFieldsAndMaybeGeneratePix() {
+  const email = (inputEmail?.value || "").trim().toLowerCase();
+  const name = (inputName?.value || "").trim();
+
+  showError("");
+  showEmailValidation("");
 
   if (!email || !name) {
-    showMessage("Por favor, preencha todos os campos obrigatórios", "error");
-    return;
+    showPixPlaceholder("Preencha e-mail e nome para gerar o QR Code.");
+    return false;
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    showMessage("Por favor, insira um e-mail válido", "error");
-    return;
-  }
-
-  // revalida na hora (garantia extra)
-  const ok = await revalidateEmailAndToggle();
-  if (!ok) {
-    showMessage("E-mail não encontrado na base. Não foi possível prosseguir.", "error");
-    return;
+  if (!isValidEmail(email)) {
+    showEmailValidation("Por favor, insira um e-mail válido");
+    showPixPlaceholder("E-mail inválido");
+    return false;
   }
 
-  setLoading(true, "Processando pagamento...");
-  showMessage("");
-
-  const { error: submitError } = await elements.submit();
-  if (submitError) {
-    showMessage(submitError.message, "error");
-    setLoading(false);
-    return;
+  showEmailValidation("Validando e-mail...", true);
+  const isValid = await validateEmailInDynamoDB(email);
+  if (!isValid) {
+    showEmailValidation("E-mail não encontrado. Verifique seu cadastro.");
+    showPixPlaceholder("E-mail não cadastrado no sistema");
+    return false;
   }
+  showEmailValidation("E-mail validado.", true);
 
+  if (currentPaymentMethod === "pix") {
+    await bootPaymentFor("pix");
+  }
+  return true;
+}
+
+async function bootPaymentFor(method) {
   try {
-    const { error, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: ARCARDAPIO_PAYMENT.SUCCESS_URL,
-        receipt_email: email,
-        payment_method_data: {
-          billing_details: { name, email }
-        }
-      },
-      redirect: 'if_required'
-    });
+    showError("");
+    setSubmit("Carregando…", true);
 
-    if (error) {
-      showMessage(error.message, "error");
-      setLoading(false);
+    if (method === "card") {
+      if (MP_PUBLIC_KEY) {
+        mountMpCardForm();
+      } else {
+        console.info("Cartão desativado: defina MP_PUBLIC_KEY para habilitar Mercado Pago.");
+      }
+      setSubmit("Pagar e assinar", false);
       return;
     }
 
-    handlePaymentResult(paymentIntent);
-  } catch (err) {
-    console.error("Erro ao confirmar pagamento:", err);
-    showMessage("Erro inesperado ao processar pagamento", "error");
-    setLoading(false);
+    // PIX flow
+    const amountBrl = getAmountBrlFromInputs();
+    showPixPlaceholder(`Gerando cobrança Pix (R$ ${amountBrl.toFixed(2)})…`);
+
+    const desc = (inputDesc?.value || "Plano Plus (30 Dias)").trim();
+
+    // prefer input hidden planoSlug se existir; caso contrário calcula a partir da descrição
+    let slug = (inputPlanoSlug?.value && String(inputPlanoSlug.value).trim()) || planSlugFromDescription(desc);
+
+    // normalize possíveis variações
+    if (!slug.startsWith("plano_")) {
+      if (slug === "ultra_5_anos" || slug === "ultra") slug = "plano_ultra_5_anos";
+      if (slug === "pro_12_meses" || slug === "pro") slug = "plano_pro_1_ano";
+      if (slug === "plus_30_dias" || slug === "plus") slug = "plano_plus_30_dias";
+    }
+
+    // FORÇAR: garantir que esta página sempre envie PLUS
+    slug = "plano_plus_30_dias";
+
+    // validação final do slug
+    if (!slug || slug === "teste_7_dias") {
+      throw new Error("Plano inválido. Contate o suporte.");
+    }
+
+    const payload = {
+      provider: "asaas",
+      type: "pix",
+      amount_brl: Number(amountBrl),
+      email: (inputEmail?.value || "").trim(),
+      name: (inputName?.value || "").trim(),
+      description: desc,
+      plano: slug
+    };
+
+    console.info("Enviando payload para createPaymentIntent:", payload);
+
+    const response = await fetch(API_CREATE_PAYMENT_INTENT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    console.log("createPaymentIntent →", data);
+
+    if (!response.ok || data?.ok === false) {
+      const msg =
+        data?.message || data?.error || data?.details || `Falha ao iniciar Pix (${response.status})`;
+      throw new Error(msg);
+    }
+
+    const qrBase64 =
+      data.qr_code_base64 ||
+      data.encodedImage ||
+      data?.original?.encodedImage ||
+      data?.pixQrCode?.encodedImage ||
+      data?.pix?.encodedImage ||
+      data?.point_of_interaction?.transaction_data?.qr_code_base64;
+
+    const copyPaste =
+      data.qr_code_payload ||
+      data.qr_code ||
+      data.payload ||
+      data?.original?.payload ||
+      data?.pixQrCode?.payload ||
+      data?.pix?.payload ||
+      data?.point_of_interaction?.transaction_data?.qr_code;
+
+    if (!qrBase64 || !copyPaste) {
+      throw new Error("Não foi possível gerar o QR Pix no momento.");
+    }
+
+    showPixQr(qrBase64, copyPaste);
+    setSubmit("Aguardando pagamento Pix…", false);
+  } catch (error) {
+    console.error(error);
+    showError(error.message || "Não foi possível iniciar o pagamento.");
+    setSubmit("Pagar e assinar", false);
   }
 }
 
-// ===================== Resultado / Polling =====================
-function handlePaymentResult(paymentIntent) {
-  switch (paymentIntent.status) {
-    case 'succeeded':
-      showMessage("Pagamento aprovado! Redirecionando...", "success");
-      setTimeout(() => { window.location.href = ARCARDAPIO_PAYMENT.SUCCESS_URL; }, 1200);
-      break;
-
-    case 'processing':
-      showMessage("Seu pagamento está sendo processado. Aguarde a confirmação.", "warning");
-      if (ARCARDAPIO_PAYMENT.GET_INTENT_URL_BASE && paymentIntentId) {
-        pollPaymentStatus(paymentIntentId);
-      } else {
-        setLoading(false, "Aguardando confirmação...");
-      }
-      break;
-
-    case 'requires_action':
-      showMessage("É necessária uma ação adicional para completar seu pagamento", "warning");
-      setLoading(false, "Complete a autenticação");
-      break;
-
-    case 'requires_payment_method':
-      showMessage("Falha no processamento do pagamento. Tente outro método.", "error");
-      setLoading(false, "Tentar novamente");
-      break;
-
-    default:
-      showMessage(`Status desconhecido: ${paymentIntent.status}`, "error");
-      setLoading(false, "Tentar novamente");
+/* ========================== Cartão (Mercado Pago opcional) ========================== */
+function mountMpCardForm() {
+  let installmentsSelect = document.getElementById("mp-installments");
+  if (!installmentsSelect) {
+    installmentsSelect = document.createElement("select");
+    installmentsSelect.id = "mp-installments";
+    installmentsSelect.className = "input";
+    installmentsSelect.style.marginTop = "12px";
+    ccCvcEl?.parentElement?.appendChild(installmentsSelect);
   }
+
+  if (!mp) {
+    // eslint-disable-next-line no-undef
+    mp = new MercadoPago(MP_PUBLIC_KEY, { locale: "pt-BR" });
+  }
+
+  try { mpCardForm?.unmount?.(); } catch {}
+
+  mpCardForm = mp.cardForm({
+    amount: PURCHASE_AMOUNT.toFixed(2),
+    autoMount: false,
+    form: {
+      id: "payment-form",
+      cardNumber:         { id: "cc-number", placeholder: "1234 1234 1234 1234" },
+      cardExpirationDate: { id: "cc-exp",    placeholder: "MM/AA" },
+      securityCode:       { id: "cc-cvc",    placeholder: "123" },
+      cardholderName:     { id: "cc-name" },
+      cardholderEmail:    { id: "email" },
+      installments:       { id: "mp-installments" },
+    },
+    callbacks: {
+      onFormMounted: (error) => { if (error) console.warn("CardForm mount error", error); },
+      onFetching: () => setSubmit("Processando…", true),
+    }
+  });
+
+  setSubmit("Pagar e assinar", false);
 }
 
-async function pollPaymentStatus(paymentIntentId) {
-  if (!ARCARDAPIO_PAYMENT.GET_INTENT_URL_BASE) {
-    console.warn("GET_INTENT_URL_BASE não configurado - polling desativado");
+/* ========================== Submit (cartão) ========================== */
+async function onFormSubmit(e) {
+  e.preventDefault();
+  if (currentPaymentMethod === "pix") return;
+
+  if (!MP_PUBLIC_KEY) {
+    showError("Pagamento por cartão está desativado. Use Pix.");
     return;
   }
 
-  const maxAttempts = 30; // ~2.5 minutos
-  let attempts = 0;
+  showError("");
+  setSubmit("Processando…", true);
 
-  const poll = async () => {
-    attempts++;
-    try {
-      const response = await fetch(`${ARCARDAPIO_PAYMENT.GET_INTENT_URL_BASE}/${paymentIntentId}`);
-      if (response.ok) {
-        const paymentIntent = await response.json();
+  try {
+    if (!mpCardForm) mountMpCardForm();
 
-        if (paymentIntent.status === 'succeeded') {
-          showMessage("Pagamento confirmado! Redirecionando...", "success");
-          setTimeout(() => { window.location.href = ARCARDAPIO_PAYMENT.SUCCESS_URL; }, 1200);
-          return;
-        } else if (paymentIntent.status === 'canceled' || attempts >= maxAttempts) {
-          showMessage("Tempo esgotado para confirmação do pagamento", "error");
-          setLoading(false, "Tentar novamente");
-          return;
-        }
-      }
+    const data = mpCardForm.getCardFormData();
+    const {
+      token,
+      paymentMethodId,
+      issuerId,
+      installments,
+      cardholderEmail,
+      cardholderName
+    } = data;
 
-      if (attempts < maxAttempts) setTimeout(poll, 5000);
-    } catch (error) {
-      console.error("Erro no polling:", error);
-      if (attempts < maxAttempts) setTimeout(poll, 5000);
-      else {
-        showMessage("Erro ao verificar status do pagamento", "error");
-        setLoading(false, "Tentar novamente");
+    if (!token) throw new Error("Não foi possível tokenizar o cartão. Verifique os dados.");
+
+    const resp = await fetch(API_CREATE_PAYMENT_INTENT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        provider: "mercadopago",
+        type: "card",
+        amount: PURCHASE_AMOUNT,
+        currency: PURCHASE_CURRENCY,
+        email: cardholderEmail || (inputEmail?.value || "").trim(),
+        name:  cardholderName || (inputName?.value  || "").trim(),
+        token,
+        installments: Number(installments || 1),
+        payment_method_id: paymentMethodId,
+        issuer_id: issuerId,
+        description: "Plano Plus (Cartão)",
+        plano: inputPlanoSlug?.value || "plano_plus_30_dias"
+      })
+    });
+
+    const result = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(result?.message || result?.error || "Falha ao criar pagamento.");
+
+    setSubmit("Pagamento aprovado!", true);
+  } catch (err) {
+    console.error(err);
+    showError(err.message || "Não foi possível concluir o pagamento.");
+    setSubmit("Pagar e assinar", false);
+  }
+}
+
+/* ========================== Tabs ========================== */
+tabsButtons.forEach((tabButton) => {
+  tabButton.addEventListener("click", async () => {
+    tabsButtons.forEach((b) => b.classList.remove("active"));
+    tabButton.classList.add("active");
+
+    panels.forEach((p) => p.classList.remove("show"));
+    const target = document.querySelector(tabButton.dataset.target);
+    target?.classList.add("show");
+
+    currentPaymentMethod = tabButton.dataset.target === "#pixPanel" ? "pix" : "card";
+
+    if (currentPaymentMethod === "pix") {
+      const ok = await checkFieldsAndMaybeGeneratePix();
+      if (!ok) showPixPlaceholder("Preencha e-mail e nome para gerar o QR Code.");
+    } else {
+      if (MP_PUBLIC_KEY) {
+        mountMpCardForm();
+      } else {
+        console.info("Cartão desativado até informar MP_PUBLIC_KEY.");
       }
     }
-  };
+  });
+});
 
-  poll();
-}
+/* ========================== Eventos ========================== */
+formElement?.addEventListener("submit", onFormSubmit);
+inputEmail?.addEventListener("blur", checkFieldsAndMaybeGeneratePix);
+inputName?.addEventListener("blur", checkFieldsAndMaybeGeneratePix);
+inputEmail?.addEventListener("input", () => showEmailValidation(""));
+
+/* ========================== Boot ========================== */
+(function init() {
+  try {
+    if (inputDesc) inputDesc.value = "Plano Plus (30 Dias)";
+    if (inputPlanoSlug) inputPlanoSlug.value = "plano_plus_30_dias";
+    if (inputAmountCents && !inputAmountCents.value) inputAmountCents.value = "12000";
+  } catch (err) {
+    console.warn("Não foi possível forçar valores hidden:", err);
+  }
+
+  const pixTab = document.querySelector('.pay-tabs .tab[data-target="#pixPanel"]');
+  const pixPanel = document.getElementById("pixPanel");
+  const cardTab = document.querySelector('.pay-tabs .tab[data-target="#cardPanel"]');
+  const cardPanel = document.getElementById("cardPanel");
+
+  cardTab?.classList.remove("active");
+  cardPanel?.classList.remove("show");
+  pixTab?.classList.add("active");
+  pixPanel?.classList.add("show");
+  currentPaymentMethod = "pix";
+
+  showPixPlaceholder("Preencha e-mail e nome para gerar o QR Code.");
+  setSubmit("Pagar e assinar", false);
+})();

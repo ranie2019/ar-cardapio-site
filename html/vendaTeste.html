@@ -7,9 +7,6 @@
 
   <!-- CSS -->
   <link rel="stylesheet" href="../css/vendaTeste.css">
-
-  <!-- Stripe.js (usado somente quando pagar com cartão) -->
-  <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
   <div class="container">
@@ -19,8 +16,8 @@
       <!-- COLUNA ESQUERDA (resumo) -->
       <section class="card">
         <h2 class="h2">Plano Teste (7 Dias)</h2>
-        <div class="price">R$ 5,00</div>
-        <p class="muted">Acesso completo ao ARCardápio por 30 dias. Renovação opcional.</p>
+        <div class="price">R$ 7,00</div>
+        <p class="muted">Acesso completo ao ARCardápio por 7 dias.</p>
 
         <ul class="bullets">
           <li><span class="dot"></span><span>Acesso a todos os recursos e modelos 3D</span></li>
@@ -29,10 +26,10 @@
         </ul>
 
         <div class="divider"></div>
-        <div class="row"><span>Subtotal</span><span>R$ 5,00</span></div>
+        <div class="row"><span>Subtotal</span><span>R$ 7,00</span></div>
         <div class="row"><span>Descontos</span><span>R$ 0,00</span></div>
         <div class="divider"></div>
-        <div class="row total"><span>Total</span><span>R$ 5,00</span></div>
+        <div class="row total"><span>Total</span><span>R$ 7,00</span></div>
         <div class="divider"></div>
 
         <div class="secure">
@@ -42,7 +39,7 @@
           Pagamentos processados de forma segura. Pix e Cartão disponíveis.
         </div>
 
-        <a class="back" href="plano.html">Voltar para planos</a>
+        <a class="back" href="plano.html">Voltar para Planos</a>
       </section>
 
       <!-- COLUNA DIREITA (pagamento) -->
@@ -51,12 +48,17 @@
         <p class="muted">Selecione <b>Pix</b> ou <b>Cartão</b> nas abas do formulário.</p>
 
         <form id="payment-form" novalidate>
+          <!-- helpers ocultos -->
+          <input type="hidden" id="amountCents" value="700">
+          <input type="hidden" id="description" value="Plano Teste (7 Dias)">
+          <input type="hidden" id="planoSlug" value="teste_7_dias">
+
           <label for="email">Seu e-mail</label>
           <input id="email" class="input" type="email" placeholder="voce@exemplo.com" autocomplete="email" required>
-          <div id="email-validation" class="validation-message"></div>
+          <div id="email-validation" class="validation-message" aria-live="polite"></div>
 
           <label for="name">Nome completo</label>
-          <input id="name" class="input" type="text" placeholder="Nome impresso no cartão" autocomplete="name" required>
+          <input id="name" class="input" type="text" placeholder="Nome" autocomplete="name" required>
 
           <!-- Abas -->
           <div id="fallback-wrapper" class="custom">
@@ -65,19 +67,30 @@
               <button class="tab" type="button" data-target="#pixPanel" aria-selected="false">Pix</button>
             </div>
 
-            <!-- Painel Cartão (visual/fallback) -->
+            <!-- Painel Cartão -->
             <div class="pay-panel show" id="cardPanel" role="tabpanel">
-              <div class="fake-card">
-                <label style="margin-top:10px">Número do cartão</label>
-                <input id="cc-number" class="input" type="text" inputmode="numeric" autocomplete="cc-number" placeholder="0000 0000 0000 0000" maxlength="19">
+              <div id="stripe-wrapper" class="is-hidden">
+                <div id="payment-element"></div>
+              </div>
 
-                <div style="display:flex; gap:10px; margin-top:10px">
-                  <input id="cc-exp" class="input" style="flex:1" type="text" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/AA" maxlength="5">
-                  <input id="cc-cvc" class="input" style="flex:1" type="text" inputmode="numeric" autocomplete="cc-csc" placeholder="CVV" maxlength="4">
+              <div id="card-fallback" class="card-fields">
+                <label for="cc-number">Número do cartão</label>
+                <input id="cc-number" class="input" type="text" placeholder="1234 1234 1234 1234" autocomplete="cc-number" maxlength="23">
+
+                <div class="card-row">
+                  <div class="card-col">
+                    <label for="cc-exp">Vencimento</label>
+                    <input id="cc-exp" class="input" type="text" placeholder="MM/AA" autocomplete="cc-exp" maxlength="5">
+                  </div>
+                  <div class="card-col">
+                    <label for="cc-cvc">Código de segurança</label>
+                    <input id="cc-cvc" class="input" type="text" placeholder="123" autocomplete="cc-csc" maxlength="4">
+                  </div>
                 </div>
 
-                <label style="margin-top:10px">Nome do titular</label>
-                <input id="cc-name" class="input" type="text" placeholder="Nome impresso no cartão" autocomplete="cc-name">
+                <label for="cc-name">Nome do titular</label>
+                <input id="cc-name" class="input" type="text" placeholder="Nome como aparece no cartão" autocomplete="cc-name">
+                <p class="muted" style="margin-top: 8px;">Conforme aparece no cartão.</p>
               </div>
             </div>
 
@@ -87,11 +100,10 @@
                 Ao continuar com Pix, será exibido o QR Code.
               </p>
 
-              <!-- Área do Pix (começa oculta) -->
               <div id="pix-area" class="pix-box hidden">
                 <img id="pix-qr" class="pix-qr" alt="QR Pix" />
                 <button type="button" id="btnCopy" class="btn-mini">Copiar código Pix</button>
-                <div id="pix-status" class="muted" style="margin-top:6px"></div>
+                <div id="pix-status" class="muted" style="margin-top:6px" aria-live="polite"></div>
               </div>
 
               <div id="qr-placeholder" class="qr-placeholder">
@@ -100,13 +112,8 @@
             </div>
           </div>
 
-          <!-- Stripe real (montado quando Cartão) -->
-          <div id="stripe-wrapper" style="display:none">
-            <div id="payment-element"></div>
-          </div>
-
           <!-- Mensagens -->
-          <div id="error" class="err"></div>
+          <div id="error" class="err" role="alert" aria-live="polite"></div>
 
           <!-- Botão principal -->
           <button id="submitBtn" class="btn" type="submit">
@@ -117,9 +124,17 @@
     </div>
   </div>
 
+  <div id="pay-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="pay-modal-title">
+    <div class="modal-box">
+      <h3 id="pay-modal-title">Título</h3>
+      <p id="pay-modal-msg">Mensagem</p>
+      <button id="pay-modal-ok" class="btn-mini btn-wide" type="button">Ok</button>
+    </div>
+  </div>
+
   <noscript>Ative o JavaScript para concluir o pagamento.</noscript>
 
-  <!-- use defer para garantir que o DOM exista quando o JS rodar -->
-  <script src="../java/vendaTeste.js?v=4" defer></script>
+  <!-- JS principal -->
+  <script src="../java/vendaTeste.js" defer></script>
 </body>
 </html>
