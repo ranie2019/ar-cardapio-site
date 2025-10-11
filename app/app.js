@@ -10,6 +10,41 @@ const __qs = new URLSearchParams(location.search);
 const __ver = __qs.get('v') || Date.now().toString();
 const __bust = `?v=${encodeURIComponent(__ver)}`;
 
+// ========= Checagem de assinatura (antes de iniciar o app) =========
+const API_BASE = "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com"; // stage $default
+const ENDPOINT_STATUS = `${API_BASE}/assinatura/status`;
+const PAGE_EXPIRADO = "https://site-arcardapio.s3.us-east-1.amazonaws.com/planoExpirado.html"; // ajuste se mudar
+
+function qs(name, def = "") {
+  const v = new URL(location.href).searchParams.get(name);
+  return v == null ? def : v;
+}
+
+async function ensureActivePlan() {
+  const u = qs("u", "").trim();   // e-mail vindo do QR
+  if (!u) return;                 // se quiser bloquear sem 'u', redirecione aqui para PAGE_EXPIRADO
+
+  try {
+    const resp = await fetch(`${ENDPOINT_STATUS}?u=${encodeURIComponent(u)}`, {
+      method: "GET",
+      headers: { "Cache-Control": "no-cache" }
+    });
+    const data = await resp.json();
+
+    if (!data.ok || !data.ativo) {
+      const dest = new URL(PAGE_EXPIRADO);
+      dest.searchParams.set("u", u);
+      if (data && data.status) dest.searchParams.set("status", data.status);
+      location.replace(dest.toString());
+      throw new Error("Plano inativo/expirado");
+    }
+  } catch (e) {
+    console.warn("Falha ao checar assinatura:", e);
+    // Em erro de rede você decide:
+    // const dest = new URL(PAGE_EXPIRADO); dest.searchParams.set("u", u); location.replace(dest);
+  }
+}
+
 // ==================== CONFIGURAÇÃO DO RESTAURANTE VIA S3 ====================
 async function aplicarConfiguracaoDoRestaurante() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -313,7 +348,10 @@ document.getElementById("menuBtn").addEventListener("click", () => {
 
 // ==================== INICIALIZAÇÃO ====================
 window.addEventListener("DOMContentLoaded", async () => {
-  // Inicializa todos os modelos como visíveis por padrão
+  // 1) checa assinatura (bloqueia se não estiver ativa)
+  await ensureActivePlan();
+
+  // 2) inicialização original
   for (const categoria in models) {
     models[categoria].forEach(model => {
       if (model.visible === undefined) {

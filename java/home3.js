@@ -317,8 +317,23 @@ class SistemaCardapio extends SistemaCardapioItens {
 
 // Inicializa o sistema quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
+  // PREVENÇÃO DO MENU DE CONTEXTO (botão direito) DENTRO DA ÁREA 3D
+  // Tenta selecionar a <a-scene> (A-Frame) ou alguns ids/classes comuns como fallback.
+  const sceneElement = document.querySelector('a-scene')
+    || document.getElementById('suaJanela3D')
+    || document.getElementById('scene3D')
+    || document.querySelector('.scene-3d');
+
+  if (sceneElement) {
+    sceneElement.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
+    });
+    // console.log opcional para debug:
+    // console.log('Menu de contexto dentro da cena 3D desabilitado.');
+  } else {
+    // Se por algum motivo não houver cena detectada, não faz nada (não quebra o app)
+    // console.log('Nenhuma cena 3D detectada - contexto padrão do navegador permanece.');
+  }
+
   new SistemaCardapio();
 });
-
-
-

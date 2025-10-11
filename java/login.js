@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Configurações de endpoints
   // ------------------------------
   const ENDPOINT_LOGIN = "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/loginCliente";
-  // Lambda URL pública para checar o plano (POST { email })
+  // Lambda URL pública para checar o plano (POST { email } )
   const ENDPOINT_CHECK_PLANO = "https://bnmlq4xdbvdz45z2wcy7cpso440ysnzk.lambda-url.us-east-1.on.aws/";
 
   // Páginas de destino
@@ -38,12 +38,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const CHAVE_EMAIL = "ar.email";
   const CHAVE_EXPIRACAO = "ar.exp";
   const CHAVE_STATUS_PLANO = "ar.statusPlano"; // Nova chave para o status do plano
+  const CHAVE_NOME_EMPRESA = "ar.nomeEmpresa"; // Nova chave para o nome da empresa
   const DURACAO_SESSAO_HORAS = 24;
 
   // ------------------------------
   // Utilitários
   // ------------------------------
-  function validarEmail(valor) {
+  function validarEmail(valor ) {
     const padrao = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return padrao.test(String(valor).toLowerCase());
   }
@@ -72,13 +73,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Modificada para salvar o status do plano
-  function salvarSessao(email, token, statusPlano) {
+  function salvarSessao(email, token, statusPlano, nomeEmpresa) {
     const instanteExpiracao = Date.now() + DURACAO_SESSAO_HORAS * 60 * 60 * 1000;
     try {
       localStorage.setItem(CHAVE_EMAIL, email);
       localStorage.setItem(CHAVE_TOKEN, token);
       localStorage.setItem(CHAVE_EXPIRACAO, String(instanteExpiracao));
       localStorage.setItem(CHAVE_STATUS_PLANO, statusPlano); // Salva o status do plano
+      localStorage.setItem(CHAVE_NOME_EMPRESA, nomeEmpresa); // Salva o nome da empresa
       sessionStorage.setItem(CHAVE_EMAIL, email);
       sessionStorage.setItem(CHAVE_TOKEN, token);
       sessionStorage.setItem(CHAVE_EXPIRACAO, String(instanteExpiracao));
@@ -191,6 +193,7 @@ document.addEventListener("DOMContentLoaded", () => {
         corpo?.data?.token;
 
       const emailConfirmado = corpo?.user?.email || corpo?.email || valorEmail;
+      const nomeEmpresa = corpo?.user?.nome || corpo?.nome || ""; // Adiciona a extração do nome da empresa
 
       // se o backend avisar que o plano está inativo, redireciona já
       if (corpo?.reason === "plano_inativo" || corpo?.status === "inativo") {
@@ -203,7 +206,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Salva a sessão APÓS verificar o status do plano
       if (!tokenAutenticacao) throw new Error("Resposta sem token de autenticação.");
-      salvarSessao(emailConfirmado, tokenAutenticacao, statusPlano);
+      salvarSessao(emailConfirmado, tokenAutenticacao, statusPlano, nomeEmpresa); // Passa nomeEmpresa
 
       // Se já veio um parâmetro "next" na URL, respeitar quando o plano estiver ativo
       const parametros = new URLSearchParams(window.location.search);
@@ -232,5 +235,3 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
-
-

@@ -1,0 +1,137 @@
+/* ============================
+   resetSenha.css
+   ============================ */
+
+/* Reset básico e fonte padrão */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+/* Fundo gradiente e centralização do conteúdo */
+body {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 15px; /* Adiciona um respiro em telas menores */
+}
+
+/* Container principal do formulário */
+.container {
+  background: #fff;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+/* Título do formulário */
+h2 {
+  color: #333;
+  margin-bottom: 20px;
+  font-size: 24px;
+}
+
+/* Estilo dos labels */
+label {
+  display: block;
+  text-align: left;
+  margin-top: 15px;
+  color: #555;
+  font-weight: bold;
+}
+
+/* Estilo dos campos de senha */
+input[type="password"],
+input[type="text"] { /* Aplica o mesmo estilo quando a senha é mostrada */
+  width: 100%;
+  padding: 12px;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+}
+
+input[type="password"]:focus,
+input[type="text"]:focus {
+  border-color: #667eea;
+  outline: none;
+}
+
+/* --- ESTILOS ATUALIZADOS PARA "MOSTRAR SENHA" --- */
+
+/* Container para a checkbox e seu label */
+.show-password-container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; /* Alinha à esquerda */
+  margin-top: 15px;
+  gap: 8px; /* Espaço entre a checkbox e o texto */
+}
+
+/* Label específico para a checkbox "Mostrar Senha" */
+.show-password-label {
+  margin-top: 0; /* Remove a margem superior padrão dos labels */
+  font-weight: normal;
+  color: #555;
+  cursor: pointer;
+  user-select: none; /* Impede que o texto seja selecionado ao clicar */
+}
+
+/* Checkbox para mostrar/ocultar a senha */
+#showPassword {
+  width: auto; /* Remove a largura de 100% dos outros inputs */
+  cursor: pointer;
+  transform: scale(1.1); /* Deixa a checkbox um pouco maior */
+}
+
+/* --- FIM DOS ESTILOS ATUALIZADOS --- */
+
+
+/* Botão de redefinição */
+button {
+  width: 100%;
+  margin-top: 25px;
+  padding: 12px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: background 0.3s, transform 0.2s;
+}
+
+button:hover {
+  background: #5a67d8;
+  transform: translateY(-2px); /* Efeito de elevação ao passar o mouse */
+}
+
+button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Div para mensagens de status (sucesso ou erro) */
+#message {
+  margin-top: 20px;
+  font-size: 14px;
+  font-weight: bold;
+  min-height: 20px; /* Garante que o layout não pule quando a mensagem aparece */
+}
+
+#message.error {
+  color: #e53e3e; /* Vermelho para erros */
+}
+
+#message.success {
+  color: #38a169; /* Verde para sucesso */
+}

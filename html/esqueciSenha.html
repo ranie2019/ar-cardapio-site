@@ -2,17 +2,25 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Esqueci minha senha - ARCardápio</title>
-  <link rel="stylesheet" href="../css/esqueciSenha.css" />
+
+  <!-- Use URL ABSOLUTA para garantir que o CSS sempre carrega -->
+  <link rel="stylesheet" href="https://arcardapio.com.br/css/esqueciSenha.css" />
+
+  <!-- Opcional: dica para renderização consistente -->
+  <meta name="color-scheme" content="light dark" />
 </head>
 <body>
-  <main class="container">
+  <noscript>
+    <div style="background:#fff3cd;color:#664d03;padding:12px;text-align:center;border:1px solid #ffeeba;">
+      Este recurso precisa de JavaScript ativo para funcionar corretamente.
+    </div>
+  </noscript>
+
+  <main class="container" role="main">
     <section class="form-container" aria-labelledby="pageTitle">
-      
-      <header class="logo">
-        <h1 id="pageTitle">ARCardápio</h1>
-      </header>
+      <h1 id="pageTitle" class="logo">ARCardápio</h1>
 
       <header class="form-header">
         <h2>Esqueci minha senha</h2>
@@ -25,37 +33,41 @@
 
           <div class="input-group">
             <label for="email">E-mail</label>
-            <input 
-              type="email" 
-              id="email" 
-              name="email" 
-              required 
+            <input
+              type="email"
+              id="email"
+              name="email"
+              required
               placeholder="Digite seu e-mail"
               autocomplete="email"
+              inputmode="email"
+              autocapitalize="off"
+              autocorrect="off"
+              spellcheck="false"
               aria-describedby="emailError"
             />
             <span class="error-message" id="emailError" aria-live="polite"></span>
           </div>
 
-          <button type="submit" class="submit-btn" id="submitBtn">
+          <button type="submit" class="submit-btn" id="submitBtn" aria-live="polite" aria-busy="false">
             <span class="btn-text">Enviar instruções</span>
-            <span class="btn-loading" style="display: none;">Enviando...</span>
+            <span class="btn-loading" hidden>Enviando...</span>
           </button>
         </fieldset>
       </form>
 
-      <div class="success-message" id="successMessage" style="display: none;" role="status" aria-live="polite">
+      <div class="success-message" id="successMessage" hidden role="status" aria-live="polite" tabindex="-1">
         <div class="success-icon" aria-hidden="true">✓</div>
         <h3>E-mail enviado com sucesso!</h3>
         <p>Verifique sua caixa de entrada e siga as instruções para redefinir sua senha.</p>
       </div>
 
       <nav class="back-to-login">
-        <a href="login.html" aria-label="Voltar para a página de login">← Voltar para o login</a>
+        <a href="login.html">← Voltar para o login</a>
       </nav>
     </section>
   </main>
 
-  <script src="../java/esqueciSenha.js"></script>
+  <script src="https://arcardapio.com.br/java/esqueciSenha.js" defer></script>
 </body>
 </html>

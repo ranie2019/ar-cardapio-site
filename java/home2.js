@@ -1,70 +1,69 @@
 // ==============================
 // home2.js - Exibição de Itens, Preview 3D e Configuração
 // ==============================
+"use strict";
 
 class SistemaCardapioItens extends SistemaCardapioBase {
   constructor() {
     super();
-    this._limpezaArrastePreview = null; // guarda função de limpeza dos listeners do preview atual
+    this._limpezaArrastePreview = null;
+    this.itemConfiguracao = null;
+    this.previewItemAtual = null;
+    this.previewFecharTimeout = null;
   }
 
   // ==============================
-  // 3) EXIBIÇÃO DE ITENS E PREVIEW 3D
+  // EXIBIÇÃO DE ITENS E PREVIEW 3D
   // ==============================
   mostrarItens(categoria) {
-    const containerItens = document.getElementById('itensContainer');
+    const containerItens = document.getElementById("itensContainer");
     if (!containerItens || !objetos3D[categoria]) return;
 
-    containerItens.innerHTML = '';
-    containerItens.style.display = 'flex';
-
-    // Esconde botão de configuração quando a categoria for "logo"
-    containerItens.classList.toggle('sem-config-logo', categoria === 'logo');
+    containerItens.innerHTML = "";
+    containerItens.style.display = "flex";
+    containerItens.classList.toggle("sem-config-logo", categoria === "logo");
 
     objetos3D[categoria].forEach((nomeItem, indice) => {
-      const envoltorioItem = document.createElement('div');
-      envoltorioItem.className = 'item-wrapper';
+      const envoltorioItem = document.createElement("div");
+      envoltorioItem.className = "item-wrapper";
 
-      const caixaItem = document.createElement('div');
-      caixaItem.className = 'item-box';
+      const caixaItem = document.createElement("div");
+      caixaItem.className = "item-box";
       caixaItem.textContent = nomeItem;
-      caixaItem.setAttribute('data-categoria', categoria);
-      caixaItem.setAttribute('data-nome', this.nomeParaSlug(nomeItem));
+      caixaItem.setAttribute("data-categoria", categoria);
+      caixaItem.setAttribute("data-nome", this.nomeParaSlug(nomeItem));
       caixaItem.style.animationDelay = `${indice * 0.1}s`;
 
-      // Estado salvo (ativado/desativado)
       const chaveEstadoItem = this.gerarChaveItem(categoria, nomeItem);
-      if (localStorage.getItem(chaveEstadoItem) === 'true') {
-        caixaItem.classList.add('desativado');
+      if (localStorage.getItem(chaveEstadoItem) === "true") {
+        caixaItem.classList.add("desativado");
       }
 
-      // Alternar visibilidade do item
-      caixaItem.addEventListener('click', () => {
-        const desativadoAgora = caixaItem.classList.toggle('desativado');
+      // Toggle visibilidade
+      caixaItem.addEventListener("click", () => {
+        const desativadoAgora = caixaItem.classList.toggle("desativado");
         localStorage.setItem(chaveEstadoItem, desativadoAgora);
-        this.salvarConfiguracaoNoS3(); // persiste agregados
+        this.salvarConfiguracaoNoS3();
         this.canalStatus.postMessage({ nome: nomeItem, visivel: !desativadoAgora });
       });
 
-      // Preview 3D ao passar o mouse
-      caixaItem.addEventListener('mouseenter', () => {
-        if (caixaItem.classList.contains('desativado')) return;
-
+      // Preview 3D
+      caixaItem.addEventListener("mouseenter", () => {
+        if (caixaItem.classList.contains("desativado")) return;
         if (this.previewFecharTimeout) clearTimeout(this.previewFecharTimeout);
 
-        const identificadorItemAtual = `${categoria}/${nomeItem}`;
-        if (this.previewItemAtual !== identificadorItemAtual) {
-          this.previewItemAtual = identificadorItemAtual;
+        const identificador = `${categoria}/${nomeItem}`;
+        if (this.previewItemAtual !== identificador) {
+          this.previewItemAtual = identificador;
           this.mostrarPreview3D(caixaItem, categoria, nomeItem);
         }
       });
 
-      // Esconder preview quando sair do item (com tolerância de hover no modal)
-      caixaItem.addEventListener('mouseleave', () => {
+      caixaItem.addEventListener("mouseleave", () => {
         this.previewFecharTimeout = setTimeout(() => {
-          if (!this.modelModal.matches(':hover')) {
-            this.modelModal.style.display = 'none';
-            this.modelModal.innerHTML = '';
+          if (!this.modelModal.matches(":hover")) {
+            this.modelModal.style.display = "none";
+            this.modelModal.innerHTML = "";
             this.previewItemAtual = null;
             if (this._limpezaArrastePreview) {
               this._limpezaArrastePreview();
@@ -74,45 +73,42 @@ class SistemaCardapioItens extends SistemaCardapioBase {
         }, 300);
       });
 
-      // Botão de configuração por item
-      const botaoConfigurarProduto = document.createElement('button');
-      botaoConfigurarProduto.className = 'btn-configurar-produto';
-      botaoConfigurarProduto.textContent = 'Configuração';
-      botaoConfigurarProduto.dataset.categoria = categoria;
+      // Botão de configuração
+      const botaoConfig = document.createElement("button");
+      botaoConfig.className = "btn-configurar-produto";
+      botaoConfig.textContent = "Configuração";
+      botaoConfig.dataset.categoria = categoria;
 
-      if (categoria === 'logo') {
-        botaoConfigurarProduto.style.display = 'none';
-        botaoConfigurarProduto.setAttribute('aria-hidden', 'true');
+      if (categoria === "logo") {
+        botaoConfig.style.display = "none";
+        botaoConfig.setAttribute("aria-hidden", "true");
       }
 
-      botaoConfigurarProduto.addEventListener('click', (evento) => {
+      botaoConfig.addEventListener("click", (evento) => {
         evento.stopPropagation();
         this.abrirModalConfiguracao(categoria, nomeItem);
       });
 
       envoltorioItem.appendChild(caixaItem);
-      envoltorioItem.appendChild(botaoConfigurarProduto);
+      envoltorioItem.appendChild(botaoConfig);
       containerItens.appendChild(envoltorioItem);
     });
   }
 
   // ==============================
-  // PREVIEW 3D (com fallback entre bases de URL)
+  // PREVIEW 3D
   // ==============================
   async mostrarPreview3D(elementoOrigem, categoria, nomeItem) {
-    // Remove listeners antigos se existir um preview anterior
     if (this._limpezaArrastePreview) {
       this._limpezaArrastePreview();
       this._limpezaArrastePreview = null;
     }
 
-    const retangulo = elementoOrigem.getBoundingClientRect();
-    const DESLOCAMENTO_TOPO = 80;
-    this.modelModal.style.left = `${retangulo.right + 5}px`;
-    this.modelModal.style.top = `${retangulo.top + DESLOCAMENTO_TOPO}px`;
-    this.modelModal.style.display = 'block';
+    const ret = elementoOrigem.getBoundingClientRect();
+    this.modelModal.style.left = `${ret.right + 5}px`;
+    this.modelModal.style.top = `${ret.top + 80}px`;
+    this.modelModal.style.display = "block";
 
-    // Estado de carregamento
     this.modelModal.innerHTML = `
       <div style="width:330px;height:300px;background:#1a1a1a;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#00f0c0;">
         <div style="text-align:center;">
@@ -123,318 +119,268 @@ class SistemaCardapioItens extends SistemaCardapioBase {
       <style>@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}</style>
     `;
 
-    // Monta candidatos de URL do modelo
     const nomeArquivoModelo = this.nomeParaArquivo(nomeItem);
-    const basesModelos = Array.isArray(this.MODEL_BASE_URLS) ? this.MODEL_BASE_URLS : [];
-    const candidatos = basesModelos.map(base => encodeURI(`${base}/${categoria}/${nomeArquivoModelo}`));
-
-    // Tenta um HEAD para descobrir a primeira que responde 200 OK
-    let urlModelo = null;
-    for (const url of candidatos) {
-      try {
-        const resposta = await fetch(url, { method: 'HEAD', cache: 'no-store', mode: 'cors' });
-        if (resposta.ok) { urlModelo = url; break; }
-      } catch (_) { /* Tenta a próxima */ }
-    }
-    // Fallback: usa a primeira se HEAD não foi possível por CORS
-    if (!urlModelo && candidatos.length) urlModelo = candidatos[0];
+    const bases = Array.isArray(this.MODEL_BASE_URLS) ? this.MODEL_BASE_URLS : [];
+    const candidatos = bases.map((b) => encodeURI(`${b}/${categoria}/${nomeArquivoModelo}`));
+    const urlModelo = candidatos[0] || null;
 
     if (!urlModelo) {
-      this.modelModal.innerHTML = `
-        <div style="width:330px;height:300px;background:#1a1a1a;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#ff6b6b;text-align:center;padding:20px;box-sizing:border-box;">
-          <div>
-            <div style="font-size:24px;margin-bottom:10px;">⚠️</div>
-            <div style="font-size:14px;">Modelo 3D não encontrado</div>
-            <div style="font-size:12px;color:#ccc;margin-top:5px;">${nomeItem}</div>
-          </div>
-        </div>`;
+      this.modelModal.innerHTML = `<div style="width:330px;height:300px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#ff6b6b;">Modelo 3D não encontrado</div>`;
       return;
     }
 
-    // ===== Parâmetros do enquadramento =====
-    const DESLOCAMENTO_Y_PREVIEW = 0.35; // metros para subir o objeto no quadro
-    const ALTURA_CAMERA = 1.6;
-    const DISTANCIA_Z_MODELO = -2;
-
-    // Cena A-Frame com nós de rotação e elevação
     this.escalaAtual = 1;
     this.modelModal.innerHTML = `
-      <a-scene
-        embedded
-        vr-mode-ui="enabled:false"
-        device-orientation-permission-ui="enabled:false"
-        style="width:100%;height:300px;"
-        id="previewScene"
-        background="color:#1a1a1a">
-
+      <a-scene embedded vr-mode-ui="enabled:false" style="width:100%;height:300px;" id="previewScene" background="color:#1a1a1a">
         <a-light type="ambient" intensity="1.2"></a-light>
         <a-light type="directional" intensity="0.8" position="2 4 1"></a-light>
-
-        <!-- Grupo em Z (distância) -->
-        <a-entity id="previewRig" position="0 0 ${DISTANCIA_Z_MODELO}">
-          <!-- Elevador (ajusta Y sem interferir na rotação) -->
-          <a-entity id="previewLift" position="0 ${DESLOCAMENTO_Y_PREVIEW} 0">
-            <!-- Yaw manual (eixo Y) -->
+        <a-entity id="previewRig" position="0 0 -2">
+          <a-entity id="previewLift" position="0 0.35 0">
             <a-entity id="previewYaw" rotation="0 0 0">
-              <!-- Pitch manual (eixo X) -->
               <a-entity id="previewPitch" rotation="0 0 0">
-                <!-- Modelo com rotação automática contínua no próprio eixo -->
                 <a-entity id="previewModel"
-                  gltf-model="url(${urlModelo}); dracoDecoderPath: https://www.gstatic.com/draco/v1/decoders/"
-                  scale="${this.escalaAtual} ${this.escalaAtual} ${this.escalaAtual}"
+                  gltf-model="url(${urlModelo})"
+                  scale="1 1 1"
                   animation="property: rotation; to: 0 360 0; loop: true; dur: 8000; easing: linear">
                 </a-entity>
               </a-entity>
             </a-entity>
           </a-entity>
         </a-entity>
-
-        <a-camera position="0 ${ALTURA_CAMERA} 0" look-controls="enabled:false" wasd-controls="enabled:false"></a-camera>
+        <a-camera position="0 1.6 0" look-controls="enabled:false" wasd-controls="enabled:false"></a-camera>
       </a-scene>
-
-      <div style="position:absolute;top:5px;right:5px;color:#00f0c0;font-size:12px;background:rgba(0,0,0,.7);padding:2px 6px;border-radius:3px;">
-        Preview 3D
-      </div>
-
-      <style>
-        /* Permitir interação no canvas e mostrar feedback visual do arraste */
-        #previewScene .a-canvas { pointer-events: auto !important; cursor: grab; }
-        #previewScene.is-dragging .a-canvas { cursor: grabbing; }
-        .a-enter-vr,.a-enter-ar,.a-orientation-modal,[data-aframe-default-ui]{display:none!important}
-      </style>
     `;
 
-    // Ativa controles de arraste (giro, elevação e zoom)
     this.configurarControlesPreview();
   }
 
-  // ==============================
-  // CONTROLES DE ARRASTE E SCROLL (mouse e toque)
-  //  - Botão esquerdo: girar (yaw e pitch)
-  //  - Botão direito: subir/baixar (posição Y)
-  //  - Scroll: zoom (escala do modelo)
-// ==============================
   configurarControlesPreview() {
-    const elementoCena = this.modelModal.querySelector('#previewScene');
-    const elementoRotacaoYaw = this.modelModal.querySelector('#previewYaw');
-    const elementoRotacaoPitch = this.modelModal.querySelector('#previewPitch');
-    const elementoElevacao = this.modelModal.querySelector('#previewLift');
-    const elementoModelo = this.modelModal.querySelector('#previewModel');
+    const cena = this.modelModal.querySelector("#previewScene");
+    const yaw = this.modelModal.querySelector("#previewYaw");
+    const pitch = this.modelModal.querySelector("#previewPitch");
+    const lift = this.modelModal.querySelector("#previewLift");
+    const model = this.modelModal.querySelector("#previewModel");
+    if (!cena || !yaw || !pitch || !lift || !model) return;
 
-    if (!elementoCena || !elementoRotacaoYaw || !elementoRotacaoPitch || !elementoElevacao || !elementoModelo) return;
+    let arrastando = false, modo = null;
+    let ultimoX = 0, ultimoY = 0;
+    let angYaw = 0, angPitch = 0;
+    let posY = lift.object3D.position.y || 0;
+    let escala = this.escalaAtual || 1;
 
-    // Sensibilidades e limites (rotação)
-    const SENSIBILIDADE_YAW_GRAUS_POR_PIXEL = 0.4;     // arraste horizontal → graus de yaw
-    const SENSIBILIDADE_PITCH_GRAUS_POR_PIXEL = 0.4;   // arraste vertical   → graus de pitch
-    const LIMITE_PITCH_MIN = -120;
-    const LIMITE_PITCH_MAX = 120;
+    const down = (e) => {
+      if (e.touches || e.button === 0) modo = "girar";
+      else if (e.button === 2) modo = "elevar";
+      else return;
 
-    // Subir/Descer com botão direito
-    const SENSIBILIDADE_ELEVACAO_METROS_POR_PIXEL = 0.004; // 4 mm por pixel
-    const LIMITE_ELEVACAO_MIN = -0.30;
-    const LIMITE_ELEVACAO_MAX = 1.80;
-
-    // Zoom por scroll (escala do modelo)
-    const ESCALA_MIN = 0.2;
-    const ESCALA_MAX = 3.0;
-    const FATOR_ZOOM_POR_PASSO = 1.08; // cada "tic" de scroll aplica ~8%
-
-    // Estado do arraste
-    let arrastando = false;
-    let modoArraste = null; // 'girar' | 'elevar'
-    let ultimoX = 0;
-    let ultimoY = 0;
-    let anguloYaw = 0;
-    let anguloPitch = 0;
-    let posicaoYElevacao = elementoElevacao.object3D.position.y || 0;
-    let escalaAtual = this.escalaAtual || 1;
-
-    const opcoesNaoPassivas = { passive: false };
-    const obterPonto = (evento) =>
-      (evento.touches && evento.touches[0]) ? evento.touches[0] : evento;
-
-    const aoPressionar = (evento) => {
-      // Desktop: botão 0 = esquerdo (girar), botão 2 = direito (elevar)
-      // Touch: sempre girar
-      if (evento.touches) {
-        modoArraste = 'girar';
-      } else if (evento.button === 0) {
-        modoArraste = 'girar';
-      } else if (evento.button === 2) {
-        modoArraste = 'elevar';
-      } else {
-        return;
-      }
-
-      const p = obterPonto(evento);
       arrastando = true;
-      ultimoX = p.clientX;
-      ultimoY = p.clientY;
-      elementoCena.classList.add('is-dragging');
-      evento.preventDefault();
+      ultimoX = e.clientX || e.touches[0].clientX;
+      ultimoY = e.clientY || e.touches[0].clientY;
+      cena.classList.add("is-dragging");
+      e.preventDefault();
     };
-
-    const aoMover = (evento) => {
+    const move = (e) => {
       if (!arrastando) return;
+      const x = e.clientX || e.touches[0].clientX;
+      const y = e.clientY || e.touches[0].clientY;
+      const dx = x - ultimoX;
+      const dy = y - ultimoY;
+      ultimoX = x; ultimoY = y;
 
-      const p = obterPonto(evento);
-      const deltaX = p.clientX - ultimoX;
-      const deltaY = p.clientY - ultimoY;
-      ultimoX = p.clientX;
-      ultimoY = p.clientY;
-
-      if (modoArraste === 'girar') {
-        anguloYaw = (anguloYaw + deltaX * SENSIBILIDADE_YAW_GRAUS_POR_PIXEL) % 360;
-        anguloPitch = Math.max(
-          LIMITE_PITCH_MIN,
-          Math.min(LIMITE_PITCH_MAX, anguloPitch - deltaY * SENSIBILIDADE_PITCH_GRAUS_POR_PIXEL)
-        );
-        elementoRotacaoYaw.setAttribute('rotation', `0 ${anguloYaw} 0`);
-        elementoRotacaoPitch.setAttribute('rotation', `${anguloPitch} 0 0`);
-      } else if (modoArraste === 'elevar') {
-        posicaoYElevacao = Math.max(
-          LIMITE_ELEVACAO_MIN,
-          Math.min(LIMITE_ELEVACAO_MAX, posicaoYElevacao - deltaY * SENSIBILIDADE_ELEVACAO_METROS_POR_PIXEL)
-        );
-        elementoElevacao.setAttribute('position', `0 ${posicaoYElevacao} 0`);
+      if (modo === "girar") {
+        angYaw += dx * 0.4;
+        angPitch = Math.max(-120, Math.min(120, angPitch - dy * 0.4));
+        yaw.setAttribute("rotation", `0 ${angYaw} 0`);
+        pitch.setAttribute("rotation", `${angPitch} 0 0`);
+      } else if (modo === "elevar") {
+        posY = Math.max(-0.3, Math.min(1.8, posY - dy * 0.004));
+        lift.setAttribute("position", `0 ${posY} 0`);
       }
-
-      evento.preventDefault();
+    };
+    const up = () => { arrastando = false; modo = null; cena.classList.remove("is-dragging"); };
+    const scroll = (e) => {
+      const f = e.deltaY < 0 ? 1.08 : 1 / 1.08;
+      escala = Math.max(0.2, Math.min(3, escala * f));
+      this.escalaAtual = escala;
+      model.setAttribute("scale", `${escala} ${escala} ${escala}`);
+      e.preventDefault();
     };
 
-    const aoSoltar = () => {
-      arrastando = false;
-      modoArraste = null;
-      elementoCena.classList.remove('is-dragging');
-    };
+    cena.addEventListener("mousedown", down);
+    cena.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+    cena.addEventListener("wheel", scroll, { passive: false });
+    cena.addEventListener("touchstart", down, { passive: false });
+    cena.addEventListener("touchmove", move, { passive: false });
+    window.addEventListener("touchend", up);
 
-    const aoMenuDeContexto = (evento) => {
-      // Evita abrir o menu do botão direito enquanto usamos para elevar
-      evento.preventDefault();
-    };
-
-    // Zoom por scroll (roda do mouse)
-    const aoRolar = (evento) => {
-      // deltaY < 0 → rolar para frente → aproximar (aumentar escala)
-      // deltaY > 0 → rolar para trás   → afastar  (diminuir escala)
-      const fator = (evento.deltaY < 0) ? FATOR_ZOOM_POR_PASSO : (1 / FATOR_ZOOM_POR_PASSO);
-      escalaAtual = Math.max(ESCALA_MIN, Math.min(ESCALA_MAX, escalaAtual * fator));
-      this.escalaAtual = escalaAtual; // mantém no estado da classe
-
-      elementoModelo.setAttribute('scale', `${escalaAtual} ${escalaAtual} ${escalaAtual}`);
-      evento.preventDefault();
-    };
-
-    // Listeners de mouse
-    elementoCena.addEventListener('mousedown', aoPressionar);
-    elementoCena.addEventListener('mousemove', aoMover);
-    window.addEventListener('mouseup', aoSoltar);
-    elementoCena.addEventListener('contextmenu', aoMenuDeContexto);
-    elementoCena.addEventListener('wheel', aoRolar, opcoesNaoPassivas);
-
-    // Listeners de toque (somente giro)
-    elementoCena.addEventListener('touchstart', aoPressionar, opcoesNaoPassivas);
-    elementoCena.addEventListener('touchmove', aoMover, opcoesNaoPassivas);
-    window.addEventListener('touchend', aoSoltar);
-
-    // Guarda função de limpeza para quando o preview fechar/trocar
     this._limpezaArrastePreview = () => {
-      elementoCena.removeEventListener('mousedown', aoPressionar);
-      elementoCena.removeEventListener('mousemove', aoMover);
-      window.removeEventListener('mouseup', aoSoltar);
-      elementoCena.removeEventListener('contextmenu', aoMenuDeContexto);
-      elementoCena.removeEventListener('wheel', aoRolar, opcoesNaoPassivas);
-
-      elementoCena.removeEventListener('touchstart', aoPressionar, opcoesNaoPassivas);
-      elementoCena.removeEventListener('touchmove', aoMover, opcoesNaoPassivas);
-      window.removeEventListener('touchend', aoSoltar);
+      cena.removeEventListener("mousedown", down);
+      cena.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+      cena.removeEventListener("wheel", scroll);
+      cena.removeEventListener("touchstart", down);
+      cena.removeEventListener("touchmove", move);
+      window.removeEventListener("touchend", up);
     };
   }
 
   // ==============================
-  // CONFIGURAÇÃO DE ITENS (Modal)
+  // MODAL DE CONFIGURAÇÃO
   // ==============================
   async abrirModalConfiguracao(categoria, nomeItem) {
-    const nomeFormatado = this.nomeParaSlug(nomeItem);
-    this.itemConfiguracao = `${categoria}/${nomeFormatado}`;
-    const arquivoJson = `${nomeFormatado}.json`;
+    const slug = this.nomeParaSlug(nomeItem);
+    this.itemConfiguracao = `${categoria}/${slug}`;
+    const arquivoJson = `${slug}.json`;
 
-    this.modalConfig.querySelector('.modal-titulo').textContent = `Configurar ${nomeItem}`;
+    this.modalConfig.querySelector(".modal-titulo").textContent = `Configurar ${nomeItem}`;
 
-    let dadosProduto = { preco: 0, descricao: '' };
+    let dadosProduto = { preco: 0, descricao: "" };
     const urlJson = `https://ar-cardapio-models.s3.amazonaws.com/informacao/${this.nomeRestaurante}/${arquivoJson}?v=${Date.now()}`;
 
     try {
-      const resposta = await fetch(urlJson);
-      if (resposta.ok) {
-        dadosProduto = await resposta.json();
-      } else if (resposta.status !== 404) {
-        console.warn('Erro ao buscar configuração:', resposta.status, resposta.statusText);
-      }
-    } catch (erro) {
-      console.error('Falha ao carregar configuração:', erro);
+      const resp = await fetch(urlJson);
+      if (resp.ok) dadosProduto = await resp.json();
+    } catch (e) {
+      console.error("Falha ao carregar configuração:", e);
     }
 
-    const campoValor = this.modalConfig.querySelector('#inputValor');
-    const campoDescricao = this.modalConfig.querySelector('#inputDescricao');
+    this.modalConfig.querySelector("#inputValor").value =
+      typeof dadosProduto.preco === "number"
+        ? dadosProduto.preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })
+        : "0,00";
 
-    campoValor.value = typeof dadosProduto.preco === 'number'
-      ? dadosProduto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-      : '0,00';
-
-    campoDescricao.value = dadosProduto.descricao || '';
-
+    this.modalConfig.querySelector("#inputDescricao").value = dadosProduto.descricao || "";
     this.dadosRestaurante[this.itemConfiguracao] = dadosProduto;
 
-    this.modalConfig.style.display = 'flex';
+    this.modalConfig.style.display = "flex";
   }
 
+  // ==============================
+  // SALVAR CONFIGURAÇÃO
+  // ==============================
   async salvarConfiguracao(confirmado = false) {
     if (!this.itemConfiguracao || !confirmado) return false;
 
     try {
-      const campoValor = this.modalConfig.querySelector('#inputValor');
-      const campoDescricao = this.modalConfig.querySelector('#inputDescricao');
-      if (!campoValor || !campoDescricao) throw new Error('Campos de configuração não encontrados.');
+      const campoValor = this.modalConfig.querySelector("#inputValor");
+      const campoDescricao = this.modalConfig.querySelector("#inputDescricao");
+      if (!campoValor || !campoDescricao) throw new Error("Campos de configuração não encontrados.");
 
-      const [categoria, nomeItemSlug] = this.itemConfiguracao.split('/');
-      const nomeItemOriginal = objetos3D[categoria].find(item => this.nomeParaSlug(item) === nomeItemSlug);
+      const [categoria, slug] = this.itemConfiguracao.split("/");
+      const original = objetos3D[categoria].find((i) => this.nomeParaSlug(i) === slug);
 
-      const novoPreco = parseFloat(campoValor.value.replace('.', '').replace(',', '.'));
-      const novaDescricao = campoDescricao.value;
+      const preco = parseFloat(campoValor.value.replace(/\./g, "").replace(",", "."));
+      if (isNaN(preco)) throw new Error("Valor inválido. Use formato: 0,00");
 
-      const dadosParaSalvar = {
-        preco: novoPreco,
-        descricao: novaDescricao,
-        nome: nomeItemOriginal // Adiciona o nome original para facilitar a identificação
-      };
+      const dadosParaSalvar = { preco, descricao: campoDescricao.value, nome: original };
 
-      const urlUpload = `https://ar-cardapio-models.s3.amazonaws.com/informacao/${this.nomeRestaurante}/${nomeItemSlug}.json`;
+      // --- INÍCIO: EXTRAÇÃO ROBUSTA DE userId (substituir bloco existente) ---
+      const token = localStorage.getItem("ar.token");
+      console.log("DEBUG: token (ar.token):", token);
 
-      const response = await fetch(urlUpload, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        },
-        body: JSON.stringify(dadosParaSalvar)
-      });
-
-      if (!response.ok) {
-        const erroTexto = await response.text();
-        throw new Error(`Erro ao salvar no S3: ${response.status} - ${erroTexto}`);
+      // util: tenta extrair userId de objeto/string
+      function extractUserIdFromObj(obj) {
+        if (!obj) return null;
+        if (typeof obj === "string") {
+          try { obj = JSON.parse(obj); } catch (e) { /* string simples */ }
+        }
+        if (!obj) return null;
+        return obj.userId || obj.user_id || obj.id || (obj.user && (obj.user.id || obj.user.userId)) || null;
       }
 
-      console.log('Configuração salva com sucesso no S3:', dadosParaSalvar);
-      alert('Configurações salvas com sucesso!');
-      return true;
+      // 1) tenta extrair do token JWT (payload)
+      let userId = null;
+      if (token) {
+        try {
+          const parts = token.split(".");
+          if (parts.length >= 2) {
+            const base64Url = parts[1];
+            const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+            const jsonPayload = decodeURIComponent(atob(base64).split("").map(function(c) {
+              return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(""));
+            const payload = JSON.parse(jsonPayload);
+            console.log("DEBUG: token payload:", payload);
+            userId = payload.sub || extractUserIdFromObj(payload);
+          }
+        } catch (e) {
+          console.warn("DEBUG: falha ao decodificar token JWT:", e);
+        }
+      }
 
-    } catch (error) {
-      console.error('Erro ao salvar configuração:', error);
-      alert('Erro ao salvar as configurações: ' + error.message);
+      // 2) se não encontrou, tenta várias chaves no localStorage
+      if (!userId) {
+        const candidateKeys = ["ar.userId","ar.user.id","ar.user","userId","user_id","ar.userData","ar.user_data","userEmail","email"];
+        for (const k of candidateKeys) {
+          const v = localStorage.getItem(k);
+          if (!v) continue;
+          const extracted = extractUserIdFromObj(v) || (typeof v === "string" ? v : null);
+          if (extracted) {
+            userId = extracted;
+            console.log("DEBUG: userId encontrado em localStorage key:", k, "=>", userId);
+            break;
+          }
+        }
+      }
+
+      // 3) final sanity: normalize (ex: email -> formato do S3 se precisar)
+      if (userId && typeof userId === "string") {
+        // se estiver em formato email, converta para o formato que você usa no S3 se necessário:
+        // exemplo: ranie.black29@gmail.com -> ranie-black29-gmail-com
+        if (userId.includes("@")) {
+          userId = userId.replace(/[@.]/g, "-");
+          console.log("DEBUG: userId normalizado (email => s3 key):", userId);
+        }
+      }
+
+      console.log("DEBUG: userId final:", userId);
+
+      if (!userId) {
+        // mensagem de erro clara para o dev — a UI já captura e mostra
+        throw new Error("ID do usuário não encontrado. Faça login novamente.");
+      }
+      // --- FIM: EXTRAÇÃO ROBUSTA DE userId ---
+
+
+      const contentType = "application/json";
+
+      // Modifique a construção da URL para incluir todos os parâmetros esperados pela Lambda
+      const presignEndpoint = `https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/presign?fileName=${encodeURIComponent(slug + ".json")}&contentType=${encodeURIComponent(contentType)}&userId=${encodeURIComponent(userId)}`;
+      console.log("Solicitando presign:", presignEndpoint);
+
+
+      const respPresign = await fetch(presignEndpoint, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+
+      if (!respPresign.ok) {
+        const erroTxt = await respPresign.text();
+        throw new Error(`Erro presign: ${respPresign.status} - ${erroTxt}`);
+      }
+
+      const presignData = await respPresign.json();
+      console.log("Presign retornado:", presignData);
+
+      if (!presignData.presignedUrl) throw new Error("URL pré-assinada não retornada");
+
+      const uploadResp = await fetch(presignData.presignedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dadosParaSalvar),
+      });
+
+      console.log("Upload status:", uploadResp.status);
+      if (!uploadResp.ok) throw new Error(`Erro upload: ${uploadResp.status}`);
+
+      showToast("Configuração salva com sucesso!", "success", 3500);
+      this.modalConfig.style.display = "none";
+      return true;
+    } catch (e) {
+      console.error("Erro salvar configuração:", e);
+      showToast("Erro ao salvar: " + e.message, "error", 4000);
       return false;
     }
   }
 }
-
-

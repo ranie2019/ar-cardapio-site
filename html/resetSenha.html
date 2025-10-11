@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redefinir Senha</title>
+
+  <!-- Importa o arquivo de estilos CSS -->
+  <!-- Certifique-se de que o caminho para o arquivo CSS está correto -->
+  <link rel="stylesheet" href="../css/resetSenha.css">
+</head>
+
+<body>
+  <div class="container">
+    <h2>Redefinir Senha</h2>
+
+    <!-- Campo para a nova senha -->
+    <label for="newPassword">Nova senha:</label>
+    <input type="password" id="newPassword" placeholder="Digite a nova senha" />
+
+    <!-- Campo para confirmar a nova senha -->
+    <label for="confirmPassword">Confirme a senha:</label>
+    <input type="password" id="confirmPassword" placeholder="Confirme a nova senha" />
+
+    <!-- Container para a funcionalidade de mostrar/ocultar senha -->
+    <div class="show-password-container">
+      <input type="checkbox" id="showPassword">
+      <label for="showPassword" class="show-password-label">Mostrar Senha</label>
+    </div>
+
+    <!-- Botão para acionar a redefinição -->
+    <button id="resetBtn">Redefinir Senha</button>
+
+    <!-- Div para exibir mensagens de sucesso ou erro para o usuário -->
+    <div id="message"></div>
+  </div>
+
+  <!-- Importa o arquivo JavaScript no final do body para melhor performance -->
+  <!-- Certifique-se de que o caminho para o arquivo JS está correto -->
+  <script src="../java/resetSenha.js"></script>
+</body>
+</html>

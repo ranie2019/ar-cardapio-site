@@ -1,11 +1,16 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Home - Sistema</title>
+
+  <!-- Estilos principais -->
   <link rel="stylesheet" href="../css/home.css">
+
+  <!-- Dependência A-Frame (se usa) -->
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+
   <style>
     /* Estilos específicos para o dropdown do perfil */
     .perfil-menu { position: relative; }
@@ -22,14 +27,16 @@
     }
     .dropdown-perfil.hidden { display: none; }
     .dropdown-perfil.show { display: block; }
-    /* reaproveita .btn-categoria; ajusta largura pra bater com os da esquerda */
     #dropdownPerfil .btn-categoria { width: 160px; margin: 8px 0; }
+
+    /* Pequeno ajuste visual para o nome */
+    .texto-botao .nome-empresa { display:block; font-size:12px; color:#ccc; margin-top:4px; }
+    .texto-botao { display:inline-block; text-align:left; }
   </style>
 </head>
-
 <body>
   <!-- VÍDEO DE FUNDO -->
-  <video autoplay muted loop id="bg-video">
+  <video autoplay muted loop id="bg-video" style="position:fixed;right:0;bottom:0;min-width:100%;min-height:100%;z-index:-1;">
     <source src="../videos/home.mp4" type="video/mp4">
     Seu navegador não suporta vídeo em HTML5.
   </video>
@@ -37,35 +44,28 @@
   <!-- CABEÇALHO -->
   <header class="header">
     <div class="menu-lateral">
-      <!-- Botão Cardápio com vídeo -->
       <button class="botao-com-video" id="cardapio-btn">
-        <video autoplay muted loop class="video-hover">
-          <source src="../videos/botoes.mp4" type="video/mp4">
-        </video>
+        <video autoplay muted loop class="video-hover"><source src="../videos/botoes.mp4" type="video/mp4"></video>
         <span class="texto-botao">Cardápio ▼</span>
       </button>
 
-      <!-- Botão QR Code com vídeo -->
       <button class="botao-com-video" id="btnGerarQR">
-        <video autoplay muted loop class="video-hover">
-          <source src="../videos/botoes.mp4" type="video/mp4">
-        </video>
+        <video autoplay muted loop class="video-hover"><source src="../videos/botoes.mp4" type="video/mp4"></video>
         <span class="texto-botao">QR Code</span>
       </button>
     </div>
 
-    <!-- Lado direito: Perfil vira dropdown; sem navegação de página -->
     <div class="menu-direita">
       <div class="perfil-menu">
-        <button class="botao-com-video" id="profile-btn">
-          <video autoplay muted loop class="video-hover">
-            <source src="../videos/botoes.mp4" type="video/mp4">
-          </video>
-          <span class="texto-botao" id="perfil-texto">Perfil ▼</span>
+        <button class="botao-com-video" id="profile-btn" aria-haspopup="true" aria-expanded="false">
+          <video autoplay muted loop class="video-hover"><source src="../videos/botoes.mp4" type="video/mp4"></video>
+          <span class="texto-botao" id="perfil-texto">
+            Perfil <span class="perfil-seta">▼</span>
+            <small class="nome-empresa" id="nome-empresa"></small>
+          </span>
         </button>
 
-        <!-- Dropdown do Perfil -->
-        <div id="dropdownPerfil" class="dropdown-perfil hidden">
+        <div id="dropdownPerfil" class="dropdown-perfil hidden" aria-hidden="true">
           <button id="perfil-dados" class="btn-categoria">Conta</button>
           <button id="perfil-sair" class="btn-categoria">Sair</button>
         </div>
@@ -96,7 +96,6 @@
     <div class="conteudo-modal">
       <span class="fechar-modal" id="fecharModal">&times;</span>
       <h3>QR Code</h3>
-
       <div class="controles-qrcode">
         <label for="qtdQr">Quantidade:</label>
         <input type="number" id="qtdQr" value="1" min="1" />
@@ -104,7 +103,6 @@
         <button id="aumentarQr">+</button>
         <button id="imprimirQr">Imprimir</button>
       </div>
-
       <div id="qrcodeContainer"></div>
     </div>
   </div>
@@ -112,75 +110,106 @@
   <!-- BIBLIOTECAS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <!-- Scripts principais -->
-  <!-- Scripts do sistema divididos em módulos -->
+  <!-- SCRIPTS DO PROJETO (carregam em ordem) -->
   <script src="../java/cardapio.js"></script>
   <script src="../java/home1.js"></script>
   <script src="../java/home2.js"></script>
   <script src="../java/home3.js"></script>
 
-  <!-- CONTROLE DE MODAIS, DROPDOWNS E BROADCAST -->
+  <!-- CONTROLE DE MODAIS, DROPDOWNS E PERFIL (correções aplicadas) -->
   <script>
-    document.addEventListener("DOMContentLoaded", ( ) => {
-      // -------- Modal de configuração (se existir no DOM) ----------
+    document.addEventListener("DOMContentLoaded", () => {
+      // Segurança: elementos
       const modalConfig = document.getElementById("modalConfiguracao");
       const btnFechar = modalConfig?.querySelector(".fechar-modal-config");
-
       if (btnFechar) {
         btnFechar.addEventListener("click", () => modalConfig.classList.remove("active"));
         const btnSalvar = modalConfig.querySelector("#btnSalvarModal");
-        btnSalvar.addEventListener("click", () => modalConfig.classList.remove("active"));
+        if (btnSalvar) btnSalvar.addEventListener("click", () => modalConfig.classList.remove("active"));
       }
 
-      // -------- Modal de QR: botão fechar ----------
+      // Modal QR
       const modalQr = document.getElementById("modalQrCode");
-      const btnFecharQr = modalQr.querySelector("#fecharModal");
-      btnFecharQr.addEventListener("click", () => modalQr.classList.add("hidden"));
+      const btnFecharQr = modalQr?.querySelector("#fecharModal");
+      if (btnFecharQr) btnFecharQr.addEventListener("click", () => modalQr.classList.add("hidden"));
 
-      // -------- Broadcast para botões de item ----------
+      // BroadcastChannel (corrigido)
       if ("BroadcastChannel" in window) {
-        window.canalStatus = new BroadcastChannel("cardapio_channel");
+        const canalStatus = new BroadcastChannel("cardapio_channel");
+        window.canalStatus = canalStatus;
         canalStatus.onmessage = event => {
-          const { nome, visivel } = event.data;
+          const { nome, visivel } = event.data || {};
+          if (!nome) return;
           const btn = document.querySelector(`button[data-nome="${nome}"]`);
           if (btn) btn.style.display = visivel ? 'inline-block' : 'none';
         };
       }
 
-      // ============================================================
-      // PERFIL COMO DROPDOWN (sem navegação de página)
-      // ============================================================
+      // Instancia a classe do home1.js, se disponível, e expõe a instância
+      if (window.SistemaCardapioBase && !window.sistemaCardapio) {
+        try {
+          window.sistemaCardapio = new window.SistemaCardapioBase();
+        } catch (e) {
+          console.warn('Falha ao instanciar SistemaCardapioBase:', e);
+        }
+      }
+
+      // Garante que o nome seja carregado via instância (método da classe), fallback para função global
+      if (window.sistemaCardapio && typeof window.sistemaCardapio.carregarNomeEmpresa === 'function') {
+        try { window.sistemaCardapio.carregarNomeEmpresa(); } catch (e) { console.warn('carregarNomeEmpresa falhou:', e); }
+      } else if (typeof carregarNomeEmpresa === 'function') {
+        try { carregarNomeEmpresa(); } catch (e) { console.warn('carregarNomeEmpresa global falhou:', e); }
+      }
+
+      // PERFIL COMO DROPDOWN (defensivo)
       const profileButtonOriginal = document.getElementById("profile-btn");
       const dropdownPerfil = document.getElementById("dropdownPerfil");
       const perfilTexto = document.getElementById("perfil-texto");
+      let profileButton = profileButtonOriginal;
 
-      // Remove qualquer listener antigo (ex.: de home.js) clonando o botão
-      const profileButton = profileButtonOriginal.cloneNode(true);
-      profileButtonOriginal.parentNode.replaceChild(profileButton, profileButtonOriginal);
-
-      // Abre/fecha o dropdown do Perfil
-      profileButton.addEventListener("click", (e) => {
-        e.stopPropagation();
-        dropdownPerfil.classList.toggle("show");
-        dropdownPerfil.classList.toggle("hidden");
-        // alterna o ▼/▲ no texto
-        if (perfilTexto) {
-          perfilTexto.textContent = dropdownPerfil.classList.contains("show") ? "Perfil ▲" : "Perfil ▼";
+      if (profileButtonOriginal) {
+        try {
+          profileButton = profileButtonOriginal.cloneNode(true);
+          profileButtonOriginal.parentNode.replaceChild(profileButton, profileButtonOriginal);
+        } catch (e) {
+          console.warn('Erro ao clonar profile-btn:', e);
+          profileButton = profileButtonOriginal; // fallback
         }
-      });
+      } else {
+        console.warn('profile-btn não encontrado no DOM.');
+      }
 
-      // Ações do dropdown do Perfil
+      // Função auxiliar para setar seta apenas (não sobrescrever nome)
+      function setarSinalAberto(aberto) {
+        if (!perfilTexto) return;
+        const seta = perfilTexto.querySelector(".perfil-seta");
+        if (seta) seta.textContent = aberto ? "▲" : "▼";
+      }
+
+      // Toggle do dropdown
+      if (profileButton && dropdownPerfil) {
+        profileButton.addEventListener("click", (e) => {
+          e.stopPropagation();
+          dropdownPerfil.classList.toggle("show");
+          dropdownPerfil.classList.toggle("hidden");
+          const aberto = dropdownPerfil.classList.contains("show");
+          dropdownPerfil.setAttribute('aria-hidden', !aberto);
+          if (perfilTexto) setarSinalAberto(aberto);
+        });
+      }
+
+      // Ações do dropdown (Conta / Sair)
       const btnPerfilDados = document.getElementById("perfil-dados");
       const btnPerfilSair  = document.getElementById("perfil-sair");
 
       if (btnPerfilDados) {
         btnPerfilDados.addEventListener("click", (e) => {
           e.stopPropagation();
-          // aqui você pode abrir um modal de dados futuramente
+          // futuro modal de dados
           alert("Em breve: Dados da Conta");
           dropdownPerfil.classList.remove("show");
           dropdownPerfil.classList.add("hidden");
-          if (perfilTexto) perfilTexto.textContent = 'Perfil ▼';
+          if (perfilTexto) setarSinalAberto(false);
         });
       }
 
@@ -195,17 +224,17 @@
         });
       }
 
+      // Fechar dropdown ao clicar fora (único listener)
       document.addEventListener("click", (e) => {
-        // Perfil - fechar quando clicar fora
-        if (dropdownPerfil &&
-            !dropdownPerfil.contains(e.target) &&
-            e.target !== profileButton) {
+        if (!dropdownPerfil) return;
+        if (!dropdownPerfil.contains(e.target) && e.target !== profileButton) {
           dropdownPerfil.classList.remove("show");
           dropdownPerfil.classList.add("hidden");
-          if (perfilTexto) perfilTexto.textContent = 'Perfil ▼';
+          if (perfilTexto) setarSinalAberto(false);
         }
       });
-    });
+
+    }); // DOMContentLoaded
   </script>
 </body>
 </html>

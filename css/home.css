@@ -949,3 +949,57 @@ footer {
 #itensContainer .item-box[data-categoria="logo"] + .btn-configurar-produto {
   display: none !important;
 }
+
+/* Estado fechado/aberto do dropdown do Cardápio */
+.dropdown-cardapio.hidden { 
+  display: none !important; 
+}
+
+.dropdown-cardapio.show { 
+  display: flex !important;   /* coluna de botões */
+  flex-direction: column; 
+}
+
+/* --- Toast (notificação) --- */
+.toast{
+  position: fixed;
+  top: 120px;                /* ajusta a distância a partir do topo (abaixo do título) */
+  left: 50%;                 /* centraliza horizontalmente */
+  transform: translateX(-50%) translateY(-10px);
+  max-width: 500px;
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  text-align: center;
+  line-height: 1.4;
+  z-index: 9999;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.35);
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  backdrop-filter: blur(6px);
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.toast.success {
+  background: rgba(0, 240, 192, 0.12);
+  color: #00f0c0;
+  border: 1px solid rgba(0, 240, 192, 0.35);
+}
+
+.toast.error {
+  background: rgba(231, 76, 60, 0.12);
+  color: #ff6b6b;
+  border: 1px solid rgba(231, 76, 60, 0.35);
+}
+
+.texto-botao .nome-empresa{
+  display:block;
+  font-size:12px;
+  color:#ccc;
+  margin-top:4px;
+}

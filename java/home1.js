@@ -36,7 +36,7 @@ class SistemaCardapioBase {
     this.configurarEventosCardapio();
 
     // Chamar carregarNomeEmpresa apenas se a sessão for válida
-    if (localStorage.getItem("authToken")) {
+    if (localStorage.getItem("ar.token")) {
       this.carregarNomeEmpresa();
     }
 
@@ -70,32 +70,45 @@ class SistemaCardapioBase {
   // CARREGAR NOME DA EMPRESA
   // ==============================
   async carregarNomeEmpresa() {
-    const userEmail = localStorage.getItem("ar.email");
-    if (!userEmail) return;
+    const nomeEl = document.getElementById("nome-empresa");   // <- só preenche este
+    if (!nomeEl) return;
+
+    const token = localStorage.getItem("ar.token");
+    const email = localStorage.getItem("ar.email") || "";
+
+    // fallback rápido: parte antes do @
+    const fallback = email.split("@")[0] || "";
+
+    if (!token) {
+      nomeEl.textContent = fallback;
+      return;
+    }
 
     try {
-      const response = await fetch(`https://1u3m3f6x1m.execute-api.us-east-1.amazonaws.com/prod/verify`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("ar.token")}`
-        }
-      });
+      const resp = await fetch(
+        "https://1u3m3f6x1m.execute-api.us-east-1.amazonaws.com/prod/verify",
+        { method: "GET", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` } }
+      );
 
-      if (response.ok) {
-        const userData = await response.json();
-        if (userData && userData.user && userData.user.nome) {
-          const perfilTextoElement = document.getElementById("perfil-texto");
-          if (perfilTextoElement) {
-            const primeiroNome = userData.user.nome.split(" ")[0];
-            perfilTextoElement.innerHTML = `Perfil ▼<br><small style="font-size: 12px; color: #ccc;">${primeiroNome}</small>`;
-          }
-        }
-      } else {
-        console.error("Erro ao carregar dados do usuário:", response.status, response.statusText);
+      if (!resp.ok) {
+        nomeEl.textContent = fallback;
+        return;
       }
-    } catch (error) {
-      console.error("Erro na requisição para carregar dados do usuário:", error);
+
+      const data = await resp.json();
+
+      // aceita vários formatos de payload
+      let nomeCompleto =
+        (data?.user?.nome || data?.user?.name ||
+        data?.nome || data?.name ||
+        data?.data?.user?.nome || data?.data?.user?.name ||
+        data?.data?.nome || data?.data?.name || null);
+
+      const primeiro = (nomeCompleto || fallback || "").toString().split(" ")[0];
+      nomeEl.textContent = primeiro;
+    } catch (e) {
+      console.warn("Falha ao buscar nome do usuário:", e);
+      nomeEl.textContent = fallback;
     }
   }
 
@@ -300,4 +313,21 @@ class SistemaCardapioBase {
   }
 }
 
+// ==============================
+// Toast (mensagem automática)
+// ==============================
+function showToast(message, type = "success", ms = 3000) {
+  const t = document.createElement("div");
+  t.className = `toast ${type}`;
+  t.textContent = message;
+  document.body.appendChild(t);
 
+  // animação de entrada
+  requestAnimationFrame(() => t.classList.add("show"));
+
+  // some sozinho
+  setTimeout(() => {
+    t.classList.remove("show");
+    t.addEventListener("transitionend", () => t.remove(), { once: true });
+  }, ms);
+}
