@@ -3,3 +3,4 @@ asaasWebhook/
 loginCliente/
 stripe-layer/
 lambda-presigned/
+node_modules/
