@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "sharp": "^0.34.4"
+  }
+}

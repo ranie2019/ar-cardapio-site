@@ -35,49 +35,46 @@ class SistemaCardapioBase {
     this.inicializarModalPreview3D();
     this.configurarEventosCardapio();
 
-    // Chamar carregarNomeEmpresa apenas se a sessão for válida
+    // Preencher nome no cabeçalho somente se houver sessão
     if (localStorage.getItem("ar.token")) {
       this.carregarNomeEmpresa();
     }
 
-    // A verificação de sessão deve ser a última coisa no construtor para garantir que todos os elementos e eventos estejam configurados antes de um possível redirecionamento.
+    // A verificação de sessão por último, após DOM/listeners
     this.verificarSessao();
-
   }
 
   // ==============================
   // VERIFICAÇÃO DE SESSÃO
   // ==============================
-
   verificarSessao() {
     const authToken = localStorage.getItem("ar.token");
-    const userStatus = localStorage.getItem("ar.statusPlano"); // Usando a chave correta para o status do plano
+    const userStatus = localStorage.getItem("ar.statusPlano");
 
     if (!authToken) {
       window.location.href = "../html/login.html";
       return;
     }
 
-    // Se o token existe, mas o status do usuário não é 'ativo', redireciona para a página de plano
-    if (userStatus !== 'ativo') {
-      window.location.href = "../html/plano.html"; // Assumindo que 'plano.html' é a página para planos inativos
+    // Se o token existe mas o status não é 'ativo', envia para planos
+    if (userStatus !== "ativo") {
+      window.location.href = "../html/plano.html";
       return;
     }
-  } 
-  
+  }
 
   // ==============================
   // CARREGAR NOME DA EMPRESA
   // ==============================
   async carregarNomeEmpresa() {
-    const nomeEl = document.getElementById("nome-empresa");   // <- só preenche este
+    const nomeEl = document.getElementById("nome-empresa"); // <- só preenche este
     if (!nomeEl) return;
 
     const token = localStorage.getItem("ar.token");
     const email = localStorage.getItem("ar.email") || "";
 
     // fallback rápido: parte antes do @
-    const fallback = email.split("@")[0] || "";
+    const fallback = email.split("@")[0] || "Usuário";
 
     if (!token) {
       nomeEl.textContent = fallback;
@@ -87,7 +84,13 @@ class SistemaCardapioBase {
     try {
       const resp = await fetch(
         "https://1u3m3f6x1m.execute-api.us-east-1.amazonaws.com/prod/verify",
-        { method: "GET", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` } }
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          }
+        }
       );
 
       if (!resp.ok) {
@@ -98,13 +101,13 @@ class SistemaCardapioBase {
       const data = await resp.json();
 
       // aceita vários formatos de payload
-      let nomeCompleto =
+      const nomeCompleto =
         (data?.user?.nome || data?.user?.name ||
-        data?.nome || data?.name ||
-        data?.data?.user?.nome || data?.data?.user?.name ||
-        data?.data?.nome || data?.data?.name || null);
+         data?.nome || data?.name ||
+         data?.data?.user?.nome || data?.data?.user?.name ||
+         data?.data?.nome || data?.data?.name || null);
 
-      const primeiro = (nomeCompleto || fallback || "").toString().split(" ")[0];
+      const primeiro = (nomeCompleto || fallback || "").toString().trim().split(" ")[0] || fallback;
       nomeEl.textContent = primeiro;
     } catch (e) {
       console.warn("Falha ao buscar nome do usuário:", e);
@@ -175,7 +178,8 @@ class SistemaCardapioBase {
     document.body.appendChild(this.modalConfig);
 
     // Impede fechamento ao clicar dentro do conteúdo
-    this.modalConfig.querySelector(".modal-content-edicao")
+    this.modalConfig
+      .querySelector(".modal-content-edicao")
       .addEventListener("click", (event) => event.stopPropagation());
 
     // Formatação monetária
@@ -183,22 +187,26 @@ class SistemaCardapioBase {
     inputValor.addEventListener("input", (event) => this.formatarValorMonetario(event));
 
     // Salvar
-    this.modalConfig.querySelector("#btnSalvarModal").addEventListener("click", async (e) => {
-      e.preventDefault();
-      try {
-        const salvou = await this.salvarConfiguracao(true);
-        if (salvou) this.modalConfig.style.display = "none";
-      } catch (error) {
-        console.error("Erro ao salvar:", error);
-        alert("Erro ao salvar as configurações: " + error.message);
-      }
-    });
+    this.modalConfig
+      .querySelector("#btnSalvarModal")
+      .addEventListener("click", async (e) => {
+        e.preventDefault();
+        try {
+          const salvou = await this.salvarConfiguracao(true);
+          if (salvou) this.modalConfig.style.display = "none";
+        } catch (error) {
+          console.error("Erro ao salvar:", error);
+          alert("Erro ao salvar as configurações: " + error.message);
+        }
+      });
 
     // Fechar (X)
-    this.modalConfig.querySelector(".close-edicao").addEventListener("click", () => {
-      this.modalConfig.style.display = "none";
-      this.itemConfiguracao = null;
-    });
+    this.modalConfig
+      .querySelector(".close-edicao")
+      .addEventListener("click", () => {
+        this.modalConfig.style.display = "none";
+        this.itemConfiguracao = null;
+      });
   }
 
   inicializarModalPreview3D() {
@@ -226,7 +234,7 @@ class SistemaCardapioBase {
       cardapioButton.addEventListener("click", (e) => {
         e.stopPropagation();
         dropdownCardapio.classList.toggle("show");
-        
+
         if (!dropdownCardapio.classList.contains("show")) {
           container.style.display = "none";
           container.innerHTML = "";
@@ -274,7 +282,8 @@ class SistemaCardapioBase {
         // remove botão de configuração se for logo
         this.removerConfiguracaoSeLogo(categoria);
         container.style.display = "flex";
-        document.querySelectorAll(`.item-box[data-categoria="${categoria}"]`)
+        document
+          .querySelectorAll(`.item-box[data-categoria="${categoria}"]`)
           .forEach(item => item.classList.remove("desativado"));
       }
     });

@@ -56,7 +56,6 @@ class SistemaCardapio extends SistemaCardapioItens {
       alert('Falha ao salvar categorias: ' + erro.message);
     }
 
-
     // 2. Itens desativados
     const itensDesativados = {};
     Object.keys(objetos3D).forEach(categoria => {
@@ -118,7 +117,6 @@ class SistemaCardapio extends SistemaCardapioItens {
     botoesCategoria.forEach(botao => {
       const categoria = botao.getAttribute('data-categoria');
       if (categoria) {
-        // Não aplicar estado desativado por padrão - deixar todos visíveis
         botao.style.display = '';
         botao.classList.remove('hidden');
       }
@@ -185,12 +183,12 @@ class SistemaCardapio extends SistemaCardapioItens {
   }
 
   // ==============================
-  // 9. GERADOR DE QR CODE (Versão Melhorada)
+  // 9. GERADOR DE QR CODE (Usando /qr/resolve)
   // ==============================
   setupQrCode() {
     const modalQR = document.getElementById('modalQrCode');
     const containerQR = document.getElementById('qrcodeContainer');
-    const botaoFechar = modalQR.querySelector('.fechar-modal');
+    const botaoFechar = modalQR?.querySelector('.fechar-modal');
     const inputQuantidade = document.getElementById('qtdQr');
     const botaoMais = document.getElementById('aumentarQr');
     const botaoMenos = document.getElementById('diminuirQr');
@@ -202,7 +200,19 @@ class SistemaCardapio extends SistemaCardapioItens {
       return;
     }
 
+    // >>> URL do API Gateway que aciona a Lambda qrResolve
+    // Ajuste aqui se o seu endpoint for diferente
+    const API_QR_RESOLVE = "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/qr/resolve";
+
+    // Email do cliente (validado pela Lambda). É o mesmo salvo no login.
+    const email = (localStorage.getItem('ar.email') || '').trim().toLowerCase();
+
     const gerarQRCodes = (quantidade) => {
+      if (!email) {
+        alert('Não foi possível identificar o e-mail do cliente (ar.email). Faça login novamente para gerar os QR Codes.');
+        return;
+      }
+
       containerQR.innerHTML = '';
       const frag = document.createDocumentFragment();
 
@@ -225,9 +235,13 @@ class SistemaCardapio extends SistemaCardapioItens {
 
       containerQR.appendChild(frag);
 
+      // Cada QR aponta para /qr/resolve?u=<email>&i=mesaX
       for (let i = 1; i <= quantidade; i++) {
+        const mesaId = `mesa${i}`;
+        const url = `${API_QR_RESOLVE}?u=${encodeURIComponent(email)}&i=${encodeURIComponent(mesaId)}&t=${Date.now()}`;
+
         new QRCode(document.getElementById(`qr-${i}`), {
-          text: `https://site-arcardapio.s3.us-east-1.amazonaws.com/app/app.html?restaurante=${this.nomeRestaurante}&v=${Date.now()}`,
+          text: url,
           width: 200,
           height: 200,
           colorDark: "#000000",
@@ -262,7 +276,7 @@ class SistemaCardapio extends SistemaCardapioItens {
       inputQuantidade.dispatchEvent(new Event('input'));
     });
 
-    botaoFechar.addEventListener('click', () => {
+    botaoFechar?.addEventListener('click', () => {
       modalQR.classList.remove('ativo');
       containerQR.innerHTML = '';
     });
@@ -318,7 +332,6 @@ class SistemaCardapio extends SistemaCardapioItens {
 // Inicializa o sistema quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
   // PREVENÇÃO DO MENU DE CONTEXTO (botão direito) DENTRO DA ÁREA 3D
-  // Tenta selecionar a <a-scene> (A-Frame) ou alguns ids/classes comuns como fallback.
   const sceneElement = document.querySelector('a-scene')
     || document.getElementById('suaJanela3D')
     || document.getElementById('scene3D')
@@ -328,11 +341,6 @@ document.addEventListener('DOMContentLoaded', () => {
     sceneElement.addEventListener('contextmenu', (event) => {
       event.preventDefault();
     });
-    // console.log opcional para debug:
-    // console.log('Menu de contexto dentro da cena 3D desabilitado.');
-  } else {
-    // Se por algum motivo não houver cena detectada, não faz nada (não quebra o app)
-    // console.log('Nenhuma cena 3D detectada - contexto padrão do navegador permanece.');
   }
 
   new SistemaCardapio();

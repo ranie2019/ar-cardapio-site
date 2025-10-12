@@ -1,3 +1,5 @@
+<!-- HOME.HTML -->
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -10,29 +12,6 @@
 
   <!-- Dependência A-Frame (se usa) -->
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-
-  <style>
-    /* Estilos específicos para o dropdown do perfil */
-    .perfil-menu { position: relative; }
-    .dropdown-perfil {
-      position: absolute;
-      top: 100%;
-      right: 0;
-      background: rgba(0, 0, 0, 0.9 );
-      border-radius: 8px;
-      padding: 10px 0;
-      min-width: 160px;
-      z-index: 1000;
-      border: 2px solid #00ffff;
-    }
-    .dropdown-perfil.hidden { display: none; }
-    .dropdown-perfil.show { display: block; }
-    #dropdownPerfil .btn-categoria { width: 160px; margin: 8px 0; }
-
-    /* Pequeno ajuste visual para o nome */
-    .texto-botao .nome-empresa { display:block; font-size:12px; color:#ccc; margin-top:4px; }
-    .texto-botao { display:inline-block; text-align:left; }
-  </style>
 </head>
 <body>
   <!-- VÍDEO DE FUNDO -->
@@ -109,6 +88,7 @@
 
   <!-- BIBLIOTECAS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="../java/gerarQrLogo.js"></script>
 
   <!-- SCRIPTS DO PROJETO (carregam em ordem) -->
   <script src="../java/cardapio.js"></script>
