@@ -21,6 +21,24 @@
       display: none !important;
     }
   </style>
+
+  <!-- Define apenas os parâmetros de métricas (sem iniciar ainda) -->
+  <script>
+    (function(){
+      const url = new URL(location.href);
+      window.__AR_METRICA_INIT = {
+        endpoint: 'https://SEU-API-GATEWAY.execute-api.us-east-1.amazonaws.com/dev/collectMetrics', // troque pelo seu endpoint real
+        tenant: url.searchParams.get('tenant') || url.searchParams.get('u') || null,
+        table:  url.searchParams.get('table')  || url.searchParams.get('mesa') || null,
+        qrId:   url.searchParams.get('qr')     || url.searchParams.get('qrId') || null,
+        env: 'prod',
+        flushIntervalMs: 10000,
+        maxBufferSize: 30,
+        persistKey: 'arcardapio_metrics_v1',
+        sampleRate: 1.0
+      };
+    })();
+  </script>
 </head>
 
 <body>
@@ -120,6 +138,16 @@
   <!-- Scripts do projeto (com controle de cache) -->
   <script src="../app/models.js?v=1.2"></script>
   <script src="../app/app.js?v=1.2"></script>
+  <script src="../app/metricaapp.js?v=1.2"></script>
 
+  <!-- Inicializa métricas após o script estar disponível (sem alterar UI) -->
+  <script>
+    window.addEventListener('load', function () {
+      if (window.MetricaApp && window.__AR_METRICA_INIT) {
+        try { MetricaApp.init(window.__AR_METRICA_INIT); } catch (e) {}
+        try { MetricaApp.autoBind(); } catch (e) {}
+      }
+    });
+  </script>
 </body>
 </html>

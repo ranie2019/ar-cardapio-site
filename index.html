@@ -4,115 +4,201 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ARCardápio - Planos</title>
-  <link rel="stylesheet" href="css/index.css" />
+
+  <!-- Fonte + CSS do site -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/index.css" />
+
+  <!-- Garantias mínimas para o overlay do modal -->
+  <style>
+    /* Mostra o modal como overlay clicável */
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;                /* hidden por padrão */
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,.6);
+      z-index: 999;
+    }
+    .modal:not(.hidden) { display: flex; }  /* quando remove .hidden, mostra */
+
+    /* Apenas por segurança, evita que o conteúdo “engula” o clique do overlay */
+    .modal-content {
+      position: relative;
+    }
+  </style>
 </head>
 <body>
 
-  <header>
+  <!-- ======= Topo ======= -->
+  <header class="site-header">
     <h1>ARCardápio</h1>
-    <button id="abrirModal" class="btn-acesso">Área do cliente</button>
+    <button id="abrirModal" class="btn-acesso" type="button">Área do cliente</button>
   </header>
 
-  <!-- Seção Sobre -->
+  <!-- ======= Seção: Sobre ======= -->
   <section class="sobre">
     <h2>O que é o ARCardápio?</h2>
     <p>
-      O ARCardápio é uma solução inovadora para restaurantes e bares que permite apresentar os pratos em 3D usando realidade aumentada. 
-      Com ele, seus clientes têm uma experiência imersiva ao visualizar os alimentos diretamente pelo celular.
+      O ARCardápio é uma solução inovadora para restaurantes e bares que permite apresentar os pratos em 3D usando
+      realidade aumentada. Com ele, seus clientes têm uma experiência imersiva ao visualizar os alimentos
+      diretamente pelo celular.
     </p>
   </section>
 
-  <!-- Seção Planos -->
+  <!-- ======= Seção: Planos ======= -->
   <h2>Escolha seu plano ideal</h2>
   <section class="planos">
 
     <div class="plano">
-      <h2>Teste (1 Semana)</h2>
-      <p class="preco">R$ 5,00</p>
-      <button onclick="window.location.href='html/cadastro.html'">cadastre-se</button>
+      <h3>Teste (1 Semana)</h3>
+      <p class="preco">R$ 10,00</p>
+      <button type="button" onclick="window.location.href='html/cadastro.html'">Cadastre-se</button>
     </div>
 
     <div class="plano">
       <h3>Plus (1 Mês)</h3>
       <p class="preco">R$ 200,00</p>
-      <button onclick="window.location.href='html/cadastro.html'">cadastre-se</button>
+      <button type="button" onclick="window.location.href='html/cadastro.html'">Cadastre-se</button>
     </div>
 
     <div class="plano">
       <h3>Pro (1 Ano)</h3>
       <p class="preco">R$ 2.200,00</p>
-      <button onclick="window.location.href='html/cadastro.html'">cadastre-se</button>
+      <button type="button" onclick="window.location.href='html/cadastro.html'">Cadastre-se</button>
     </div>
 
     <div class="plano">
       <h3>Ultra (5 Anos)</h3>
       <p class="preco">R$ 12.500,00</p>
-      <button onclick="window.location.href='html/cadastro.html'">cadastre-se</button>
+      <button type="button" onclick="window.location.href='html/cadastro.html'">Cadastre-se</button>
     </div>
   </section>
 
-  <!-- Seção Contato -->
+  <!-- ======= Seção: Contato ======= -->
   <section class="contato">
     <div class="container-form">
-      <span class="subtitulo-form">Vem para <strong>AR Cardapio</strong></span>
+      <span class="subtitulo-form">Vem para <strong>ARCardápio</strong></span>
       <h2>Entre em contato conosco</h2>
-      <form id="form-contato">
 
-      <div id="mensagem-sucesso" style="display:none; color: #00ffc8; margin-top: 20px; font-weight: bold;">
-        Mensagem enviada com sucesso! Entraremos em contato em breve.
-      </div>
+      <form id="form-contato" novalidate>
+        <div id="mensagem-sucesso" style="display:none; color:#00ffc8; margin-top:20px; font-weight:700;">
+          Mensagem enviada com sucesso! Entraremos em contato em breve.
+        </div>
 
-      <!-- Campos visíveis -->
-      <div class="linha">
-        <input type="text" name="Nome" placeholder="Nome" required />
-        <input type="email" name="Email" placeholder="Email" required />
-      </div>
-      <div class="linha">
-        <input type="tel" name="Telefone" placeholder="Telefone" required />
-        <select name="Setor da empresa" required>
-          <option value="">Setor da empresa</option>
-          <option value="Restaurantes e Lanchonetes">Restaurantes e Lanchonetes</option>
-          <option value="Padarias">Padarias</option>
-          <option value="Cafeterias">Cafeterias</option>
-          <option value="Outro">Outro</option>
-        </select>
-      </div>
-      <textarea name="Observações" placeholder="Observações"></textarea>
+        <div class="linha">
+          <input type="text" name="Nome" placeholder="Nome" required />
+          <input type="email" name="Email" placeholder="Email" required />
+        </div>
 
-      <button type="submit" class="btn-atendimento">SOLICITAR ATENDIMENTO</button>
-    </form>
+        <div class="linha">
+          <input type="tel" name="Telefone" placeholder="Telefone" required />
+          <select name="Setor da empresa" required>
+            <option value="">Setor da empresa</option>
+            <option>Restaurantes e Lanchonetes</option>
+            <option>Padarias</option>
+            <option>Cafeterias</option>
+            <option>Outro</option>
+          </select>
+        </div>
 
+        <textarea name="Observações" placeholder="Observações"></textarea>
+
+        <button type="submit" class="btn-atendimento">SOLICITAR ATENDIMENTO</button>
+      </form>
     </div>
   </section>
 
-  <!-- Modal da Área do Cliente -->
-  <div id="modal" class="modal hidden">
-  <div class="modal-content">
-    <span id="fecharModal" class="fechar">&times;</span>
-    <h2 class="titulo-modal">Área do cliente</h2>
-    <p class="texto-modal">Para acessar, clique em acessar. Se ainda não tem conta, clique em criar cadastro.</p>
+  <!-- ======= Modal: Área do Cliente (sem botão X) ======= -->
+  <div id="modal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="titulo-modal">
+    <div class="modal-content" role="document" aria-modal="true">
+      <h2 id="titulo-modal" class="titulo-modal">Área do cliente</h2>
+      <p class="texto-modal">Para acessar, clique em Acessar. Se ainda não tem conta, clique em Criar cadastro.</p>
 
-    <div class="botao-video">
-      <button onclick="window.location.href='html/login.html'">Acessar</button>
-      <video autoplay loop muted playsinline class="video-fundo-botao">
-        <source src="../videos/botao-index.mp4" type="video/mp4" />
-      </video>
-    </div>
+      <div class="botao-video">
+        <button type="button" onclick="window.location.href='html/login.html'">Acessar</button>
+        <video autoplay loop muted playsinline class="video-fundo-botao">
+          <source src="videos/botao-index.mp4" type="video/mp4" />
+        </video>
+      </div>
 
-    <div class="botao-video">
-      <button onclick="window.location.href='html/cadastro.html'">Criar cadastro</button>
-      <video autoplay loop muted playsinline class="video-fundo-botao">
-        <source src="../videos/botao-index.mp4" type="video/mp4" />
-      </video>
+      <div class="botao-video">
+        <button type="button" onclick="window.location.href='html/cadastro.html'">Criar cadastro</button>
+        <video autoplay loop muted playsinline class="video-fundo-botao">
+          <source src="videos/botao-index.mp4" type="video/mp4" />
+        </video>
+      </div>
     </div>
   </div>
-</div>
 
-  <footer>
-    &copy; 2025 ARCardápio. Todos os direitos reservados.
+  <!-- ======= Rodapé + links legais ======= -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span>© <span id="yr"></span> ARCardápio — Todos os direitos reservados</span>
+      <span class="sep">|</span>
+      <a href="/html/privacidade.html">Política de Privacidade</a>
+      <span class="sep">|</span>
+      <a href="/html/termos.html">Termos de Uso</a>
+    </div>
   </footer>
 
-  <script src="java/index.js"></script>
+  <!-- Banner simples de cookies (LGPD) -->
+  <div id="cookie-banner" class="cookie-banner" hidden>
+    Utilizamos cookies essenciais para funcionamento e métricas agregadas.
+    <a href="/html/privacidade.html#cookies">Saiba mais</a>.
+    <button id="cookie-accept" type="button">Ok, entendi</button>
+  </div>
+
+  <!-- ======= Scripts ======= -->
+  <script>
+    // ano dinâmico no rodapé
+    document.getElementById('yr').textContent = new Date().getFullYear();
+
+    // banner de cookies
+    (function(){
+      const KEY = 'arcardapio_cookie_consent_v1';
+      const banner = document.getElementById('cookie-banner');
+      if (!localStorage.getItem(KEY)) banner.hidden = false;
+      document.getElementById('cookie-accept')?.addEventListener('click', () => {
+        localStorage.setItem(KEY, 'yes');
+        banner.hidden = true;
+      });
+    })();
+
+    // ===== Modal: abrir e fechar (clicando fora) =====
+    const modal = document.getElementById('modal');
+    const abrir = document.getElementById('abrirModal');
+    const conteudo = modal.querySelector('.modal-content');
+
+    function abrirModal() {
+      modal.classList.remove('hidden');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+    function fecharModal() {
+      modal.classList.add('hidden');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    // abre pelo botão do topo
+    abrir?.addEventListener('click', abrirModal);
+
+    // fecha clicando no overlay (só se o alvo for o próprio overlay)
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) fecharModal();
+    });
+
+    // impede que cliques dentro do conteúdo fechem o modal
+    conteudo.addEventListener('click', (e) => e.stopPropagation());
+
+    // (opcional) ESC para fechar
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !modal.classList.contains('hidden')) fecharModal();
+    });
+  </script>
+
+  <!-- Se você já carrega outros scripts, mantenha-os aqui -->
+  <!-- <script src="java/index.js"></script> -->
+
 </body>
 </html>

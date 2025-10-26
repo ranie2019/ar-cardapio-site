@@ -1,16 +1,62 @@
-/* Remove margens da página e esconde a barra de rolagem */
+/* ==========================================================
+   app.css — ARCardápio (App AR) — atualizado
+   Mantém as funcionalidades originais e melhora responsividade,
+   acessibilidade e compatibilidade mobile.
+   ========================================================== */
+
+/* ---------------- RESET BÁSICO E BASE ---------------- */
+
+* { box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+}
+
 body {
-  margin: 0;
-  overflow: hidden;
+  margin: 0;                 /* Remove margens da página */
+  overflow: hidden;          /* Esconde a barra de rolagem */
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent; /* Remove flash azul no iOS */
+  background: #000;          /* Base preta por trás da câmera */
+  color: #111;
+}
+
+.debug-text { display: none !important; }
+
+/* Suporte a áreas seguras (notch) */
+:root {
+  --sa-top: env(safe-area-inset-top, 0px);
+  --sa-right: env(safe-area-inset-right, 0px);
+  --sa-bottom: env(safe-area-inset-bottom, 0px);
+  --sa-left: env(safe-area-inset-left, 0px);
+
+  --orange: #ffa726;
+  --orange-hover: #fb8c00;
+  --glass-dark: rgba(0, 0, 0, 0.7);
+  --glass-light: rgba(255, 255, 255, 0.9);
+  --text-on-dark: #fff;
+  --text-on-light: #111;
+}
+
+/* Respeita usuários com redução de movimento */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
 }
 
 /* ---------------- BOTÕES DE TROCA (PRÓXIMO/ANTERIOR) ---------------- */
 
 /* Estilo base para ambos os botões (Próximo e Anterior) */
 .btn {
-  position: absolute;              /* Permite posicionamento livre na tela */
-  font-size: 30px;                 /* Tamanho da fonte (ou do ícone) */
-  background-color: #ffa726;       /* Cor laranja padrão do botão */
+  position: absolute;              /* Posicionamento livre na tela */
+  bottom: calc(10px + var(--sa-bottom));
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+
+  font-size: 30px;                 /* Para fallback de ícone */
+  background-color: var(--orange); /* Cor laranja padrão do botão */
   color: white;                    /* Cor do texto */
   border: none;                    /* Remove borda padrão */
   border-radius: 12px;             /* Cantos arredondados */
@@ -19,24 +65,33 @@ body {
   z-index: 999;                    /* Sobrepõe elementos abaixo */
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); /* Sombra suave */
   transition: transform 0.1s ease, background-color 0.2s ease; /* Animações suaves */
+  touch-action: manipulation;      /* Resposta melhor em mobile */
+  user-select: none;
 }
 
 /* Efeito ao passar o mouse nos botões de troca */
 .btn:hover {
-  background-color: #fb8c00;       /* Tom de laranja mais escuro */
-  transform: scale(1.05);          /* Aumenta levemente o botão */
+  background-color: var(--orange-hover); /* Tom de laranja mais escuro */
+  transform: scale(1.05);                /* Aumenta levemente o botão */
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 /* Posiciona o botão Anterior no canto inferior esquerdo */
 #prevBtn {
-  left: 10px;
-  bottom: 10px;
+  left: calc(10px + var(--sa-left));
 }
 
 /* Posiciona o botão Próximo no canto inferior direito */
 #nextBtn {
-  right: 10px;
-  bottom: 10px;
+  right: calc(10px + var(--sa-right));
 }
 
 /* Define o tamanho dos ícones SVG dentro dos botões */
@@ -44,7 +99,7 @@ body {
   width: 24px;
   height: 24px;
   fill: white;
-  pointer-events: none;  /* Impede que o clique vá no ícone ao invés do botão */
+  pointer-events: none;  /* Impede clique no ícone em vez do botão */
 }
 
 /* ---------------- INDICADOR DE CARREGAMENTO ---------------- */
@@ -55,14 +110,15 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%); /* Centraliza usando o próprio tamanho */
-  background-color: rgba(0, 0, 0, 0.7); /* Fundo preto semi-transparente */
+  background-color: var(--glass-dark); /* Fundo preto semi-transparente */
   color: white;                      /* Texto branco */
   padding: 12px 24px;                /* Espaçamento interno */
   border-radius: 10px;               /* Cantos arredondados */
   font-size: 20px;                   /* Tamanho do texto */
-  font-weight: bold;                /* Texto em negrito */
+  font-weight: bold;                 /* Texto em negrito */
   z-index: 10000;                    /* Sempre visível acima de tudo */
   display: none;                     /* Começa escondido */
+  white-space: nowrap;
 }
 
 /* ---------------- BOTÃO MENU ---------------- */
@@ -70,10 +126,10 @@ body {
 /* Botão que abre o menu de categorias */
 #menuBtn {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  top: calc(10px + var(--sa-top));
+  left: calc(10px + var(--sa-left));
   z-index: 1000;                     /* Sobrepõe todos os elementos normais */
-  background-color: #ffa726;         /* Cor laranja padrão */
+  background-color: var(--orange);   /* Cor laranja padrão */
   color: white;
   border: none;
   border-radius: 12px;
@@ -82,11 +138,14 @@ body {
   cursor: pointer;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); /* Sombra suave */
   transition: background-color 0.2s ease;
+  user-select: none;
 }
 
-/* Efeito hover para o botão Menu */
-#menuBtn:hover {
-  background-color: #fb8c00;         /* Tom mais escuro no hover */
+#menuBtn:hover { background-color: var(--orange-hover); }
+#menuBtn:active { transform: translateY(1px); }
+#menuBtn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 /* ---------------- BOTÕES DE CATEGORIA ---------------- */
@@ -94,12 +153,16 @@ body {
 /* Container dos botões de categoria */
 #categoryButtons {
   position: absolute;
-  top: 65px;                         /* Logo abaixo do botão Menu */
-  left: 10px;
+  top: calc(65px + var(--sa-top));    /* Logo abaixo do botão Menu */
+  left: calc(10px + var(--sa-left));
   z-index: 999;
-  display: none;                     /* Inicia invisível (aparece ao clicar no menu) */
-  flex-direction: column;           /* Organiza os botões em coluna */
-  gap: 6px;                          /* Espaço entre os botões */
+  display: none;                      /* Inicia invisível (aparece ao clicar no menu) */
+  display: flex;
+  flex-direction: column;             /* Organiza os botões em coluna */
+  gap: 6px;                           /* Espaço entre os botões */
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 4px;                 /* espaço para scrollbar */
 }
 
 /* Estilo de cada botão de categoria */
@@ -112,11 +175,21 @@ body {
   font-size: 14px;
   cursor: pointer;
   transition: background-color 0.2s ease;
+  white-space: nowrap;
+  user-select: none;
 }
 
-/* Hover nos botões de categoria */
 .category-btn:hover {
   background-color: rgba(180, 180, 180, 0.9);
+}
+
+.category-btn:active { transform: translateY(1px); }
+
+/* Estado para categorias desativadas */
+.category-btn.categoria-desativada {
+  display: none !important;
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 /* ---------------- EXIBIÇÃO DE PREÇO ---------------- */
@@ -124,9 +197,9 @@ body {
 /* Exibe o preço atual no topo central da tela, alinhado com o botão de menu */
 #priceDisplay {
   position: absolute;
-  top: 10px;                          /* Mesma altura vertical do botão de menu */
-  left: 50%;                          /* Centraliza horizontalmente */
-  transform: translateX(-50%);       /* Ajusta para ficar bem centralizado */
+  top: calc(10px + var(--sa-top));     /* Mesma altura vertical do botão de menu */
+  left: 50%;                           /* Centraliza horizontalmente */
+  transform: translateX(-50%);         /* Ajuste fino para centro */
   background-color: rgba(255, 167, 38, 0.9); /* Laranja suave */
   color: white;
   padding: 8px 16px;
@@ -134,19 +207,20 @@ body {
   border-radius: 12px;
   z-index: 999;
   font-weight: bold;
-  white-space: nowrap;               /* Evita quebra de linha no valor */
+  white-space: nowrap;                 /* Evita quebra de linha no valor */
+  user-select: none;
 }
 
-.a-enter-vr-button {
-  display: none !important;
-}
+/* ---------------- A-FRAME UI ---------------- */
+
+.a-enter-vr-button { display: none !important; } /* Esconde botão VR por padrão */
 
 /* ---------------- EXIBIÇÃO DE NOME DO PRODUTO ---------------- */
 
 /* Exibe o nome do produto no centro da parte inferior da tela */
 #productNameDisplay {
   position: absolute;
-  bottom: 10px; /* ou 22px para um alinhamento exato */
+  bottom: calc(10px + var(--sa-bottom)); /* ou 22px para alinhamento exato */
   left: 50%;
   transform: translateX(-50%);
   background-color: rgba(200, 200, 200, 0.9);
@@ -157,18 +231,21 @@ body {
   z-index: 999;
   font-weight: bold;
   white-space: nowrap;
+  max-width: calc(100vw - 40px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
 }
-
 
 /* ---------------- BOTÃO INFORMAÇÕES ---------------- */
 
 /* Botão que abre a tela de informações nutricionais */
 #infoBtn {
   position: absolute;
-  top: 10px;                           /* Mesma altura do botão de menu */
-  right: 10px;                         /* Encostado na lateral direita */
-  z-index: 1000;                       /* Sobrepõe todos os elementos normais */
-  background-color: #ffa726;          /* Cor laranja padrão */
+  top: calc(10px + var(--sa-top));       /* Mesma altura do botão de menu */
+  right: calc(10px + var(--sa-right));   /* Encostado na lateral direita */
+  z-index: 1000;                         /* Sobrepõe todos os elementos normais */
+  background-color: var(--orange);       /* Cor laranja padrão */
   color: white;
   border: none;
   border-radius: 12px;
@@ -177,23 +254,62 @@ body {
   cursor: pointer;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); /* Sombra suave */
   transition: background-color 0.2s ease;
+  user-select: none;
 }
 
-/* Efeito hover para o botão de informações */
-#infoBtn:hover {
-  background-color: #fb8c00;          /* Tom mais escuro no hover */
+#infoBtn:hover { background-color: var(--orange-hover); }
+#infoBtn:active { transform: translateY(1px); }
+#infoBtn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
-.category-btn.categoria-desativada {
-    display: none !important;
-    opacity: 0.5;
-    pointer-events: none;
-}
-
+/* Conteúdo do painel de informações (texto vindo do JS) */
 #infoContent {
   white-space: pre-line;    /* respeita \n para quebra de linha */
   font-size: 1rem;
   line-height: 1.5;         /* espaçamento vertical confortável */
   color: #333333;
   margin: 1rem 0;
+}
+
+/* ---------------- AJUSTES RESPONSIVOS ---------------- */
+
+/* Telas menores: aumenta alvos de toque e organiza melhor */
+@media (max-width: 420px) {
+  #menuBtn, #infoBtn {
+    padding: 10px 14px;
+    font-size: 16px;
+  }
+  #priceDisplay, #productNameDisplay {
+    font-size: 18px;
+    padding: 8px 12px;
+  }
+  .btn {
+    width: 52px;
+    height: 52px;
+  }
+  .btn svg {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+/* Paisagem em celulares: sobe elementos para não conflitar com thumbs */
+@media (orientation: landscape) and (max-height: 480px) {
+  #menuBtn, #infoBtn, #priceDisplay {
+    top: calc(6px + var(--sa-top));
+  }
+  #categoryButtons { top: calc(56px + var(--sa-top)); }
+  #productNameDisplay {
+    bottom: calc(6px + var(--sa-bottom));
+  }
+  .btn {
+    bottom: calc(6px + var(--sa-bottom));
+  }
+}
+
+/* Dark mode refinado para textos sobre vídeo/câmera */
+@media (prefers-color-scheme: dark) {
+  #infoContent { color: #e6e6e6; }
 }

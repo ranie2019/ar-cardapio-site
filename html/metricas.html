@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ARCardápio — Dashboard de Métricas</title>
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="../css/metricas.css" />
+
+  <!-- Flatpickr (calendários em PT-BR) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
+
+  <meta name="description" content="Painel de métricas do ARCardápio: escaneamento por mesa/QRCode, sessões, tempo no cardápio, picos de acesso, uso do botão Info e modelos em AR." />
+</head>
+<body>
+  <!-- NAVBAR -->
+  <header class="navbar" role="banner">
+    <div class="navbar-container">
+      <div class="navbar-brand">
+        <h1>ARCardápio</h1>
+        <span class="subtitle">Dashboard de Métricas</span>
+      </div>
+      <nav class="navbar-nav" aria-label="Navegação principal">
+        <a href="../html/home.html" class="nav-link">← Voltar para Home</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="main-container" role="main">
+
+    <!-- ===== FILTROS ===== -->
+    <section class="filters-section" aria-labelledby="titulo-filtros">
+      <h2 id="titulo-filtros" class="section-title">Filtros</h2>
+
+      <div class="filters-grid">
+        <div class="filters-group">
+          <label class="filter-label" for="periodFilter">Período:</label>
+          <select id="periodFilter" class="filter-select">
+            <option value="custom" selected>PERÍODO</option>
+            <option value="7d">7 ÚLTIMOS DIAS</option>
+            <option value="15d">15 ÚLTIMOS DIAS</option>
+            <option value="30d">30 ÚLTIMOS DIAS</option>
+            <option value="60d">60 ÚLTIMOS DIAS</option>
+            <option value="mesAnterior">MÊS ANTERIOR</option>
+            <option value="mesAtual">MÊS ATUAL</option>
+          </select>
+        </div>
+
+        <div class="filters-group">
+          <label class="filter-label" for="startDate">Data inicial</label>
+          <input id="startDate" type="text" class="filter-input date-input" placeholder="dd/mm/aaaa" inputmode="numeric" autocomplete="off"/>
+        </div>
+
+        <div class="filters-group">
+          <label class="filter-label" for="endDate">Data final</label>
+          <input id="endDate" type="text" class="filter-input date-input" placeholder="dd/mm/aaaa" inputmode="numeric" autocomplete="off"/>
+        </div>
+
+        <button id="applyFilters" type="button" class="btn btn-primary">APLICAR FILTROS</button>
+        <button id="clearRange" type="button" class="btn btn-secondary">LIMPAR</button>
+      </div>
+    </section>
+
+    <!-- ===== RESUMO (KPIs) ===== -->
+    <section class="kpis-section" aria-labelledby="titulo-resumo">
+      <h2 id="titulo-resumo" class="section-title">Resumo</h2>
+
+      <!-- Linha 1 de KPIs -->
+      <div class="kpis-grid">
+        <article class="kpi-card">
+          <div class="kpi-header">
+            <h3 class="kpi-title">Total de Scans de QR</h3>
+            <span class="kpi-icon" aria-hidden="true">📊</span>
+          </div>
+          <p id="kpiTotalScans" class="kpi-value">--</p>
+          <span id="kpiTotalScansDelta" class="kpi-change">—</span>
+        </article>
+
+        <article class="kpi-card">
+          <div class="kpi-header">
+            <h3 class="kpi-title">Sessões Únicas</h3>
+            <span class="kpi-icon" aria-hidden="true">👥</span>
+          </div>
+          <p id="kpiSessionsUnique" class="kpi-value">--</p>
+          <span id="kpiSessionsUniqueDelta" class="kpi-change">—</span>
+        </article>
+
+        <article class="kpi-card">
+          <div class="kpi-header">
+            <h3 class="kpi-title">Tempo Médio no Cardápio</h3>
+            <span class="kpi-icon" aria-hidden="true">⏱️</span>
+          </div>
+          <p id="kpiAvgTimeMenu" class="kpi-value">--</p>
+          <span id="kpiAvgTimeMenuDelta" class="kpi-change">—</span>
+        </article>
+
+        <article class="kpi-card">
+          <div class="kpi-header">
+            <h3 class="kpi-title">Tempo Médio em AR</h3>
+            <span class="kpi-icon" aria-hidden="true">🎯</span>
+          </div>
+          <p id="kpiAvgTimeAR" class="kpi-value">--</p>
+          <span id="kpiAvgTimeARDelta" class="kpi-change">—</span>
+        </article>
+      </div>
+
+      <!-- Linha 2 de KPIs (Iténs / Categorias / Info / Recorrência) -->
+      <!-- O espaçamento vertical entre a Linha 1 e a Linha 2 será resolvido pelo CSS corrigido. -->
+      <div class="kpis-grid">
+        <article class="kpi-card">
+          <div class="kpi-header"><h3 class="kpi-title">Tempo Médio por Item</h3><span class="kpi-icon">🍕</span></div>
+          <p id="kpiAvgTimePerItem" class="kpi-value">--</p>
+        </article>
+
+        <article class="kpi-card">
+          <div class="kpi-header"><h3 class="kpi-title">Tempo Médio por Categoria</h3><span class="kpi-icon">🗂️</span></div>
+          <p id="kpiAvgTimePerCategory" class="kpi-value">--</p>
+        </article>
+
+        <article class="kpi-card">
+          <div class="kpi-header"><h3 class="kpi-title">Cliques no Info</h3><span class="kpi-icon">ℹ️</span></div>
+          <p id="kpiInfoClicks" class="kpi-value">--</p>
+        </article>
+
+        <article class="kpi-card">
+          <div class="kpi-header"><h3 class="kpi-title">Tempo Médio de Leitura (Info)</h3><span class="kpi-icon">⏱️</span></div>
+          <p id="kpiInfoAvgTime" class="kpi-value">--</p>
+        </article>
+
+        <article class="kpi-card">
+          <div class="kpi-header"><h3 class="kpi-title">Clientes Ativos</h3><span class="kpi-icon">🔥</span></div>
+          <p id="kpiActiveClients" class="kpi-value">--</p>
+        </article>
+
+        <article class="kpi-card">
+          <div class="kpi-header"><h3 class="kpi-title">Novos Clientes</h3><span class="kpi-icon">🆕</span></div>
+          <p id="kpiNewClients" class="kpi-value">--</p>
+        </article>
+
+        <article class="kpi-card">
+          <div class="kpi-header"><h3 class="kpi-title">Clientes Recorrentes</h3><span class="kpi-icon">🔁</span></div>
+          <p id="kpiReturningClients" class="kpi-value">--</p>
+        </article>
+
+        <article class="kpi-card">
+          <div class="kpi-header"><h3 class="kpi-title">Taxa de Retorno</h3><span class="kpi-icon">📈</span></div>
+          <p id="kpiReturnRate" class="kpi-value">--</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===== GRADE (3 colunas responsivas) - Classes de coluna ajustadas para col-4 ===== -->
+    <div class="dashboard-grid">
+
+      <!-- Scans de QR (faixa inteira) -->
+      <section class="chart-section col-12" aria-labelledby="titulo-scans-geral">
+        <div class="section-header">
+          <h2 id="titulo-scans-geral" class="section-title">Escaneamento de QR Code</h2>
+          <span class="section-subtitle">
+            Representa o total de vezes que os QR Codes foram escaneados dentro do período selecionado.
+            Cada ponto no gráfico indica a quantidade de leituras feitas naquele dia.
+          </span>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="chartScansOverall" aria-label="Gráfico de scans geral"></canvas>
+        </div>
+      </section>
+
+      <!-- Scans por Mesa/QR -->
+      <section class="chart-section col-4" aria-labelledby="titulo-scans-mesa">
+        <div class="section-header">
+          <h2 id="titulo-scans-mesa" class="section-title">Escaneamento por Mesa/QRCode</h2>
+          <span class="section-subtitle">Detalhamento por localização</span>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="chartScansByMesa" aria-label="Gráfico de scans por mesa"></canvas>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-label="Tabela de scans por mesa">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Mesa/QR</th>
+                <th scope="col">Scans (Período)</th>
+                <th scope="col">Último Scan</th>
+                <th scope="col">% do Total</th>
+              </tr>
+            </thead>
+            <tbody id="tableScansPerMesa">
+              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Sessões por período -->
+      <section class="chart-section col-4" aria-labelledby="titulo-sessoes">
+        <div class="section-header">
+          <h2 id="titulo-sessoes" class="section-title">Sessões por Período</h2>
+          <span class="section-subtitle">Tendência e engajamento</span>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="chartSessions" aria-label="Gráfico de sessões"></canvas>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-label="Tabela de sessões">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Período</th>
+                <th scope="col">Sessões</th>
+                <th scope="col">Usuários Únicos</th>
+                <th scope="col">Sessões/Usuário</th>
+              </tr>
+            </thead>
+            <tbody id="tableSessions">
+              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Tempo médio no cardápio -->
+      <section class="chart-section col-4" aria-labelledby="titulo-tempo-menu">
+        <div class="section-header">
+          <h2 id="titulo-tempo-menu" class="section-title">Tempo Médio no Cardápio</h2>
+          <span class="section-subtitle">Duração de permanência</span>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="chartAvgTimeMenu" aria-label="Gráfico de tempo médio no cardápio"></canvas>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-label="Tabela de tempo médio no cardápio">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Período</th>
+                <th scope="col">Tempo Médio</th>
+                <th scope="col">Mediana</th>
+                <th scope="col">Amostras</th>
+              </tr>
+            </thead>
+            <tbody id="tableAvgTimeMenu">
+              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Horário de pico -->
+      <section class="chart-section col-4" aria-labelledby="titulo-pico">
+        <div class="section-header">
+          <h2 id="titulo-pico" class="section-title">Horário de Pico</h2>
+          <span class="section-subtitle">Uso por hora/dia/mês</span>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="chartPeakHours" aria-label="Gráfico de horários de pico"></canvas>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-label="Tabela de horários de pico">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Mês</th>
+                <th scope="col">Dia da Semana</th>
+                <th scope="col">Hora</th>
+                <th scope="col">Scans</th>
+              </tr>
+            </thead>
+            <tbody id="tablePeakHours">
+              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Uso do botão Info - Ajuste para usar kpis-grid e chart-container separados -->
+      <section class="chart-section col-4" aria-labelledby="titulo-info">
+        <div class="section-header">
+          <h2 id="titulo-info" class="section-title">Uso do botão "Info"</h2>
+          <span class="section-subtitle">Aberturas e tempo</span>
+        </div>
+
+        <!-- KPIs internos para Aberturas e Tempo Médio (agora com espaçamento corrigido pelo CSS) -->
+        <div class="kpis-grid">
+          <article class="kpi-card">
+            <div class="kpi-header"><h3 class="kpi-title">Aberturas</h3><span class="kpi-icon" aria-hidden="true">ℹ️</span></div>
+            <p id="kpiInfoOpens" class="kpi-value">--</p>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-header"><h3 class="kpi-title">Tempo Médio</h3><span class="kpi-icon" aria-hidden="true">⏱️</span></div>
+            <p id="kpiInfoAvgTime" class="kpi-value">--</p>
+          </article>
+        </div>
+
+        <div class="chart-container" style="margin-top: var(--spacing-lg);">
+          <canvas id="chartInfoUsage" aria-label="Gráfico de uso do botão Info"></canvas>
+        </div>
+      </section>
+
+      <!-- Tempo por item -->
+      <section class="chart-section col-4" aria-labelledby="titulo-tempo-item">
+        <div class="section-header">
+          <h2 id="titulo-tempo-item" class="section-title">Tempo por Item</h2>
+          <span class="section-subtitle">Dwell time por produto</span>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="chartTimePerItem" aria-label="Gráfico de tempo por item"></canvas>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-label="Tabela de tempo por item">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Item</th>
+                <th scope="col">Tempo Médio</th>
+                <th scope="col">Visualizações</th>
+                <th scope="col">% do Total</th>
+              </tr>
+            </thead>
+            <tbody id="tableTimePerItem">
+              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Itens mais visualizados -->
+      <section class="chart-section col-4" aria-labelledby="titulo-itens-mais-vistos">
+        <div class="section-header">
+          <h2 id="titulo-itens-mais-vistos" class="section-title">Itens mais visualizados</h2>
+          <span class="section-subtitle">Top 10 de interesse</span>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="chartTopItems" aria-label="Gráfico de itens mais visualizados"></canvas>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-label="Tabela de itens mais visualizados">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Item</th>
+                <th scope="col">Visualizações</th>
+                <th scope="col">Tempo Médio</th>
+                <th scope="col">Categoria</th>
+              </tr>
+            </thead>
+            <tbody id="tableTopItems">
+              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Tempo por categoria -->
+      <section class="chart-section col-4" aria-labelledby="titulo-tempo-categoria">
+        <div class="section-header">
+          <h2 id="titulo-tempo-categoria" class="section-title">Tempo por Categoria</h2>
+          <span class="section-subtitle">Tempo médio de permanência</span>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="chartTimePerCategory" aria-label="Gráfico de tempo por categoria"></canvas>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-label="Tabela de tempo por categoria">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Categoria</th>
+                <th scope="col">Tempo Médio</th>
+                <th scope="col">Sessões</th>
+                <th scope="col">% do Tempo</th>
+              </tr>
+            </thead>
+            <tbody id="tableTimePerCategory">
+              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Categorias mais acessadas -->
+      <section class="chart-section col-4" aria-labelledby="titulo-categorias-mais">
+        <div class="section-header">
+          <h2 id="titulo-categorias-mais" class="section-title">Categorias mais acessadas</h2>
+          <span class="section-subtitle">Popularidade por cliques</span>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="chartCategoryPopularity" aria-label="Gráfico de categorias mais acessadas"></canvas>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-label="Tabela de categorias mais acessadas">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Categoria</th>
+                <th scope="col">Cliques</th>
+                <th scope="col">Tempo Médio</th>
+                <th scope="col">% do Total</th>
+              </tr>
+            </thead>
+            <tbody id="tableCategoryPopularity">
+              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Uso do botão Info por item -->
+      <section class="chart-section col-4" aria-labelledby="titulo-info-por-item">
+        <div class="section-header">
+          <h2 id="titulo-info-por-item" class="section-title">Info por Item</h2>
+          <span class="section-subtitle">Curiosidade e leitura</span>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="chartInfoPerItem" aria-label="Gráfico de Info por item"></canvas>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-label="Tabela de Info por item">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Item</th>
+                <th scope="col">Cliques Info</th>
+                <th scope="col">Tempo Médio (Info)</th>
+                <th scope="col">Visualizações</th>
+              </tr>
+            </thead>
+            <tbody id="tableInfoPerItem">
+              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Recorrência (novos vs recorrentes) -->
+      <section class="chart-section col-4" aria-labelledby="titulo-recorrencia">
+        <div class="section-header">
+          <h2 id="titulo-recorrencia" class="section-title">Recorrência de Clientes</h2>
+          <span class="section-subtitle">Novos x Retornando</span>
+        </div>
+
+        <div class="kpis-grid">
+          <article class="kpi-card">
+            <div class="kpi-header"><h3 class="kpi-title">Novos</h3><span class="kpi-icon">🆕</span></div>
+            <p id="kpiRecNew" class="kpi-value">--</p>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-header"><h3 class="kpi-title">Retornando</h3><span class="kpi-icon">🔁</span></div>
+            <p id="kpiRecReturning" class="kpi-value">--</p>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-header"><h3 class="kpi-title">% Retorno</h3><span class="kpi-icon">📈</span></div>
+            <p id="kpiRecRate" class="kpi-value">--</p>
+          </article>
+        </div>
+
+        <div class="chart-container" style="margin-top: var(--spacing-lg);">
+          <canvas id="chartRecurrence" aria-label="Gráfico de recorrência"></canvas>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-label="Tabela de recorrência">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Cliente (anônimo)</th>
+                <th scope="col">Scans</th>
+                <th scope="col">Último Scan</th>
+                <th scope="col">Dias desde o último</th>
+              </tr>
+            </thead>
+            <tbody id="tableRecurrence">
+              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Engajamento por mesa (tempo e interações) -->
+      <section class="chart-section col-4" aria-labelledby="titulo-engajamento-mesa">
+        <div class="section-header">
+          <h2 id="titulo-engajamento-mesa" class="section-title">Engajamento por Mesa</h2>
+          <span class="section-subtitle">Tempo e interações</span>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="chartEngagementByMesa" aria-label="Gráfico de engajamento por mesa"></canvas>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-label="Tabela de engajamento por mesa">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Mesa/QR</th>
+                <th scope="col">Tempo Médio</th>
+                <th scope="col">Interações/Sessão</th>
+                <th scope="col">Sessões</th>
+              </tr>
+            </thead>
+            <tbody id="tableEngagementByMesa">
+              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Distribuição por dispositivo -->
+      <section class="chart-section col-4" aria-labelledby="titulo-dispositivos">
+        <div class="section-header">
+          <h2 id="titulo-dispositivos" class="section-title">Distribuição por Dispositivo</h2>
+          <span class="section-subtitle">Celular, tablet e outros</span>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="chartDeviceDistribution" aria-label="Gráfico de distribuição por dispositivo"></canvas>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-label="Tabela de dispositivos">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Dispositivo</th>
+                <th scope="col">Percentual</th>
+                <th scope="col">Sessões</th>
+                <th scope="col">Tempo Médio</th>
+              </tr>
+            </thead>
+            <tbody id="tableDeviceDistribution">
+              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Modelos AR (top) -->
+      <section class="chart-section col-4" aria-labelledby="titulo-modelos">
+        <div class="section-header">
+          <h2 id="titulo-modelos" class="section-title">Modelos em AR mais exibidos</h2>
+          <span class="section-subtitle">Top 5 + visão geral</span>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="chartTopModels" aria-label="Gráfico top modelos AR"></canvas>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-label="Tabela top modelos AR">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Modelo/Item</th>
+                <th scope="col">Exibições</th>
+                <th scope="col">Tempo Médio</th>
+                <th scope="col">Erros</th>
+              </tr>
+            </thead>
+            <tbody id="tableTopModels">
+              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Saúde dos modelos (carregado x erro) -->
+      <section class="chart-section col-4" aria-labelledby="titulo-model-health">
+        <div class="section-header">
+          <h2 id="titulo-model-health" class="section-title">Saúde dos Modelos</h2>
+          <span class="section-subtitle">Carregados vs Erros</span>
+        </div>
+
+        <div class="kpis-grid">
+          <article class="kpi-card">
+            <div class="kpi-header"><h3 class="kpi-title">Carregados</h3><span class="kpi-icon">✅</span></div>
+            <p id="kpiModelsLoaded" class="kpi-value">--</p>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-header"><h3 class="kpi-title">Erros</h3><span class="kpi-icon">⚠️</span></div>
+            <p id="kpiModelsErrors" class="kpi-value">--</p>
+          </article>
+        </div>
+
+        <div class="chart-container" style="margin-top: var(--spacing-lg);">
+          <canvas id="chartModelHealth" aria-label="Gráfico de saúde dos modelos"></canvas>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-label="Tabela de erros de modelo">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Item/Modelo</th>
+                <th scope="col">Erro</th>
+                <th scope="col">Ocorrências</th>
+                <th scope="col">Último</th>
+              </tr>
+            </thead>
+            <tbody id="tableModelErrors">
+              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div><!-- /dashboard-grid -->
+
+    <!-- ===== INSIGHTS ===== -->
+    <section class="insights-section" aria-labelledby="titulo-insights">
+      <h2 id="titulo-insights" class="section-title">Insights</h2>
+      <ul id="insightsList" class="insights-list"><li>Carregando…</li></ul>
+    </section>
+
+  </main>
+
+  <!-- RODAPÉ -->
+  <footer class="footer" role="contentinfo">
+    <p>© 2025 ARCardápio — Painel do Cliente</p>
+  </footer>
+
+  <noscript>Ative o JavaScript para visualizar gráficos e dados.</noscript>
+
+  <!-- Bibliotecas -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+
+  <script>
+    /* Desativa a legenda globalmente (remove "Scans Totais") */
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.Chart && Chart.defaults?.plugins?.legend) {
+        Chart.defaults.plugins.legend.display = false;
+      }
+    });
+  </script>
+
+
+  <!-- Inicialização dos calendários -->
+  <script>
+    window.addEventListener('DOMContentLoaded', function () {
+      const defaultStart = "13/10/2025";
+      const defaultEnd   = "31/10/2025";
+
+      const startPicker = flatpickr("#startDate", {
+        locale: flatpickr.l10ns.pt,
+        dateFormat: "d/m/Y",
+        allowInput: true,
+        defaultDate: defaultStart,
+        monthSelectorType: "static",
+      });
+
+      const endPicker = flatpickr("#endDate", {
+        locale: flatpickr.l10ns.pt,
+        dateFormat: "d/m/Y",
+        allowInput: true,
+        defaultDate: defaultEnd,
+        monthSelectorType: "static",
+      });
+
+      document.getElementById("clearRange").addEventListener("click", () => {
+        startPicker.clear();
+        endPicker.clear();
+        document.getElementById("periodFilter").value = "custom";
+      });
+
+      document.getElementById("periodFilter").addEventListener("change", (e) => {
+        if (e.target.value !== "custom") {
+          startPicker.clear();
+          endPicker.clear();
+        }
+      });
+    });
+  </script>
+
+  <!-- Script de métricas (apenas estrutura pronta; dados serão preenchidos em metricas.js) -->
+  <script src="../java/metricas.js" defer></script>
+</body>
+</html>

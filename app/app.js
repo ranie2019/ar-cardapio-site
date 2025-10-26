@@ -505,7 +505,7 @@ async function loadProductInfoJSON(filename, panel) {
     const data = await response.json();
 
     // Propriedades que NÃO queremos exibir
-    const ocultar = new Set(['preco', 'ultimaAtualizacao']);
+    const ocultar = new Set(['preco', 'nome', 'ultimaAtualizacao']);
 
     // Monta linhas apenas com as chaves permitidas
     const linhas = [];

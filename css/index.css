@@ -391,3 +391,21 @@ body {
     font-size: 1.3rem;
   }
 }
+
+/* Rodapé — links com cor do tema */
+.site-footer {
+  color: #cfeee7;            /* texto do rodapé */
+}
+.site-footer a:link,
+.site-footer a:visited {
+  color: #86ffe6;            /* a mesma cor “teal” que você já usa */
+  text-decoration: none;
+}
+.site-footer a:hover,
+.site-footer a:focus {
+  color: #b8fff3;            /* um pouco mais claro no hover */
+  text-decoration: underline;
+}
+.site-footer .sep {
+  color: #7fb7ac;            /* separador “|” mais suave */
+}

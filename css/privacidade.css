@@ -1,0 +1,158 @@
+/* privacidade.css – estilos da Política de Privacidade  */
+
+/* ===== Paleta (mesma do site) ===== */
+:root{
+  --bg: #0b1514;
+  --card:#0f1f1e;
+  --text:#eafff7;
+  --muted:#b9d8cf;
+  --line:#17322e;
+  --field:#0b1a18;
+  --field-border:#133a34;
+  --accent:#00d1a2;
+  --accent-2:#00b892;
+}
+
+/* ===== Reset mínimo ===== */
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family: Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+/* ===== Layout da página ===== */
+.page{
+  max-width:1200px;
+  margin:32px auto;
+  padding:0 20px;
+}
+
+.header{
+  margin-bottom:18px;
+}
+.header h1{
+  margin:0 0 6px;
+  font-size:28px;
+}
+.header p{
+  margin:0;
+  color:var(--muted);
+}
+
+/* grid com toc + conteúdo */
+.grid{
+  display:grid;
+  grid-template-columns: 280px 1fr;
+  gap:24px;
+}
+@media (max-width: 980px){
+  .grid{ grid-template-columns:1fr }
+}
+
+/* ===== Cartões ===== */
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:18px;
+}
+
+/* ===== Sumário (TOC) ===== */
+.toc{
+  position:sticky;
+  top:16px;
+}
+.toc h3{
+  margin:0 0 8px;
+  font-size:14px;
+  color:#c8fff0;
+  letter-spacing:.2px;
+}
+.toc ul{
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+.toc li{
+  margin:6px 0;
+}
+.toc a{
+  display:block;
+  text-decoration:none;
+  color:var(--muted);
+  padding:6px 8px;
+  border-radius:10px;
+  border:1px solid transparent;
+  transition:all .15s ease;
+}
+.toc a:hover{
+  background:#0c201d;
+  border-color:#123d36;
+  color:var(--text);
+}
+.toc a.is-active{
+  background:#0f2623;
+  outline:2px solid #19d1aa;
+  color:var(--text);
+}
+
+/* ===== Conteúdo ===== */
+.content{
+  scroll-behavior:smooth;
+}
+
+/* títulos e espaçamentos */
+.content h2{
+  margin:22px 0 10px;
+  font-size:22px;
+  line-height:1.35;
+  scroll-margin-top:90px; /* compensa fixed/offset ao usar âncoras */
+}
+.content h3{
+  margin:16px 0 6px;
+  font-size:18px;
+}
+.content p{ margin:10px 0; color:var(--text) }
+.content ul{ padding-left:20px; margin:10px 0 }
+.content li{ margin:6px 0; color:var(--muted) }
+
+/* numeração decorativa (inserida pelo JS) */
+.h-num{
+  display:inline-block;
+  min-width:2.2ch;
+  margin-right:6px;
+  color:#86ffe6;
+  font-weight:700;
+}
+
+/* caixas auxiliares */
+.note{
+  background:#0b1a18;
+  border:1px solid var(--field-border);
+  border-radius:12px;
+  padding:12px 14px;
+  color:var(--muted);
+}
+
+/* links padrão do documento (mesmo estilo do rodapé do site) */
+a{
+  color:#c8fff0;
+  text-decoration:none;
+}
+a:hover{ color:#86ffe6 }
+
+/* ===== Rodapé simples (opcional) ===== */
+.footer{
+  margin:24px 0 8px;
+  text-align:center;
+  color:var(--muted);
+  font-size:13px;
+}
+.footer a{ color:#c8fff0 }
+.footer a:hover{ color:#86ffe6 }

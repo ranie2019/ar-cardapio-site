@@ -1,5 +1,4 @@
-<!-- HOME.HTML -->
-
+<!-- HOME.HTML (atualizado, sem CSS) -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -7,10 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Home - Sistema</title>
 
-  <!-- Estilos principais -->
   <link rel="stylesheet" href="../css/home.css">
-
-  <!-- Dependência A-Frame (se usa) -->
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
 </head>
 <body>
@@ -46,6 +42,7 @@
 
         <div id="dropdownPerfil" class="dropdown-perfil hidden" aria-hidden="true">
           <button id="perfil-dados" class="btn-categoria">Conta</button>
+          <button id="perfil-metricas" class="btn-categoria">Métricas</button>
           <button id="perfil-sair" class="btn-categoria">Sair</button>
         </div>
       </div>
@@ -96,10 +93,21 @@
   <script src="../java/home2.js"></script>
   <script src="../java/home3.js"></script>
 
-  <!-- CONTROLE DE MODAIS, DROPDOWNS E PERFIL (correções aplicadas) -->
+  <!-- CONTROLE DE MODAIS, DROPDOWNS E PERFIL -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      // Segurança: elementos
+      // ---------- util ----------
+      function getRestauranteId() {
+        return (
+          localStorage.getItem('nomeRestaurante') ||
+          localStorage.getItem('ar.email') ||
+          localStorage.getItem('usuarioEmail') ||
+          localStorage.getItem('email') ||
+          ''
+        );
+      }
+
+      // Modal configuração (se existir)
       const modalConfig = document.getElementById("modalConfiguracao");
       const btnFechar = modalConfig?.querySelector(".fechar-modal-config");
       if (btnFechar) {
@@ -112,12 +120,15 @@
       const modalQr = document.getElementById("modalQrCode");
       const btnFecharQr = modalQr?.querySelector("#fecharModal");
       if (btnFecharQr) btnFecharQr.addEventListener("click", () => modalQr.classList.add("hidden"));
+      document.getElementById('btnGerarQR')?.addEventListener('click', () => {
+        modalQr?.classList.remove('hidden');
+      });
 
-      // BroadcastChannel (corrigido)
+      // BroadcastChannel (opcional)
       if ("BroadcastChannel" in window) {
         const canalStatus = new BroadcastChannel("cardapio_channel");
         window.canalStatus = canalStatus;
-        canalStatus.onmessage = event => {
+        canalStatus.onmessage = (event) => {
           const { nome, visivel } = event.data || {};
           if (!nome) return;
           const btn = document.querySelector(`button[data-nome="${nome}"]`);
@@ -125,23 +136,22 @@
         };
       }
 
-      // Instancia a classe do home1.js, se disponível, e expõe a instância
+      // Instância principal (home1.js)
       if (window.SistemaCardapioBase && !window.sistemaCardapio) {
-        try {
-          window.sistemaCardapio = new window.SistemaCardapioBase();
-        } catch (e) {
-          console.warn('Falha ao instanciar SistemaCardapioBase:', e);
-        }
+        try { window.sistemaCardapio = new window.SistemaCardapioBase(); }
+        catch (e) { console.warn('Falha ao instanciar SistemaCardapioBase:', e); }
       }
 
-      // Garante que o nome seja carregado via instância (método da classe), fallback para função global
-      if (window.sistemaCardapio && typeof window.sistemaCardapio.carregarNomeEmpresa === 'function') {
-        try { window.sistemaCardapio.carregarNomeEmpresa(); } catch (e) { console.warn('carregarNomeEmpresa falhou:', e); }
+      // Carregar nome da empresa
+      if (window.sistemaCardapio?.carregarNomeEmpresa) {
+        try { window.sistemaCardapio.carregarNomeEmpresa(); }
+        catch (e) { console.warn('carregarNomeEmpresa falhou:', e); }
       } else if (typeof carregarNomeEmpresa === 'function') {
-        try { carregarNomeEmpresa(); } catch (e) { console.warn('carregarNomeEmpresa global falhou:', e); }
+        try { carregarNomeEmpresa(); }
+        catch (e) { console.warn('carregarNomeEmpresa global falhou:', e); }
       }
 
-      // PERFIL COMO DROPDOWN (defensivo)
+      // Dropdown Perfil
       const profileButtonOriginal = document.getElementById("profile-btn");
       const dropdownPerfil = document.getElementById("dropdownPerfil");
       const perfilTexto = document.getElementById("perfil-texto");
@@ -153,68 +163,70 @@
           profileButtonOriginal.parentNode.replaceChild(profileButton, profileButtonOriginal);
         } catch (e) {
           console.warn('Erro ao clonar profile-btn:', e);
-          profileButton = profileButtonOriginal; // fallback
+          profileButton = profileButtonOriginal;
         }
       } else {
         console.warn('profile-btn não encontrado no DOM.');
       }
 
-      // Função auxiliar para setar seta apenas (não sobrescrever nome)
       function setarSinalAberto(aberto) {
-        if (!perfilTexto) return;
-        const seta = perfilTexto.querySelector(".perfil-seta");
+        const seta = perfilTexto?.querySelector(".perfil-seta");
         if (seta) seta.textContent = aberto ? "▲" : "▼";
       }
 
-      // Toggle do dropdown
       if (profileButton && dropdownPerfil) {
         profileButton.addEventListener("click", (e) => {
           e.stopPropagation();
           dropdownPerfil.classList.toggle("show");
           dropdownPerfil.classList.toggle("hidden");
           const aberto = dropdownPerfil.classList.contains("show");
-          dropdownPerfil.setAttribute('aria-hidden', !aberto);
-          if (perfilTexto) setarSinalAberto(aberto);
+          dropdownPerfil.setAttribute('aria-hidden', String(!aberto));
+          setarSinalAberto(aberto);
         });
       }
 
-      // Ações do dropdown (Conta / Sair)
-      const btnPerfilDados = document.getElementById("perfil-dados");
-      const btnPerfilSair  = document.getElementById("perfil-sair");
+      // Ações do dropdown
+      const btnPerfilDados     = document.getElementById("perfil-dados");
+      const btnPerfilMetricas  = document.getElementById("perfil-metricas");
+      const btnPerfilSair      = document.getElementById("perfil-sair");
 
-      if (btnPerfilDados) {
-        btnPerfilDados.addEventListener("click", (e) => {
-          e.stopPropagation();
-          // futuro modal de dados
-          alert("Em breve: Dados da Conta");
-          dropdownPerfil.classList.remove("show");
-          dropdownPerfil.classList.add("hidden");
-          if (perfilTexto) setarSinalAberto(false);
-        });
-      }
+      btnPerfilDados?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        alert("Em breve: Dados da Conta");
+        dropdownPerfil.classList.remove("show");
+        dropdownPerfil.classList.add("hidden");
+        setarSinalAberto(false);
+      });
 
-      if (btnPerfilSair) {
-        btnPerfilSair.addEventListener("click", (e) => {
-          e.stopPropagation();
-          localStorage.removeItem('ar.token');
-          localStorage.removeItem('ar.email');
-          localStorage.removeItem('ar.exp');
-          localStorage.removeItem('ar.statusPlano');
-          window.location.href = "../html/login.html";
-        });
-      }
+      btnPerfilMetricas?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const r = getRestauranteId();
+        const qs = r ? `?r=${encodeURIComponent(r)}` : '';
+        window.location.href = `metricas.html${qs}`;
+        dropdownPerfil.classList.remove("show");
+        dropdownPerfil.classList.add("hidden");
+        setarSinalAberto(false);
+      });
 
-      // Fechar dropdown ao clicar fora (único listener)
+      btnPerfilSair?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        localStorage.removeItem('ar.token');
+        localStorage.removeItem('ar.email');
+        localStorage.removeItem('ar.exp');
+        localStorage.removeItem('ar.statusPlano');
+        window.location.href = "../html/login.html";
+      });
+
+      // Fechar dropdown ao clicar fora
       document.addEventListener("click", (e) => {
         if (!dropdownPerfil) return;
         if (!dropdownPerfil.contains(e.target) && e.target !== profileButton) {
           dropdownPerfil.classList.remove("show");
           dropdownPerfil.classList.add("hidden");
-          if (perfilTexto) setarSinalAberto(false);
+          setarSinalAberto(false);
         }
       });
-
-    }); // DOMContentLoaded
+    });
   </script>
 </body>
 </html>

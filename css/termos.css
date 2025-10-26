@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+:root{
+  --bg:#0b1514;
+  --card:#0f1f1e;
+  --text:#eafff7;
+  --muted:#b9d8cf;
+  --line:#17322e;
+  --link:#86ffe6;
+  --accent:#00d1a2;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  line-height:1.7;
+}
+
+.wrap{
+  display:grid;
+  grid-template-columns: 300px 1fr;
+  gap:24px;
+  max-width: 1200px;
+  margin:32px auto;
+  padding:0 20px;
+}
+
+.sidebar{
+  position:sticky; top:20px;
+  align-self:start;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:18px;
+}
+
+.brand{font-weight:800; font-size:20px; margin-bottom:6px}
+.updated{color:var(--muted); font-size:14px; margin-bottom:12px}
+
+.toc{display:flex; flex-direction:column; gap:6px}
+.toc a{
+  display:block; padding:8px 10px;
+  border-radius:10px;
+  color:var(--text); text-decoration:none;
+  border:1px solid transparent;
+}
+.toc a:hover{background:#0f2623}
+.toc a.is-active{border-color:#1dd7b3; background:#0f2623}
+
+.content{min-width:0}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:22px;
+}
+
+.intro{color:#cfeee7}
+.separator{height:1px; background:var(--line); margin:16px 0}
+
+h1,h2{margin:0 0 8px}
+h2{font-size:22px}
+p,li{color:#cfeee7}
+
+a{color:var(--link); text-decoration:none}
+a:hover{text-decoration:underline}
+
+.footer{margin:16px 0; text-align:center; color:#cfeee7}
+
+@media (max-width: 900px){
+  .wrap{grid-template-columns:1fr}
+  .sidebar{position:static}
+}

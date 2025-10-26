@@ -1,0 +1,316 @@
+/* ==========================================================
+   metricas.css — ARCardápio (AWS Dark) — REORGANIZADO E CORRIGIDO
+   ========================================================== */
+
+/* ==========================================================
+   RESET, BASE E VARIÁVEIS (ROOT)
+   ========================================================== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  /* Cores principais */
+  --color-bg-primary: #0f1419;
+  --color-bg-secondary: #151b25;
+  --color-bg-tertiary: #1d2432;
+  --color-surface: #0f1826;
+
+  --color-border: #2b3442;
+  --color-text-primary: #e2e8f0;
+  --color-text-secondary: #a0aec0;
+  --color-text-muted: #7b8aa0;
+
+  --color-accent: #00d9ff;
+  --color-info: #3b82f6;
+  --color-success: #10b981;
+
+  /* Tipografia e espaçamento */
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  --font-size-2xs: .7rem;
+  --font-size-xs: .75rem;
+  --font-size-sm: .875rem;
+  --font-size-base: 1rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+
+  --spacing-2xs: .2rem;
+  --spacing-sm: .5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
+  /* Sombras e transições */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.25);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.28);
+  --shadow-lg: 0 12px 28px rgba(0,0,0,.35);
+
+  --transition-base: 250ms ease-in-out;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-family);
+  background: linear-gradient(135deg, var(--color-bg-primary), var(--color-bg-secondary));
+  color: var(--color-text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* A11y */
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* ==========================================================
+   NAVEGAÇÃO E ESTRUTURA GERAL (NAVBAR, MAIN CONTAINER, TÍTULOS)
+   ========================================================== */
+
+/* NAVBAR */
+.navbar {
+  background: linear-gradient(180deg, var(--color-bg-secondary), var(--color-bg-primary));
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--spacing-lg) 0;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: var(--shadow-md);
+}
+
+.navbar-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-xl);
+  display: flex; justify-content: space-between; align-items: center;
+}
+
+.navbar-brand { display: flex; flex-direction: column; gap: var(--spacing-2xs); }
+.navbar-brand h1 { font-size: var(--font-size-2xl); font-weight: 800; color: var(--color-accent); }
+.subtitle { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+
+.navbar-nav { display: flex; gap: var(--spacing-lg); }
+.nav-link {
+  color: var(--color-text-primary); text-decoration: none;
+  padding: .6rem .9rem; border: 1px solid var(--color-border);
+  border-radius: 8px; background: rgba(255,255,255,.02);
+  transition: all var(--transition-base);
+}
+.nav-link:hover { background: var(--color-bg-tertiary); border-color: var(--color-accent); color: var(--color-accent); }
+
+/* MAIN CONTAINER - CORREÇÃO DE ALINHAMENTO */
+.main-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--spacing-2xl) var(--spacing-xl); /* Padding lateral para alinhar todos os filhos */
+}
+
+/* SEÇÕES/TÍTULOS */
+.section-title {
+  font-size: var(--font-size-2xl); font-weight: 800; color: var(--color-accent);
+  margin-bottom: var(--spacing-lg); display: flex; align-items: center; gap: var(--spacing-md);
+}
+.section-title::before {
+  content: ""; width: 4px; height: 24px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-info));
+}
+.section-subtitle { font-size: var(--font-size-sm); color: var(--color-text-secondary); font-weight: 600; }
+
+/* ================================================
+   CORREÇÃO DE OVERFLOW E QUEBRA DE LARGURA
+   ================================================ */
+
+/* impede qualquer grid ou padding de gerar barra lateral */
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* garante que grids internos respeitem os limites */
+.main-container, 
+.kpis-section, 
+.dashboard-grid, 
+.insights-section {
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* força o grid dos KPIs a caber dentro do container */
+.kpis-grid {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.6rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* evita que padding + gap somem largura extra */
+.kpis-section {
+  padding-left: calc(var(--spacing-lg));
+  padding-right: calc(var(--spacing-lg));
+}
+
+/* previne estourar quando o zoom for 100% */
+.chart-section, .insights-section {
+  width: 100%;
+  overflow: hidden;
+}
+
+
+/* ==========================================================
+   FILTROS E BOTÕES
+   ========================================================== */
+
+.filters-section {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  width: 100%; /* Garante que a seção ocupe a largura do .main-container */
+}
+
+.filters-grid {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: var(--spacing-lg);
+}
+
+.filters-group { display: flex; flex-direction: column; gap: var(--spacing-sm); min-width: 200px; }
+.filter-label {
+  font-size: var(--font-size-xs); font-weight: 700; color: var(--color-text-secondary);
+  text-transform: uppercase; letter-spacing: .5px;
+}
+
+.filter-select, .filter-input {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  padding: .7rem .9rem; border-radius: 10px; font-size: var(--font-size-base);
+  transition: all var(--transition-base);
+}
+.filter-select:hover, .filter-input:hover { border-color: var(--color-accent); }
+.filter-select:focus, .filter-input:focus { outline: none; border-color: var(--color-accent); box-shadow: none; }
+
+/* Botões dos filtros */
+.btn {
+  padding: .8rem 1.2rem; border: 0; border-radius: 10px; white-space: nowrap;
+  font-size: var(--font-size-sm); font-weight: 900; cursor: pointer;
+  transition: all var(--transition-base); text-transform: uppercase; letter-spacing: .6px;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-accent), var(--color-info));
+  color: #06131c; box-shadow: 0 6px 16px rgba(0, 217, 255, .25);
+}
+.btn-primary:hover { transform: translateY(-2px); filter: brightness(1.06); }
+.btn-secondary { background: #e5e7eb; color: #0b1520; border: 1px solid #d1d5db; }
+.btn-secondary:hover { filter: brightness(.95); }
+
+/* ==========================================================
+   RESUMO (KPIs) — ESTÁVEL E ALINHADO
+   ========================================================== */
+.kpis-section {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  margin-top: var(--spacing-xl);
+  width: 100%;
+  overflow: hidden;
+}
+
+/* GRID 4xN fixo e estável */
+.kpis-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);  /* 4 colunas fixas */
+  column-gap: 1.6rem;                      /* espaço horizontal */
+  row-gap: 2rem;                           /* espaço vertical fixo */
+  align-items: stretch;
+  justify-items: stretch;
+  box-sizing: border-box;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* garante que os cards respeitam o grid */
+.kpis-grid > .kpi-card {
+  margin: 0 !important;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  min-height: 160px;                       /* altura mínima uniforme */
+}
+
+/* comportamento responsivo: 2 colunas no tablet, 1 no mobile */
+@media (max-width: 1100px) {
+  .kpis-grid {
+    grid-template-columns: repeat(2, 1fr);
+    row-gap: 1.8rem;
+  }
+}
+@media (max-width: 700px) {
+  .kpis-grid {
+    grid-template-columns: 1fr;
+    row-gap: 1.5rem;
+  }
+}
+
+/* ==========================================================
+   GRÁFICOS (CHARTS) - AJUSTE PARA GRID DE 3 COLUNAS
+   ========================================================== */
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-xl);
+    margin-top: var(--spacing-xl);
+    width: 100%; /* Garante que a seção ocupe a largura do .main-container */
+}
+
+/* Classes de coluna para o novo grid */
+.col-3 { grid-column: span 1; }
+.col-6 { grid-column: span 2; }
+.col-12 { grid-column: span 3; }
+
+.chart-section {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+}
+.section-header { display: flex; justify-content: space-between; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); flex-wrap: wrap; }
+.chart-container {
+  position: relative; height: 380px; padding: var(--spacing-lg);
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px;
+}
+.chart-container canvas { max-height: 100%; }
+
+
+
+/* ==========================================================
+   INSIGHTS
+   ========================================================== */
+
+.insights-section {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  margin-top: var(--spacing-xl);
+  width: 100%; /* Garante que a seção ocupe a largura do .main-container */
+}
+.insights-list { list-style: none; display: grid; gap: var(--spacing-md); }
+.insights-list li {
+  padding: var(--spacing-md); background: var(--color-surface);
+  border-left: 3px solid var(--color-accent); border-radius: 8px;
+  color: var(--color-text-primary); font-size: var(--font-size-base);
+  transition: all var(--transition-base);
+}
+.insights-list li:hover { background: var(--color-bg-tertiary); border-left-color: var(--color-info); transform: translateX(4px); }
+
