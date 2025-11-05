@@ -80,20 +80,49 @@ body{
 .ui-help-tooltip[data-pos="top"]::after{ border-top-color:rgba(15,18,25,.96); bottom:-12px; left:16px; transform:rotate(180deg); }
 .ui-help-tooltip[data-pos="bottom"]::after{ border-bottom-color:rgba(15,18,25,.96); top:-12px; left:16px; }
 
-/* Botão (?) padrão */
+/* Botão (?) padrão — seguro para o tooltip */
 .kpi-help{
-  all:unset; width:18px; height:18px; display:inline-flex; align-items:center; justify-content:center;
-  font-size:.75rem; line-height:1; border:1px solid var(--color-border);
-  border-radius:50%; background:var(--color-bg-tertiary); color:var(--color-text-secondary);
-  cursor:help; position:relative; z-index:2; transition:border-color .2s ease, color .2s ease;
+  display:inline-flex; justify-content:center; align-items:center;
+  width:20px; height:20px; border-radius:50%;
+  font-size:.75rem; line-height:1; font-weight:700;
+  border:1px solid var(--color-border);
+  background:var(--color-bg-tertiary);
+  color:var(--color-text-secondary);
+  cursor:help; padding:0; margin-left:.35rem;
+  position:relative; z-index:2;
+  transition:border-color .2s ease, color .2s ease;
 }
-.kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
-
-/* Se depois do Resumo vier a grid de gráficos, dê respiro na grid */
-.kpis-section + .dashboard-grid{
-  margin-top: 1.5rem;
+.kpi-help:hover,
+.kpi-help:focus-visible{
+  border-color:var(--color-accent);
+  color:var(--color-accent);
+  outline:none;
 }
 
+/* Balão que o JS injeta no <body> */
+.tooltip-portal{
+  position:fixed; z-index:9999;
+  background:rgba(0, 0, 0, 0.96);
+  color:var(--color-text-primary);
+  border:1px solid var(--color-border);
+  border-radius:8px;
+  padding:6px 10px;
+  box-shadow:0 8px 24px rgba(255, 255, 255, 0.35);
+  pointer-events:none;
+  white-space:nowrap;
+  transform:translateX(-50%);
+  display:none;
+  font-size:.85rem;
+}
+
+/* Garante o ? na mesma linha do título em QUALQUER header */
+.section-header .section-title,
+.chart-header .section-title{
+  display:inline-flex;
+  align-items:center;
+  gap:.5rem;
+}
+.kpi-help{ vertical-align: middle; }
 
 /* ===================================================================
    BLOCO 2: NAVBAR / CONTAINER / TÍTULOS
@@ -695,17 +724,6 @@ body{
   content:""; width:4px; height:24px; border-radius:2px;
   background:linear-gradient(90deg,var(--color-accent),var(--color-info));
   margin-right:var(--spacing-sm);
-}
-
-
-/* Ícone alinhado ao topo da primeira linha do título,
-   com controle manual horizontal e vertical */
-.chart-section .chart-header.is-inline-help .kpi-help {
-  flex: 0 0 auto;           /* impede que o ícone se expanda */
-  align-self: flex-start;   /* alinha ao topo do texto */
-  position: relative;       /* permite ajuste fino com top/left */
-  top: 4em;              /* movimenta para cima/baixo */
-  left: -15em;              /* movimenta para os lados */
 }
 
 

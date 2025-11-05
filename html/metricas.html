@@ -972,27 +972,6 @@
     });
   </script>
 
-  <!-- JS dos tooltips por clique (fecha ao clicar fora e com ESC) -->
-  <script>
-    (function () {
-      function closeAll(except) {
-        document.querySelectorAll('.kpi-help[aria-expanded="true"]').forEach(btn => {
-          if (btn !== except) btn.setAttribute('aria-expanded', 'false');
-        });
-      }
-      document.addEventListener('click', (e) => {
-        const btn = e.target.closest('.kpi-help');
-        if (!btn) { closeAll(); return; }
-        const isOpen = btn.getAttribute('aria-expanded') === 'true';
-        closeAll(btn);
-        btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-      });
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeAll();
-      });
-    })();
-  </script>
-
   <!-- Script de métricas (dados e gráficos) -->
   <script src="../java/metricas.js" defer></script>
 </body>
