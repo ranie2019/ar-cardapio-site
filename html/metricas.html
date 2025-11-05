@@ -390,15 +390,21 @@
         </div>
 
         <div class="table-wrapper" role="region" aria-label="Tabela de horários de pico">
-          <table class="data-table">
+          <table class="tbl-metric" aria-label="Horário de Pico">
+            <colgroup>
+              <col class="col-date" />
+              <col class="col-hour" />
+              <col class="col-scans" />
+            </colgroup>
             <thead>
               <tr>
-                <th scope="col">Mês</th>
-                <th scope="col">Dia da Semana</th>
-                <th scope="col">Hora</th>
-                <th scope="col">Scans</th>
+                <th>Data</th>
+                <th>Hora</th>
+                <th>Scans</th>
               </tr>
             </thead>
+            <tbody id="tablePeakHours"></tbody>
+          </table>
             <tbody id="tablePeakHours">
               <tr><td colspan="4" class="text-center">Carregando…</td></tr>
             </tbody>

@@ -1,5 +1,5 @@
 /* ==========================================================
-   Métricas.js Arquivo organizado por BLOCOS (títulos azuis do dashboard)
+   Métricas.js — Arquivo organizado por BLOCOS (títulos azuis do dashboard)
    ========================================================== */
 
 (function () {
@@ -49,14 +49,14 @@ const elements = {
   chartDevices: byId("chartDevices"),
   chartTopItems: byId("chartTopItems"),
   chartTimeByCategory: byId("chartTimeByCategory"),
-  chartCategoryPopularity: byId("chartCategoryPopularity"), // Corrigido o nome da variável
+  chartCategoryPopularity: byId("chartCategoryPopularity"),
   chartTimePerItem: byId("chartTimePerItem"),
-  chartInfoUsage: byId("chartInfoUsage"), // Adicionado
-  chartRecurrence: byId("chartRecurrence"), // Adicionado
-  chartEngagementByMesa: byId("chartEngagementByMesa"), // Adicionado
-  chartModelHealth: byId("chartModelHealth"), // Adicionado
-  chartInfoPerItem: byId("chartInfoPerItem"), // Adicionado
-  chartTopModels: byId("chartTopModels"), // Adicionado
+  chartInfoUsage: byId("chartInfoUsage"),
+  chartRecurrence: byId("chartRecurrence"),
+  chartEngagementByMesa: byId("chartEngagementByMesa"),
+  chartModelHealth: byId("chartModelHealth"),
+  chartInfoPerItem: byId("chartInfoPerItem"),
+  chartTopModels: byId("chartTopModels"),
 
   // Tabelas
   tbodyMesaQR: byId("tbodyMesaQR"),
@@ -64,15 +64,18 @@ const elements = {
   tableAvgTimeMenu: byId("tableAvgTimeMenu"),
   tableTopItems: byId("tableTopItems"),
   tbodyTimeByCategory: byId("tbodyTimeByCategory"),
-  tableCategoryPopularity: byId("tableCategoryPopularity"), // Corrigido o nome da variável
-  tableTimePerItem: byId("tableTimePerItem"), // Adicionado
-  tablePeakHours: byId("tablePeakHours"), // Adicionado
-  tableRecurrence: byId("tableRecurrence"), // Adicionado
-  tableEngagementByMesa: byId("tableEngagementByMesa"), // Adicionado
-  tableDeviceDistribution: byId("tableDeviceDistribution"), // Adicionado
-  tableTopModels: byId("tableTopModels"), // Adicionado
-  tableModelErrors: byId("tableModelErrors"), // Adicionado
-  tableInfoPerItem: byId("tableInfoPerItem"), // Adicionado
+  tableCategoryPopularity: byId("tableCategoryPopularity"),
+  tableTimePerItem: byId("tableTimePerItem"),
+  tablePeakHours: byId("tablePeakHours"),
+  tableRecurrence: byId("tableRecurrence"),
+  tableEngagementByMesa: byId("tableEngagementByMesa"),
+  tableDeviceDistribution: byId("tableDeviceDistribution"),
+  tableTopModels: byId("tableTopModels"),
+  tableModelErrors: byId("tableModelErrors"),
+  tableInfoPerItem: byId("tableInfoPerItem"),
+
+  // Insights
+  insightsList: byId("insightsList"),
 };
 
 /* -------------------- INSTÂNCIAS CHART ------------------- */
@@ -85,15 +88,14 @@ const charts = {
   devices: null,
   topItems: null,
   timeByCategory: null,
-  categoryPopularity: null, // Corrigido o nome da variável
+  categoryPopularity: null,
   timePerItem: null,
-  infoUsage: null, // Adicionado
-  recurrence: null, // Adicionado
-  engagementByMesa: null, // Adicionado
-  modelHealth: null, // Adicionado
-  infoPerItem: null, // Adicionado
-  topModels: null, // Adicionado
-  topItems: null,   // <--- ADICIONE
+  infoUsage: null,
+  recurrence: null,
+  engagementByMesa: null,
+  modelHealth: null,
+  infoPerItem: null,
+  topModels: null
 };
 
 /* ==========================================================
@@ -300,7 +302,7 @@ function buildLineChart(ctx, labels, data, label, color, tooltipCallback){
         borderWidth: 2,
         pointRadius: 3,
         fill: true,
-        backgroundColor: `rgba(59, 130, 246, 0.1)`, // Cor de fundo suave
+        backgroundColor: `rgba(59, 130, 246, 0.1)`,
         borderColor: color,
       }]
     },
@@ -573,7 +575,7 @@ function renderTabelaTempoMenu(list){
 
 /* tabela: Itens mais visualizados */
 function renderTabelaTopItems(list){
-  const tbody = elements.tableTopItems;  // <--- antes era elements.tbodyTopItems
+  const tbody = elements.tableTopItems;
   if(!tbody) return;
   const rows = list.map(i=>`
     <tr>
@@ -584,7 +586,6 @@ function renderTabelaTopItems(list){
     </tr>`).join("");
   tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
 }
-
 
 /* tabela: Tempo por Categoria */
 function renderTabelaTimeByCategory(list){
@@ -614,7 +615,7 @@ function renderTabelaTopCategories(list){
 
 /* tabela: Tempo por Item */
 function renderTabelaTimePerItem(list){
-  const tbody=elements.tableTimePerItem; if(!tbody) return; // Corrigido o nome da variável
+  const tbody=elements.tableTimePerItem; if(!tbody) return;
   const totalViews = sum(list.map(i=>i.views));
   const rows = list.map(i=>`
     <tr>
@@ -626,24 +627,30 @@ function renderTabelaTimePerItem(list){
   tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
 }
 
-/* tabela: Horário de Pico */
+/* tabela: Horário de Pico (Data | Hora | Scans) */
 function renderTabelaPeakHours(list){
-  const tbody=elements.tablePeakHours; if(!tbody) return;
-  // Mock data não tem Mês/Dia da Semana, então a tabela será simplificada
-  const rows = list.map(item=>`
-    <tr>
-      <td>-</td>
-      <td>-</td>
-      <td style="text-align:center">${item.hora}h</td>
-      <td style="text-align:right">${toBR(item.scans)}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+  const tbody = elements.tablePeakHours;
+  if (!tbody) return;
+
+  const ref = (AppState.endDate instanceof Date) ? AppState.endDate : new Date();
+  const dataStr = formatDateBR(ref);
+
+  const rows = [...list]
+    .sort((a,b) => a.hora - b.hora)
+    .map(item => `
+      <tr>
+        <td>${dataStr}</td>
+        <td style="text-align:center">${pad2(item.hora)}h</td>
+        <td style="text-align:right">${toBR(item.scans ?? 0)}</td>
+      </tr>
+    `).join("");
+
+  tbody.innerHTML = rows || `<tr><td colspan="3" class="text-center">Sem dados.</td></tr>`;
 }
 
 /* tabela: Recorrência de Clientes */
 function renderTabelaRecurrence(list){
   const tbody=elements.tableRecurrence; if(!tbody) return;
-  // Mock data não tem dados de cliente anônimo, então a tabela será mockada
   const mockClients = Array.from({length:5}).map((_,i)=>({
     id: `Cliente ${i+1}`, scans: randomInt(1, 10), lastScan: new Date(), daysSinceLast: randomInt(1, 30)
   }));
@@ -713,7 +720,6 @@ function renderTabelaModelErrors(list){
 /* tabela: Botao Info */
 function renderTabelaInfoPerItem(list){
   const tbody=elements.tableInfoPerItem; if(!tbody) return;
-  const totalViews = sum(list.map(i=>i.views));
   const rows = list.map(item=>`
     <tr>
       <td>${item.item}</td>
@@ -839,11 +845,11 @@ function renderTimePerItemChart(data){
    BLOCO: ITENS MAIS VISUALIZADOS
    ========================================================== */
 function renderTopItemsChart(data){
-  if (!elements.chartTopItems) return; // CORRIGIDO
-  if (charts.topItems) charts.topItems.destroy(); // CORRIGIDO
+  if (!elements.chartTopItems) return;
+  if (charts.topItems) charts.topItems.destroy();
   const top = data.topItems.slice(0,10);
-  charts.topItems = buildBarHorizontal( // CORRIGIDO
-    elements.chartTopItems.getContext("2d"), // CORRIGIDO
+  charts.topItems = buildBarHorizontal(
+    elements.chartTopItems.getContext("2d"),
     top.map(i=>i.item),
     top.map(i=>i.views),
     "Views",
@@ -977,11 +983,11 @@ function renderDevicesChart(data){
    BLOCO: MODELOS MAIS EXIBIDOS
    ========================================================== */
 function renderTopModelsChart(data){
-  if (!elements.chartTopModels) return; // Corrigido o ID do elemento
-  if (charts.topModels) charts.topModels.destroy(); // Corrigido o nome da instância do chart
+  if (!elements.chartTopModels) return;
+  if (charts.topModels) charts.topModels.destroy();
   const top = data.topModels.slice(0,5);
-  charts.topModels = buildBarHorizontal( // Corrigido o nome da instância do chart
-    elements.chartTopModels.getContext("2d"), // Corrigido o ID do elemento
+  charts.topModels = buildBarHorizontal(
+    elements.chartTopModels.getContext("2d"),
     top.map(i=>i.model),
     top.map(i=>i.views),
     "Exibições",
@@ -1007,114 +1013,244 @@ function renderModelHealthChart(data){
 }
 
 /* ==========================================================
-   BLOCO: INSIGHTS
+   BLOCO: INSIGHTS (fila, tooltip, geração e agendamento)
    ========================================================== */
 
-// Armazena os insights gerados (máximo de 5)
-const insightsQueue = [];
+/* Config e estado */
 const MAX_INSIGHTS = 5;
+const insightsQueue = [];
+let insightsTimer = null;
 
-/**
- * Gera um insight simulado com base nos dados.
- * Em um sistema real, esta função conteria lógica complexa de análise de dados.
- * @param {object} data - O objeto de dados retornado por fetchMetrics.
- * @returns {object} Um objeto insight { date: string, time: string, title: string, fullText: string }
- */
-function generateInsight(data) {
-    // Exemplo de lógica de insight: identificar o horário de pico
-    const picos = data.picos.sort((a, b) => b.scans - a.scans);
-    const picoHora = picos[0].hora;
-    const picoScans = picos[0].scans;
-
-    const date = formatDateBR(new Date());
-    const time = formatTimeBR(new Date());
-    const title = `Pico de Acesso às ${picoHora}h`;
-    const fullText = `O maior volume de escaneamentos no período ocorreu às ${picoHora}h, com um total de ${picoScans} scans. Isso sugere que o horário de pico de movimento é por volta das ${picoHora}h.`;
-
-    return { date, time, title, fullText };
+/* Tooltip portal (melhor posicionamento e seguindo o mouse) */
+function ensureTooltipPortal(){
+  let tip = document.querySelector('.tooltip-portal');
+  if (!tip){
+    tip = document.createElement('div');
+    tip.className = 'tooltip-portal';
+    document.body.appendChild(tip);
+  }
+  return tip;
+}
+function positionTooltip(tip, x, y){
+  const pad = 10;
+  const rect = tip.getBoundingClientRect();
+  let left = x + pad;
+  let top  = y + pad;
+  if (left + rect.width > window.innerWidth - 6) left = x - rect.width - pad;
+  if (top + rect.height > window.innerHeight - 6) top = y - rect.height - pad;
+  tip.style.left = `${left}px`;
+  tip.style.top  = `${top}px`;
+}
+function showInlineTooltipAt(text, x, y){
+  const tip = ensureTooltipPortal();
+  tip.textContent = text || '';
+  tip.style.display = 'block';
+  positionTooltip(tip, x, y);
+}
+function hideInlineTooltip(){
+  const tip = document.querySelector('.tooltip-portal');
+  if (tip) tip.style.display = 'none';
 }
 
-/**
- * Adiciona um novo insight à fila e atualiza o DOM.
- * @param {object} insight - O insight a ser adicionado.
- */
-function addInsightToQueue(insight) {
-    // Adiciona o novo insight no início da fila
-    insightsQueue.unshift(insight);
+/* Helpers BR para Insights */
+function fmt2(n){ return String(n).padStart(2,'0'); }
+function formatBRDate(d){
+  const dt = (d instanceof Date) ? d : new Date(d);
+  return `${fmt2(dt.getDate())}/${fmt2(dt.getMonth()+1)}/${dt.getFullYear()}`;
+}
+function formatTimeHM(d){
+  const dt = (d instanceof Date) ? d : new Date(d);
+  return `${fmt2(dt.getHours())}:${fmt2(dt.getMinutes())}`;
+}
 
-    // Mantém apenas os MAX_INSIGHTS mais recentes
-    if (insightsQueue.length > MAX_INSIGHTS) {
-        insightsQueue.pop();
+/* Fila + render */
+function pushInsight({date, time, title, detail}){
+  insightsQueue.push({
+    id: Date.now() + Math.random(),
+    date, time,
+    title,
+    detail: detail || title
+  });
+  while (insightsQueue.length > MAX_INSIGHTS) insightsQueue.shift();
+  renderInsights();
+}
+
+function renderInsights(){
+  const ul = elements.insightsList || document.getElementById('insightsList');
+  if (!ul) return;
+
+  ul.innerHTML = '';
+
+  const list = [...insightsQueue].reverse();
+
+  list.forEach(item => {
+    const li  = document.createElement('li');
+    li.className = 'insight-item';
+
+    const stamp = document.createElement('span');
+    stamp.className = 'insight-stamp';
+    stamp.textContent = `${item.date} ${item.time}`;
+
+    const msg = document.createElement('span');
+    msg.className = 'insight-msg';
+    msg.textContent = item.title;
+
+    msg.addEventListener('mousemove', (ev) => {
+      showInlineTooltipAt(item.detail, ev.clientX, ev.clientY);
+    });
+    msg.addEventListener('mouseenter', (ev) => {
+      showInlineTooltipAt(item.detail, ev.clientX, ev.clientY);
+    });
+    msg.addEventListener('mouseleave', hideInlineTooltip);
+    window.addEventListener('scroll', hideInlineTooltip, { passive: true });
+
+    li.appendChild(stamp);
+    li.appendChild(msg);
+    ul.appendChild(li);
+  });
+
+  if (list.length === 0){
+    ul.innerHTML = '<li class="insight-item"><span class="insight-stamp">—</span><span class="insight-msg">Sem insights por enquanto</span></li>';
+  }
+}
+
+/* Constrói insights com base nos dados atuais (ou mock) */
+function buildInsightsFromMetrics(mock = false){
+  const now = new Date();
+  const today = formatBRDate(now);
+  const out = [];
+
+  if (window.__peakHoursMax && Number.isInteger(window.__peakHoursMax.hour)){
+    out.push({
+      date: today,
+      time: formatTimeHM(now),
+      title: `Pico de acesso às ${fmt2(window.__peakHoursMax.hour)}h`,
+      detail: `Maior concentração de scans no dia foi às ${fmt2(window.__peakHoursMax.hour)}h, somando ${window.__peakHoursMax.scans} leituras.`
+    });
+  } else if (mock){
+    const h = 18 + Math.floor(Math.random()*6);
+    const v = 20 + Math.floor(Math.random()*80);
+    out.push({
+      date: today,
+      time: formatTimeHM(now),
+      title: `Pico de acesso às ${fmt2(h)}h`,
+      detail: `Maior concentração de scans no dia ocorreu às ${fmt2(h)}h, totalizando ${v} leituras.`
+    });
+  }
+
+  if (window.__sessionsDeltaPct != null){
+    const dir = window.__sessionsDeltaPct >= 0 ? 'alta' : 'queda';
+    out.push({
+      date: today,
+      time: formatTimeHM(now),
+      title: `Sessões em ${dir} de ${Math.abs(window.__sessionsDeltaPct)}%`,
+      detail: `Variação de ${window.__sessionsDeltaPct}% nas sessões em relação ao período anterior.`
+    });
+  }
+
+  if (window.__infoRatePct != null){
+    out.push({
+      date: today,
+      time: formatTimeHM(now),
+      title: `Taxa de Info: ${window.__infoRatePct}%`,
+      detail: `Percentual de cliques no botão Info sobre o total de scans: ${window.__infoRatePct}%.`
+    });
+  }
+
+  return out;
+}
+
+/* Seeds/mocks para preencher 5 linhas */
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function seedMockInsights(n = 5){
+  const now = new Date();
+  for (let i = n - 1; i >= 0; i--){
+    const d = new Date(now.getTime() - i * 60 * 60 * 1000);
+    const date = formatBRDate(d);
+    const time = formatTimeHM(d);
+
+    const h = 10 + Math.floor(Math.random()*13);
+    const scans = 20 + Math.floor(Math.random()*120);
+    const delta = [-18,-9,-4,4,9,12,15][Math.floor(Math.random()*7)];
+    const taxaInfo = (8 + Math.random()*18).toFixed(1);
+
+    const msgs = [
+      { title: `Pico de acesso às ${fmt2(h)}h`, detail:`Maior concentração de scans às ${fmt2(h)}h, total de ${scans} leituras no período.` },
+      { title: `Sessões em ${delta >= 0 ? 'alta' : 'queda'} de ${Math.abs(delta)}%`, detail:`Variação de ${delta}% nas sessões em relação ao período anterior.` },
+      { title: `Taxa de Info: ${taxaInfo}%`, detail:`Percentual de cliques no botão Info sobre o total de scans: ${taxaInfo}%.` }
+    ];
+
+    const m = pick(msgs);
+    pushInsight({ date, time, title: m.title, detail: m.detail });
+  }
+}
+
+/* Alimenta variáveis globais usadas pelos Insights */
+function updateInsightGlobalsFromData(data){
+  try{
+    // Pico de hora
+    let max = { hour: 0, scans: -Infinity };
+    (data.picos || []).forEach(p => { if (p.scans > max.scans) max = { hour: p.hora, scans: p.scans }; });
+    window.__peakHoursMax = max.scans >= 0 ? max : null;
+
+    // Delta sessões (último vs anterior)
+    const arr = (data.daily?.sessoes || []);
+    if (arr.length >= 2){
+      const last = arr[arr.length-1];
+      const prev = arr[arr.length-2] || 0;
+      const pctDelta = prev ? Math.round(((last - prev) / prev) * 100) : 0;
+      window.__sessionsDeltaPct = pctDelta;
+    } else {
+      window.__sessionsDeltaPct = 0;
     }
 
-    renderInsights();
+    // Taxa Info (%)
+    const scansT = data.kpis?.scansTotal || 0;
+    const infoT  = data.kpis?.infoTotal || 0;
+    window.__infoRatePct = scansT ? Math.round((infoT / scansT) * 1000) / 10 : 0;
+  }catch(e){
+    console.warn("updateInsightGlobalsFromData falhou:", e);
+  }
 }
 
-/**
- * Renderiza a lista de insights no DOM.
- */
-function renderInsights() {
-    const ul = document.getElementById('insightsList');
-    if (!ul) return;
+/* Inicia/agenda geração (evita múltiplos timers) */
+function startInsightScheduler(data){
+  updateInsightGlobalsFromData(data);
 
-    if (insightsQueue.length === 0) {
-        ul.innerHTML = '<li>Carregando…</li>'; // Mantém o "Carregando..." se a fila estiver vazia no início
-        return;
+  // primeira carga: preenche 5
+  const pack = buildInsightsFromMetrics(false);
+  if (pack.length >= 5){
+    pack.slice(-5).forEach(pushInsight);
+  } else if (pack.length > 0){
+    pack.forEach(pushInsight);
+    seedMockInsights(5 - pack.length);
+  } else {
+    seedMockInsights(5);
+  }
+
+  if (insightsTimer) clearInterval(insightsTimer);
+  insightsTimer = setInterval(() => {
+    const reais = buildInsightsFromMetrics(false);
+    if (reais.length > 0){
+      pushInsight(reais[0]);
+    } else {
+      seedMockInsights(1);
     }
-
-    const html = insightsQueue.map(insight => {
-        // Formato: data horário título (tooltip com fullText)
-        return `
-            <li>
-                <span class="insight-date">${insight.date}</span>
-                <span class="insight-time">${insight.time}</span>
-                <span class="insight-title" title="${insight.fullText}">${insight.title}</span>
-            </li>
-        `;
-    }).join('');
-
-    ul.innerHTML = html;
+  }, 60 * 60 * 1000);
 }
-
-/**
- * Inicia o agendamento para gerar novos insights a cada hora.
- * @param {object} data - O objeto de dados para gerar o insight.
- */
-function startInsightScheduler(data) {
-    // Gera o primeiro insight imediatamente
-    addInsightToQueue(generateInsight(data));
-
-    // Define o intervalo de 1 hora (3600000 ms) para gerar novos insights
-    const ONE_HOUR_MS = 3600000;
-    // Para fins de demonstração/teste, vamos usar 1 minuto (60000 ms)
-    const INTERVAL_MS = 60000;
-
-    // Limpa qualquer agendamento anterior para evitar duplicidade
-    if (window.insightInterval) {
-        clearInterval(window.insightInterval);
-    }
-
-    window.insightInterval = setInterval(() => {
-        // Em um sistema real, você chamaria fetchMetrics() aqui para obter os dados mais recentes
-        // Para o mock, vamos apenas gerar um novo insight com os dados atuais (ou gerar novos dados mock)
-        const newData = buildMockData(AppState.tenant, AppState.startDate, AppState.endDate);
-        addInsightToQueue(generateInsight(newData));
-    }, INTERVAL_MS);
-}
-
 
 /* ==========================================================
-   BLOCO: RESUMO
+   BLOCO: RESUMO (LOAD & RENDER)
    ========================================================== */
 async function loadAndRender() {
-  // 1) Datas padrão (quando o filtro ainda não foi definido)
+  // 1) Datas padrão
   if (!AppState.startDate || !AppState.endDate) {
     const days = generateMockDates(14);
     AppState.startDate = days[0];
     AppState.endDate   = days[days.length - 1];
   }
 
-  // 2) Buscar dados (mock ou API)
+  // 2) Buscar dados
   const data = await fetchMetrics({
     tenant:    AppState.tenant,
     startDate: AppState.startDate,
@@ -1130,43 +1266,39 @@ async function loadAndRender() {
   renderTabelaTimeByCategory(data.timeByCategory);
   renderTabelaTopCategories(data.topCategories);
   renderTabelaTimePerItem(data.topItems);
-  renderTabelaPeakHours(data.picos); // Adicionado
-  renderTabelaRecurrence(data.recurrenceData); // Adicionado
-  renderTabelaEngagementByMesa(data.porMesa); // Adicionado
-  renderTabelaDeviceDistribution(data.devices); // Adicionado
-  renderTabelaTopModels(data.topModels); // Adicionado
-  renderTabelaModelErrors(data.modelErrors); // Adicionado
-  renderTabelaInfoPerItem(data.topItems); // Adicionado
+  renderTabelaPeakHours(data.picos);
+  renderTabelaRecurrence(data.recurrenceData);
+  renderTabelaEngagementByMesa(data.porMesa);
+  renderTabelaDeviceDistribution(data.devices);
+  renderTabelaTopModels(data.topModels);
+  renderTabelaModelErrors(data.modelErrors);
+  renderTabelaInfoPerItem(data.topItems);
 
   // 4) Gráficos
   await ensureChartJs();
-  renderScansTotalChart(data);        // Escaneamento Total de QR Code
-  renderScansByMesaChart(data);       // Escaneamento por Mesa/QRCode
-  renderSessoesChart(data);           // Sessões por Período
-  renderAvgTimeMenuChart(data);       // Tempo Médio (Cardápio)
-  renderPeakHoursChart(data);         // Horário de Pico
-  renderInfoUsageChart(data);         // Uso do botão "Info" (Gráfico de linha)
-  renderTimePerItemChart(data);       // Tempo por Item
-  renderTopItemsChart(data);          // Itens mais visualizados
-  renderTimeByCategoryChart(data);    // Tempo por Categoria
-  renderCategoryPopularityChart(data);// Categorias mais acessadas
-  renderInfoPerItemChart(data);       // Botao Info (Gráfico de barras)
-  renderRecurrenceChart(data);        // Recorrência de Clientes
-  renderEngagementByMesaChart(data);  // Engajamento por Mesa
-  renderDevicesChart(data);           // Dispositivos Usados
-  renderTopModelsChart(data);         // Modelos mais exibidos
-  renderModelHealthChart(data);       // Saúde dos Modelos
+  renderScansTotalChart(data);
+  renderScansByMesaChart(data);
+  renderSessoesChart(data);
+  renderAvgTimeMenuChart(data);
+  renderPeakHoursChart(data);
+  renderInfoUsageChart(data);
+  renderTimePerItemChart(data);
+  renderTopItemsChart(data);
+  renderTimeByCategoryChart(data);
+  renderCategoryPopularityChart(data);
+  renderInfoPerItemChart(data);
+  renderRecurrenceChart(data);
+  renderEngagementByMesaChart(data);
+  renderDevicesChart(data);
+  renderTopModelsChart(data);
+  renderModelHealthChart(data);
 
-  // 5) Insights (NOVO)
-  startInsightScheduler(data); // <--- ADICIONADO
-
-  // 5) Insights (NOVO)
-  startInsightScheduler(data); // <--- ADICIONADO
+  // 5) Insights (corrigido: apenas 1 chamada e com cálculo das variáveis globais)
+  startInsightScheduler(data);
 
   // 6) Tooltips “?”
   wireHelpBadges(document);
 }
-
 
 /* ==========================================================
    BLOCO: BOOTSTRAP
