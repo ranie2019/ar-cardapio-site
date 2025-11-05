@@ -1,3 +1,4 @@
+<!-- metricas.html -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -5,8 +6,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ARCardápio — Dashboard de Métricas</title>
 
-  <!-- Estilos -->
+  <!-- Estilos principais -->
   <link rel="stylesheet" href="../css/metricas.css" />
+
+  <!-- Ajustes mínimos de estilo locais (sem tooltip duplicado) -->
+  <style>
+    /* Ativa a barrinha gradiente no hover do KPI (garantia) */
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--color-accent), var(--color-info));
+      opacity: 0;
+      transition: opacity var(--transition-base);
+    }
+    .kpi-card:hover::before { opacity: 1; }
+
+    /* Título das seções preparado para o botão (?) */
+    .section-header .section-title{
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+    }
+  </style>
 
   <!-- Flatpickr (calendários em PT-BR) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -38,7 +61,16 @@
 
       <div class="filters-grid">
         <div class="filters-group">
-          <label class="filter-label" for="periodFilter">Período:</label>
+          <label class="filter-label" for="filterTenant">Cliente (tenant):</label>
+          <select id="filterTenant" class="filter-select">
+            <option value="">Todos</option>
+            <option value="cliente.demo@exemplo.com">cliente.demo@exemplo.com</option>
+            <option value="restaurante.arcardapio@exemplo.com">restaurante.arcardapio@exemplo.com</option>
+          </select>
+        </div>
+
+        <div class="filters-group">
+          <label class="filter-label" for="periodFilter">Período rápido:</label>
           <select id="periodFilter" class="filter-select">
             <option value="custom" selected>PERÍODO</option>
             <option value="7d">7 ÚLTIMOS DIAS</option>
@@ -60,12 +92,18 @@
           <input id="endDate" type="text" class="filter-input date-input" placeholder="dd/mm/aaaa" inputmode="numeric" autocomplete="off"/>
         </div>
 
-        <button id="applyFilters" type="button" class="btn btn-primary">APLICAR FILTROS</button>
+        <!-- Botões -->
+        <button id="btnApplyFilters" type="button" class="btn btn-primary">APLICAR FILTROS</button>
         <button id="clearRange" type="button" class="btn btn-secondary">LIMPAR</button>
+
+        <!-- Campo oculto que o metricas.js usa (range no formato "dd/mm/aaaa a dd/mm/aaaa") -->
+        <input id="filterRange" type="text" style="display:none;" aria-hidden="true" />
       </div>
     </section>
 
-    <!-- ===== RESUMO (KPIs) ===== -->
+    <!-- ========= 
+     RESUMO (KPIs) 
+     ========= -->
     <section class="kpis-section" aria-labelledby="titulo-resumo">
       <h2 id="titulo-resumo" class="section-title">Resumo</h2>
 
@@ -73,93 +111,157 @@
       <div class="kpis-grid">
         <article class="kpi-card">
           <div class="kpi-header">
-            <h3 class="kpi-title">Total de Scans de QR</h3>
+            <h3 class="kpi-title">
+              Total de Scans de QR
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Soma de todas as leituras de QR Codes no período selecionado.">?</button>
+            </h3>
             <span class="kpi-icon" aria-hidden="true">📊</span>
           </div>
-          <p id="kpiTotalScans" class="kpi-value">--</p>
+          <p id="kpiScans" class="kpi-value">--</p>
           <span id="kpiTotalScansDelta" class="kpi-change">—</span>
         </article>
 
         <article class="kpi-card">
           <div class="kpi-header">
-            <h3 class="kpi-title">Sessões Únicas</h3>
+            <h3 class="kpi-title">
+              Sessões
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Quantidade total de sessões no período.">?</button>
+            </h3>
             <span class="kpi-icon" aria-hidden="true">👥</span>
           </div>
-          <p id="kpiSessionsUnique" class="kpi-value">--</p>
+          <p id="kpiSessoes" class="kpi-value">--</p>
           <span id="kpiSessionsUniqueDelta" class="kpi-change">—</span>
         </article>
 
         <article class="kpi-card">
           <div class="kpi-header">
-            <h3 class="kpi-title">Tempo Médio no Cardápio</h3>
-            <span class="kpi-icon" aria-hidden="true">⏱️</span>
+            <h3 class="kpi-title">
+              Usuários Únicos
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Dispositivos ou navegadores distintos identificados no período.">?</button>
+            </h3>
+            <span class="kpi-icon" aria-hidden="true">🧑‍🤝‍🧑</span>
           </div>
-          <p id="kpiAvgTimeMenu" class="kpi-value">--</p>
-          <span id="kpiAvgTimeMenuDelta" class="kpi-change">—</span>
+          <p id="kpiUnicos" class="kpi-value">--</p>
+          <span id="kpiUsersUniqueDelta" class="kpi-change">—</span>
         </article>
 
         <article class="kpi-card">
           <div class="kpi-header">
-            <h3 class="kpi-title">Tempo Médio em AR</h3>
-            <span class="kpi-icon" aria-hidden="true">🎯</span>
+            <h3 class="kpi-title">
+              Taxa de Info
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Percentual de cliques no botão de Informações em relação aos scans.">?</button>
+            </h3>
+            <span class="kpi-icon" aria-hidden="true">ℹ️</span>
           </div>
-          <p id="kpiAvgTimeAR" class="kpi-value">--</p>
-          <span id="kpiAvgTimeARDelta" class="kpi-change">—</span>
+          <p id="kpiInfoRate" class="kpi-value">--</p>
+          <span id="kpiInfoRateDelta" class="kpi-change">—</span>
         </article>
       </div>
 
-      <!-- Linha 2 de KPIs (Iténs / Categorias / Info / Recorrência) -->
-      <!-- O espaçamento vertical entre a Linha 1 e a Linha 2 será resolvido pelo CSS corrigido. -->
+      <!-- Linha 2 de KPIs -->
       <div class="kpis-grid">
         <article class="kpi-card">
-          <div class="kpi-header"><h3 class="kpi-title">Tempo Médio por Item</h3><span class="kpi-icon">🍕</span></div>
+          <div class="kpi-header">
+            <h3 class="kpi-title">
+              Tempo Médio por Item
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Tempo médio de permanência em cada item visualizado.">?</button>
+            </h3>
+            <span class="kpi-icon">🍕</span>
+          </div>
           <p id="kpiAvgTimePerItem" class="kpi-value">--</p>
         </article>
 
         <article class="kpi-card">
-          <div class="kpi-header"><h3 class="kpi-title">Tempo Médio por Categoria</h3><span class="kpi-icon">🗂️</span></div>
+          <div class="kpi-header">
+            <h3 class="kpi-title">
+              Tempo Médio por Categoria
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Tempo médio dentro de cada categoria do cardápio.">?</button>
+            </h3>
+            <span class="kpi-icon">🗂️</span>
+          </div>
           <p id="kpiAvgTimePerCategory" class="kpi-value">--</p>
         </article>
 
         <article class="kpi-card">
-          <div class="kpi-header"><h3 class="kpi-title">Cliques no Info</h3><span class="kpi-icon">ℹ️</span></div>
+          <div class="kpi-header">
+            <h3 class="kpi-title">
+              Cliques no Info
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Total de aberturas do painel de informações dos itens.">?</button>
+            </h3>
+            <span class="kpi-icon">ℹ️</span>
+          </div>
           <p id="kpiInfoClicks" class="kpi-value">--</p>
         </article>
 
         <article class="kpi-card">
-          <div class="kpi-header"><h3 class="kpi-title">Tempo Médio de Leitura (Info)</h3><span class="kpi-icon">⏱️</span></div>
+          <div class="kpi-header">
+            <h3 class="kpi-title">
+              Tempo Médio de Leitura
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Tempo médio gasto lendo as informações dos itens.">?</button>
+            </h3>
+            <span class="kpi-icon">⏱️</span>
+          </div>
           <p id="kpiInfoAvgTime" class="kpi-value">--</p>
         </article>
 
         <article class="kpi-card">
-          <div class="kpi-header"><h3 class="kpi-title">Clientes Ativos</h3><span class="kpi-icon">🔥</span></div>
+          <div class="kpi-header">
+            <h3 class="kpi-title">
+              Clientes Ativos
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Restaurantes com plano ativo e uso registrado no período.">?</button>
+            </h3>
+            <span class="kpi-icon">🔥</span>
+          </div>
           <p id="kpiActiveClients" class="kpi-value">--</p>
         </article>
 
         <article class="kpi-card">
-          <div class="kpi-header"><h3 class="kpi-title">Novos Clientes</h3><span class="kpi-icon">🆕</span></div>
+          <div class="kpi-header">
+            <h3 class="kpi-title">
+              Novos Clientes
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Novos restaurantes que começaram a usar o sistema no período.">?</button>
+            </h3>
+            <span class="kpi-icon">🆕</span>
+          </div>
           <p id="kpiNewClients" class="kpi-value">--</p>
         </article>
 
         <article class="kpi-card">
-          <div class="kpi-header"><h3 class="kpi-title">Clientes Recorrentes</h3><span class="kpi-icon">🔁</span></div>
-          <p id="kpiReturningClients" class="kpi-value">--</p>
+          <div class="kpi-header">
+            <h3 class="kpi-title">
+              Clientes Recorrentes
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Usuários finais que voltaram a acessar o cardápio no período.">?</button>
+            </h3>
+            <span class="kpi-icon">🔁</span>
+          </div>
+          <p id="kpiRecurringClients" class="kpi-value">--</p>
         </article>
 
         <article class="kpi-card">
-          <div class="kpi-header"><h3 class="kpi-title">Taxa de Retorno</h3><span class="kpi-icon">📈</span></div>
+          <div class="kpi-header">
+            <h3 class="kpi-title">
+              Taxa de Retorno
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Percentual de clientes retornantes sobre o total de clientes (novos + recorrentes).">?</button>
+            </h3>
+            <span class="kpi-icon">📈</span>
+          </div>
           <p id="kpiReturnRate" class="kpi-value">--</p>
         </article>
       </div>
     </section>
 
-    <!-- ===== GRADE (3 colunas responsivas) - Classes de coluna ajustadas para col-4 ===== -->
+    <!-- ===== GRADE (2 colunas responsivas) ===== -->
     <div class="dashboard-grid">
 
-      <!-- Scans de QR (faixa inteira) -->
+      <!--=========================
+      Escaneamento Total de QR Code 
+      ==========================-->
       <section class="chart-section col-12" aria-labelledby="titulo-scans-geral">
         <div class="section-header">
-          <h2 id="titulo-scans-geral" class="section-title">Escaneamento de QR Code</h2>
+          <h2 id="titulo-scans-geral" class="section-title">
+            Escaneamento Total de QR Code
+            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Soma diária de todas as leituras de QR Codes no período selecionado.">?</button>
+          </h2>
           <span class="section-subtitle">
             Representa o total de vezes que os QR Codes foram escaneados dentro do período selecionado.
             Cada ponto no gráfico indica a quantidade de leituras feitas naquele dia.
@@ -167,47 +269,58 @@
         </div>
 
         <div class="chart-container">
-          <canvas id="chartScansOverall" aria-label="Gráfico de scans geral"></canvas>
+          <canvas id="chartScansTotal" aria-label="Gráfico de escaneamentos por dia"></canvas>
         </div>
       </section>
 
-      <!-- Scans por Mesa/QR -->
-      <section class="chart-section col-4" aria-labelledby="titulo-scans-mesa">
-        <div class="section-header">
-          <h2 id="titulo-scans-mesa" class="section-title">Escaneamento por Mesa/QRCode</h2>
-          <span class="section-subtitle">Detalhamento por localização</span>
+      <!--=============
+      Scans por Mesa/QR 
+      ==============-->
+      <section class="chart-section col-4" aria-labelledby="titulo-escaneamento-mesa">
+        <div class="chart-header is-inline-help">
+          <h2 id="titulo-escaneamento-mesa" class="section-title">
+            Escaneamento por Mesa/QRCode
+            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Distribuição dos scans por mesa/QR no período; a tabela mostra participação e último scan.">?</button>
+          </h2>
         </div>
 
-        <div class="chart-container">
-          <canvas id="chartScansByMesa" aria-label="Gráfico de scans por mesa"></canvas>
-        </div>
+        <div class="chart-container chart-container--stacked">
+          <div class="chart-container__canvas">
+            <canvas id="chartScansByMesa" aria-label="Gráfico de scans por mesa"></canvas>
+          </div>
 
-        <div class="table-wrapper" role="region" aria-label="Tabela de scans por mesa">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th scope="col">Mesa/QR</th>
-                <th scope="col">Scans (Período)</th>
-                <th scope="col">Último Scan</th>
-                <th scope="col">% do Total</th>
-              </tr>
-            </thead>
-            <tbody id="tableScansPerMesa">
-              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
-            </tbody>
-          </table>
+          <div class="chart-container__table" role="region" aria-label="Tabela de scans por mesa">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">Mesa</th>
+                  <th scope="col">Período</th>
+                  <th scope="col">Último Scan</th>
+                  <th scope="col">% do Total</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyMesaQR">
+                <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
-      <!-- Sessões por período -->
+      <!--===============
+      Sessões por período 
+      ================-->
       <section class="chart-section col-4" aria-labelledby="titulo-sessoes">
         <div class="section-header">
-          <h2 id="titulo-sessoes" class="section-title">Sessões por Período</h2>
+          <h2 id="titulo-sessoes" class="section-title">
+            Sessões por Período
+            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Número de sessões ao longo do tempo; útil para medir tendência e engajamento.">?</button>
+          </h2>
           <span class="section-subtitle">Tendência e engajamento</span>
         </div>
 
         <div class="chart-container">
-          <canvas id="chartSessions" aria-label="Gráfico de sessões"></canvas>
+          <canvas id="chartSessoes" aria-label="Gráfico de sessões"></canvas>
         </div>
 
         <div class="table-wrapper" role="region" aria-label="Tabela de sessões">
@@ -220,17 +333,22 @@
                 <th scope="col">Sessões/Usuário</th>
               </tr>
             </thead>
-            <tbody id="tableSessions">
+            <tbody id="tbodySessoes">
               <tr><td colspan="4" class="text-center">Carregando…</td></tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <!-- Tempo médio no cardápio -->
+      <!--===================
+      Tempo médio no cardápio 
+      ====================-->
       <section class="chart-section col-4" aria-labelledby="titulo-tempo-menu">
         <div class="section-header">
-          <h2 id="titulo-tempo-menu" class="section-title">Tempo Médio no Cardápio</h2>
+          <h2 id="titulo-tempo-menu" class="section-title">
+            Tempo Médio (Cardápio)
+            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Duração média das sessões no cardápio (sem AR) durante o período.">?</button>
+          </h2>
           <span class="section-subtitle">Duração de permanência</span>
         </div>
 
@@ -255,10 +373,15 @@
         </div>
       </section>
 
-      <!-- Horário de pico -->
-      <section class="chart-section col-4" aria-labelledby="titulo-pico">
+      <!--===========
+      Horário de pico 
+      ============-->
+      <section class="chart-section col-4" aria-labelledby="titulo-horario-pico">
         <div class="section-header">
-          <h2 id="titulo-pico" class="section-title">Horário de Pico</h2>
+          <h2 id="titulo-horario-pico" class="section-title">
+            Horário de Pico
+            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Faixas horárias mais movimentadas por mês e dia da semana.">?</button>
+          </h2>
           <span class="section-subtitle">Uso por hora/dia/mês</span>
         </div>
 
@@ -283,22 +406,38 @@
         </div>
       </section>
 
-      <!-- Uso do botão Info - Ajuste para usar kpis-grid e chart-container separados -->
+      <!--=============
+      Uso do botão Info 
+      ==============-->
       <section class="chart-section col-4" aria-labelledby="titulo-info">
         <div class="section-header">
-          <h2 id="titulo-info" class="section-title">Uso do botão "Info"</h2>
+          <h2 id="titulo-info" class="section-title">
+            Uso do botão "Info"
+            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Evolução de aberturas do painel de informações e tempo médio de leitura.">?</button>
+          </h2>
           <span class="section-subtitle">Aberturas e tempo</span>
         </div>
 
-        <!-- KPIs internos para Aberturas e Tempo Médio (agora com espaçamento corrigido pelo CSS) -->
         <div class="kpis-grid">
           <article class="kpi-card">
-            <div class="kpi-header"><h3 class="kpi-title">Aberturas</h3><span class="kpi-icon" aria-hidden="true">ℹ️</span></div>
+            <div class="kpi-header">
+              <h3 class="kpi-title">
+                Aberturas
+                <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Número de vezes que o painel de informações dos itens foi aberto.">?</button>
+              </h3>
+              <span class="kpi-icon" aria-hidden="true">ℹ️</span>
+            </div>
             <p id="kpiInfoOpens" class="kpi-value">--</p>
           </article>
           <article class="kpi-card">
-            <div class="kpi-header"><h3 class="kpi-title">Tempo Médio</h3><span class="kpi-icon" aria-hidden="true">⏱️</span></div>
-            <p id="kpiInfoAvgTime" class="kpi-value">--</p>
+            <div class="kpi-header">
+              <h3 class="kpi-title">
+                Tempo Médio
+                <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Tempo médio que os usuários passaram lendo as informações.">?</button>
+              </h3>
+              <span class="kpi-icon" aria-hidden="true">⏱️</span>
+            </div>
+            <p id="kpiInfoAvgTimeInfoBox" class="kpi-value">--</p>
           </article>
         </div>
 
@@ -307,10 +446,15 @@
         </div>
       </section>
 
-      <!-- Tempo por item -->
+      <!--==========
+      Tempo por item 
+      ===========-->
       <section class="chart-section col-4" aria-labelledby="titulo-tempo-item">
         <div class="section-header">
-          <h2 id="titulo-tempo-item" class="section-title">Tempo por Item</h2>
+          <h2 id="titulo-tempo-item" class="section-title">
+            Tempo por Item
+            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Tempo médio (dwell time) por produto visualizado no cardápio.">?</button>
+          </h2>
           <span class="section-subtitle">Dwell time por produto</span>
         </div>
 
@@ -335,11 +479,16 @@
         </div>
       </section>
 
-      <!-- Itens mais visualizados -->
+      <!--===================
+      Itens mais visualizados 
+      ====================-->
       <section class="chart-section col-4" aria-labelledby="titulo-itens-mais-vistos">
         <div class="section-header">
-          <h2 id="titulo-itens-mais-vistos" class="section-title">Itens mais visualizados</h2>
-          <span class="section-subtitle">Top 10 de interesse</span>
+          <h2 id="titulo-itens-mais-vistos" class="section-title">
+            Itens mais visualizados
+            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Top de itens com maior número de visualizações no período.">?</button>
+          </h2>
+        <span class="section-subtitle">Top 10 de interesse</span>
         </div>
 
         <div class="chart-container">
@@ -363,15 +512,21 @@
         </div>
       </section>
 
-      <!-- Tempo por categoria -->
-      <section class="chart-section col-4" aria-labelledby="titulo-tempo-categoria">
+      <!--===============
+      Tempo por Categoria 
+      ================-->
+      <section class="chart-section col-6" aria-labelledby="titulo-tempo-categoria">
         <div class="section-header">
-          <h2 id="titulo-tempo-categoria" class="section-title">Tempo por Categoria</h2>
+          <h2 id="titulo-tempo-categoria" class="section-title">
+            Tempo por Categoria
+            <button class="kpi-help" aria-label="O que é isso?"
+              data-tooltip="Tempo médio de permanência por categoria (dwell time).">?</button>
+          </h2>
           <span class="section-subtitle">Tempo médio de permanência</span>
         </div>
 
         <div class="chart-container">
-          <canvas id="chartTimePerCategory" aria-label="Gráfico de tempo por categoria"></canvas>
+          <canvas id="chartTimeByCategory" aria-label="Gráfico de tempo por categoria"></canvas>
         </div>
 
         <div class="table-wrapper" role="region" aria-label="Tabela de tempo por categoria">
@@ -384,24 +539,32 @@
                 <th scope="col">% do Tempo</th>
               </tr>
             </thead>
-            <tbody id="tableTimePerCategory">
+            <tbody id="tbodyTimeByCategory">
               <tr><td colspan="4" class="text-center">Carregando…</td></tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <!-- Categorias mais acessadas -->
-      <section class="chart-section col-4" aria-labelledby="titulo-categorias-mais">
+      <!--=====================
+        Categorias mais acessadas
+      ======================-->
+      <section class="chart-section col-6" aria-labelledby="titulo-categorias-mais">
         <div class="section-header">
-          <h2 id="titulo-categorias-mais" class="section-title">Categorias mais acessadas</h2>
+          <h2 id="titulo-categorias-mais" class="section-title">
+            Categorias mais acessadas
+            <button class="kpi-help" aria-label="O que é isso?"
+              data-tooltip="Categorias com maior volume de cliques de acesso no período.">?</button>
+          </h2>
           <span class="section-subtitle">Popularidade por cliques</span>
         </div>
 
+        <!-- Gráfico -->
         <div class="chart-container">
           <canvas id="chartCategoryPopularity" aria-label="Gráfico de categorias mais acessadas"></canvas>
         </div>
 
+        <!-- Tabela -->
         <div class="table-wrapper" role="region" aria-label="Tabela de categorias mais acessadas">
           <table class="data-table">
             <thead>
@@ -419,10 +582,15 @@
         </div>
       </section>
 
-      <!-- Uso do botão Info por item -->
+      <!--=========
+      Botao Info 
+      ==========-->
       <section class="chart-section col-4" aria-labelledby="titulo-info-por-item">
         <div class="section-header">
-          <h2 id="titulo-info-por-item" class="section-title">Info por Item</h2>
+          <h2 id="titulo-info-por-item" class="section-title">
+            Botao Info
+            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Cliques no botão Info por item e tempo médio de leitura correspondente.">?</button>
+          </h2>
           <span class="section-subtitle">Curiosidade e leitura</span>
         </div>
 
@@ -435,7 +603,7 @@
             <thead>
               <tr>
                 <th scope="col">Item</th>
-                <th scope="col">Cliques Info</th>
+                <th scope="col">CliquesInfo </th>
                 <th scope="col">Tempo Médio (Info)</th>
                 <th scope="col">Visualizações</th>
               </tr>
@@ -447,24 +615,47 @@
         </div>
       </section>
 
-      <!-- Recorrência (novos vs recorrentes) -->
+      <!--=======
+      Recorrência 
+      ========-->
       <section class="chart-section col-4" aria-labelledby="titulo-recorrencia">
         <div class="section-header">
-          <h2 id="titulo-recorrencia" class="section-title">Recorrência de Clientes</h2>
+          <h2 id="titulo-recorrencia" class="section-title">
+            Recorrência de Clientes
+            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Comparativo entre clientes novos e retornantes; calcula também a taxa de retorno.">?</button>
+          </h2>
           <span class="section-subtitle">Novos x Retornando</span>
         </div>
 
         <div class="kpis-grid">
           <article class="kpi-card">
-            <div class="kpi-header"><h3 class="kpi-title">Novos</h3><span class="kpi-icon">🆕</span></div>
+            <div class="kpi-header">
+              <h3 class="kpi-title">
+                Novos
+                <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Clientes (usuários finais) identificados pela primeira vez no período.">?</button>
+              </h3>
+              <span class="kpi-icon">🆕</span>
+            </div>
             <p id="kpiRecNew" class="kpi-value">--</p>
           </article>
           <article class="kpi-card">
-            <div class="kpi-header"><h3 class="kpi-title">Retornando</h3><span class="kpi-icon">🔁</span></div>
+            <div class="kpi-header">
+              <h3 class="kpi-title">
+                Retornando
+                <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Clientes que já haviam acessado antes e voltaram no período.">?</button>
+              </h3>
+              <span class="kpi-icon">🔁</span>
+            </div>
             <p id="kpiRecReturning" class="kpi-value">--</p>
           </article>
           <article class="kpi-card">
-            <div class="kpi-header"><h3 class="kpi-title">% Retorno</h3><span class="kpi-icon">📈</span></div>
+            <div class="kpi-header">
+              <h3 class="kpi-title">
+                % Retorno
+                <button class="kpi-help" aria-label="O que é isso?" data-tooltip="(Retornando / Total de clientes no período) × 100.">?</button>
+              </h3>
+              <span class="kpi-icon">📈</span>
+            </div>
             <p id="kpiRecRate" class="kpi-value">--</p>
           </article>
         </div>
@@ -490,10 +681,15 @@
         </div>
       </section>
 
-      <!-- Engajamento por mesa (tempo e interações) -->
+      <!--================
+      Engajamento por mesa 
+      =================-->
       <section class="chart-section col-4" aria-labelledby="titulo-engajamento-mesa">
         <div class="section-header">
-          <h2 id="titulo-engajamento-mesa" class="section-title">Engajamento por Mesa</h2>
+          <h2 id="titulo-engajamento-mesa" class="section-title">
+            Engajamento por Mesa
+            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Tempo médio e interações por sessão para cada mesa/QR.">?</button>
+          </h2>
           <span class="section-subtitle">Tempo e interações</span>
         </div>
 
@@ -518,15 +714,20 @@
         </div>
       </section>
 
-      <!-- Distribuição por dispositivo -->
+      <!--========================
+      Distribuição por dispositivo 
+      =========================-->
       <section class="chart-section col-4" aria-labelledby="titulo-dispositivos">
         <div class="section-header">
-          <h2 id="titulo-dispositivos" class="section-title">Distribuição por Dispositivo</h2>
+          <h2 id="titulo-dispositivos" class="section-title">
+            Dispositivo Usados
+            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Percentual de sessões por tipo de dispositivo (celular, tablet, etc.).">?</button>
+          </h2>
           <span class="section-subtitle">Celular, tablet e outros</span>
         </div>
 
         <div class="chart-container">
-          <canvas id="chartDeviceDistribution" aria-label="Gráfico de distribuição por dispositivo"></canvas>
+          <canvas id="chartDevices" aria-label="Gráfico de distribuição por dispositivo"></canvas>
         </div>
 
         <div class="table-wrapper" role="region" aria-label="Tabela de dispositivos">
@@ -546,10 +747,15 @@
         </div>
       </section>
 
-      <!-- Modelos AR (top) -->
+      <!--=================
+      Modelos mais exibidos 
+      ==================-->
       <section class="chart-section col-4" aria-labelledby="titulo-modelos">
         <div class="section-header">
-          <h2 id="titulo-modelos" class="section-title">Modelos em AR mais exibidos</h2>
+          <h2 id="titulo-modelos" class="section-title">
+            Modelos mais exibidos
+            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Itens com maior número de exibições no modo AR.">?</button>
+          </h2>
           <span class="section-subtitle">Top 5 + visão geral</span>
         </div>
 
@@ -574,20 +780,37 @@
         </div>
       </section>
 
-      <!-- Saúde dos modelos (carregado x erro) -->
+      <!--=============
+      Saúde dos modelos 
+      ==============-->
       <section class="chart-section col-4" aria-labelledby="titulo-model-health">
         <div class="section-header">
-          <h2 id="titulo-model-health" class="section-title">Saúde dos Modelos</h2>
+          <h2 id="titulo-model-health" class="section-title">
+            Saúde dos Modelos
+            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Relação de modelos carregados com sucesso versus ocorrências de erro.">?</button>
+          </h2>
           <span class="section-subtitle">Carregados vs Erros</span>
         </div>
 
         <div class="kpis-grid">
           <article class="kpi-card">
-            <div class="kpi-header"><h3 class="kpi-title">Carregados</h3><span class="kpi-icon">✅</span></div>
+            <div class="kpi-header">
+              <h3 class="kpi-title">
+                Carregados
+                <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Quantidade de modelos 3D carregados com sucesso.">?</button>
+              </h3>
+              <span class="kpi-icon">✅</span>
+            </div>
             <p id="kpiModelsLoaded" class="kpi-value">--</p>
           </article>
           <article class="kpi-card">
-            <div class="kpi-header"><h3 class="kpi-title">Erros</h3><span class="kpi-icon">⚠️</span></div>
+            <div class="kpi-header">
+              <h3 class="kpi-title">
+                Erros
+                <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Quantidade de falhas ao carregar modelos 3D.">?</button>
+              </h3>
+              <span class="kpi-icon">⚠️</span>
+            </div>
             <p id="kpiModelsErrors" class="kpi-value">--</p>
           </article>
         </div>
@@ -615,9 +838,17 @@
 
     </div><!-- /dashboard-grid -->
 
-    <!-- ===== INSIGHTS ===== -->
+    <!-- ===== 
+     INSIGHTS 
+     ===== -->
     <section class="insights-section" aria-labelledby="titulo-insights">
-      <h2 id="titulo-insights" class="section-title">Insights</h2>
+      <h2 id="titulo-insights" class="section-title">
+        Insights
+        <button class="kpi-help" data-tooltip="Aqui são exibidas observações automáticas geradas a partir dos dados do restaurante.">
+          ?
+        </button>
+      </h2>
+
       <ul id="insightsList" class="insights-list"><li>Carregando…</li></ul>
     </section>
 
@@ -633,8 +864,8 @@
   <!-- Bibliotecas -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
 
+  <!-- Desativa a legenda globalmente para não exibir “Scans Totais” etc. -->
   <script>
-    /* Desativa a legenda globalmente (remove "Scans Totais") */
     window.addEventListener('DOMContentLoaded', () => {
       if (window.Chart && Chart.defaults?.plugins?.legend) {
         Chart.defaults.plugins.legend.display = false;
@@ -642,12 +873,45 @@
     });
   </script>
 
-
-  <!-- Inicialização dos calendários -->
+  <!-- Inicialização dos calendários + sincronização com #filterRange (usado por metricas.js) -->
   <script>
+    // Utilitários de data
+    function pad2(n){ return String(n).padStart(2,'0'); }
+    function toBR(d){
+      const dt = (d instanceof Date) ? d : new Date(d);
+      return `${pad2(dt.getDate())}/${pad2(dt.getMonth()+1)}/${dt.getFullYear()}`;
+    }
+    function fromBR(s){
+      const [dd, mm, yyyy] = s.split('/').map(n => parseInt(n,10));
+      return new Date(yyyy, mm-1, dd);
+    }
+    function setFilterRange(start, end){
+      const fr = document.getElementById('filterRange');
+      if (!fr) return;
+      fr.value = `${toBR(start)} a ${toBR(end)}`;
+    }
+    function lastNDays(n){
+      const arr = [];
+      const today = new Date();
+      for (let i=n-1;i>=0;i--){
+        const d = new Date(today);
+        d.setDate(today.getDate()-i);
+        arr.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+      }
+      return arr;
+    }
+    function getMonthRange(offset){ // 0 = mês atual, -1 = mês anterior
+      const now = new Date();
+      const first = new Date(now.getFullYear(), now.getMonth()+offset, 1);
+      const last  = new Date(now.getFullYear(), now.getMonth()+offset+1, 0);
+      return { start:first, end:last };
+    }
+
     window.addEventListener('DOMContentLoaded', function () {
-      const defaultStart = "13/10/2025";
-      const defaultEnd   = "31/10/2025";
+      // Datas padrão (exemplo estático inicial; ajuste se quiser “hoje-14”)
+      const last14 = lastNDays(14);
+      const defaultStart = toBR(last14[0]);
+      const defaultEnd   = toBR(last14[last14.length-1]);
 
       const startPicker = flatpickr("#startDate", {
         locale: flatpickr.l10ns.pt,
@@ -665,22 +929,71 @@
         monthSelectorType: "static",
       });
 
+      // Inicializa o #filterRange que o metricas.js consome
+      setFilterRange(fromBR(defaultStart), fromBR(defaultEnd));
+
+      // Limpar período
       document.getElementById("clearRange").addEventListener("click", () => {
         startPicker.clear();
         endPicker.clear();
         document.getElementById("periodFilter").value = "custom";
+        // Mantém um range padrão de 14 dias para não quebrar o JS
+        const fallback = lastNDays(14);
+        setFilterRange(fallback[0], fallback[fallback.length-1]);
       });
 
+      // Se escolheu um período rápido, zera os campos individuais e seta o range oculto
       document.getElementById("periodFilter").addEventListener("change", (e) => {
-        if (e.target.value !== "custom") {
-          startPicker.clear();
-          endPicker.clear();
+        const v = e.target.value;
+        if (v === "custom") return;
+
+        startPicker.clear();
+        endPicker.clear();
+
+        let start, end;
+        if (v === "7d")  { const r = lastNDays(7);  start=r[0]; end=r[r.length-1]; }
+        if (v === "15d") { const r = lastNDays(15); start=r[0]; end=r[r.length-1]; }
+        if (v === "30d") { const r = lastNDays(30); start=r[0]; end=r[r.length-1]; }
+        if (v === "60d") { const r = lastNDays(60); start=r[0]; end=r[r.length-1]; }
+        if (v === "mesAnterior"){ const {start:s,end:e2}=getMonthRange(-1); start=s; end=e2; }
+        if (v === "mesAtual"){ const {start:s,end:e2}=getMonthRange(0); start=s; end=e2; }
+
+        if (start && end) setFilterRange(start, end);
+      });
+
+      // Ao clicar em aplicar, se houver datas individuais, sincroniza com o range oculto
+      document.getElementById("btnApplyFilters").addEventListener("click", () => {
+        const sVal = document.getElementById("startDate").value?.trim();
+        const eVal = document.getElementById("endDate").value?.trim();
+        if (sVal && eVal) {
+          setFilterRange(fromBR(sVal), fromBR(eVal));
         }
       });
     });
   </script>
 
-  <!-- Script de métricas (apenas estrutura pronta; dados serão preenchidos em metricas.js) -->
+  <!-- JS dos tooltips por clique (fecha ao clicar fora e com ESC) -->
+  <script>
+    (function () {
+      function closeAll(except) {
+        document.querySelectorAll('.kpi-help[aria-expanded="true"]').forEach(btn => {
+          if (btn !== except) btn.setAttribute('aria-expanded', 'false');
+        });
+      }
+      document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.kpi-help');
+        if (!btn) { closeAll(); return; }
+        const isOpen = btn.getAttribute('aria-expanded') === 'true';
+        closeAll(btn);
+        btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeAll();
+      });
+    })();
+  </script>
+
+  <!-- Script de métricas (dados e gráficos) -->
   <script src="../java/metricas.js" defer></script>
 </body>
 </html>
