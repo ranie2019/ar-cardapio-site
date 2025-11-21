@@ -1,30 +1,37 @@
 /* metricaapp.js — ARCardapio (métricas de uso no app do cliente final)
+   v2.0.1
    - Envio em lote via sendBeacon/fetch(keepalive)
    - Buffer + persistência offline (localStorage)
-   - Sessão, visibilidade, heartbeats
+   - Sessão, visibilidade, heartbeats (pausa em aba oculta)
    - Tempo por ITEM (view time)
    - Clique no INFO + tempo aberto do painel
    - Dwell por CATEGORIA
    - Recorrência (cliente que volta a escanear)
    - Auto-bind sem alterar UI
+   - SDK version + consent + deviceClass
 */
 
 (function (global) {
   const M = {};
   const DEFAULTS = {
-    endpoint: '/collectMetrics',
-    flushIntervalMs: 15000,
+    // Altere no init via window.__AR_METRICA_INIT ou MetricaApp.init({ endpoint: '...' })
+    endpoint: '/metrics/ingest',
+    flushIntervalMs: 8000,
     maxBufferSize: 25,
     persistKey: 'arcardapio_metrics_v2',
     env: 'prod',
     sampleRate: 1.0,
-    anonymizeIp: true
+    anonymizeIp: true,
+    consentMetrics: true,
+    heartbeatMs: 30000,
+    sdkVersion: '2.0.1'
   };
 
   // ----------- STATE -----------
   let config = { ...DEFAULTS };
   let buffer = [];
   let flushTimer = null;
+  let heartbeatTimer = null;
 
   const session = {
     id: rid('s_'),
@@ -35,14 +42,14 @@
 
   // Controle de tempos
   let visibleSince = performance.now();
-  let currentItem = null;           // { id, name, category, price }
-  let currentItemStart = null;      // performance.now()
+  let currentItem = null;          // { id, name, category, price }
+  let currentItemStart = null;     // performance.now()
 
-  let currentCategory = null;       // string
-  let currentCategoryStart = null;  // performance.now()
+  let currentCategory = null;      // string
+  let currentCategoryStart = null; // performance.now()
 
   // Painel de Info
-  let infoOpenSince = null;         // performance.now()
+  let infoOpenSince = null;        // performance.now()
   let infoWasOpen = false;
 
   // Recorrência
@@ -54,11 +61,28 @@
   function safeJSON(x) { try { return JSON.stringify(x); } catch { return '{}'; } }
   function nowMs() { return performance.now(); }
 
+  function deviceClass(ua = navigator.userAgent || '') {
+    const s = ua.toLowerCase();
+    if (/android|iphone|ipod|ipad|mobile/.test(s)) return 'Mobile';
+    if (/tablet/.test(s)) return 'Tablet';
+    return 'Desktop';
+    }
+
   function uaInfo() {
+    if (!config.consentMetrics) {
+      // modo “mínimo” (respeita consentimento)
+      return {
+        deviceClass: deviceClass(),
+        language: navigator.language || null,
+        viewport: { w: innerWidth || 0, h: innerHeight || 0 }
+      };
+    }
     return {
+      sdkVersion: config.sdkVersion,
       userAgent: navigator.userAgent || '',
       platform: navigator.platform || null,
       language: navigator.language || null,
+      deviceClass: deviceClass(navigator.userAgent || ''),
       screen: { w: (screen || {}).width, h: (screen || {}).height },
       viewport: { w: innerWidth || 0, h: innerHeight || 0 },
       net: (navigator && navigator.connection) ? {
@@ -69,14 +93,14 @@
     };
   }
 
-  // ----------- BUFFER -----------
-  function pushEvent(ev) {
+  // ----------- BUFFER / ENVIO -----------
+  function pushEvent(eventObj) {
     if (Math.random() > config.sampleRate) return;
-    buffer.push(ev);
+    buffer.push(eventObj);
     session.eventsCount++;
     persist();
     if (buffer.length >= config.maxBufferSize) flush('size_limit');
-    else if (!flushTimer) flushTimer = setTimeout(() => flush('timer'), config.flushIntervalMs);
+    else scheduleFlush();
   }
 
   function persist() {
@@ -90,14 +114,23 @@
       const raw = localStorage.getItem(config.persistKey);
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.buffer)) {
+      if (parsed && Array.isArray(parsed.buffer) && parsed.buffer.length) {
         buffer = parsed.buffer.concat(buffer);
       }
     } catch (_) {}
   }
 
-  function flush(reason = 'manual') {
+  function scheduleFlush() {
+    if (flushTimer) return;
+    flushTimer = setTimeout(() => flush('timer'), config.flushIntervalMs);
+  }
+
+  function clearFlushTimer() {
     if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+  }
+
+  async function flush(reason = 'manual') {
+    clearFlushTimer();
     if (!buffer.length) return;
 
     const payload = {
@@ -109,33 +142,47 @@
       meta: {
         url: location.href,
         referrer: document.referrer || null,
-        timestamp: iso()
+        timestamp: iso(),
+        sdkVersion: config.sdkVersion
       },
       events: buffer.slice()
     };
 
     const body = safeJSON(payload);
 
-    // try sendBeacon
+    // sendBeacon (bom para unload/background)
     let sent = false;
     try {
       if (navigator.sendBeacon) {
-        sent = navigator.sendBeacon(config.endpoint, new Blob([body], { type: 'application/json' }));
+        const blob = new Blob([body], { type: 'application/json' });
+        sent = navigator.sendBeacon(config.endpoint, blob);
       }
     } catch (_) { sent = false; }
 
     if (!sent) {
-      fetch(config.endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-        keepalive: true,
-        mode: 'cors'
-      }).then(r => {
-        if (r.ok) { buffer = []; persist(); }
-      }).catch(() => { /* mantém buffer para retry */ });
+      try {
+        const r = await fetch(config.endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+          keepalive: true,
+          mode: 'cors',
+          cache: 'no-store'
+        });
+        if (r.ok) {
+          buffer = [];
+          persist();
+        } else {
+          // mantém buffer para retry
+          scheduleFlush();
+        }
+      } catch {
+        // mantém buffer para retry
+        scheduleFlush();
+      }
     } else {
-      buffer = []; persist();
+      buffer = [];
+      persist();
     }
   }
 
@@ -154,6 +201,12 @@
   }
 
   // ----------- RECORRÊNCIA -----------
+  function rcKey() {
+    // Recorrência por TENANT (não cruza restaurantes diferentes)
+    const t = (config.tenant || 'global').toLowerCase();
+    return `arcardapio_rec_${t}`;
+  }
+
   function loadRecurrence() {
     const key = rcKey();
     let data = null;
@@ -167,7 +220,6 @@
         byQr: {} // qrId => count
       };
     }
-    // atualizar com este scan
     data.scansTotal += 1;
     const qr = config.qrId || '_unknown';
     data.byQr[qr] = (data.byQr[qr] || 0) + 1;
@@ -185,20 +237,13 @@
       daysSinceLastScan: prevLast ? Math.floor((Date.now() - prevLast.getTime()) / 86400000) : null
     };
   }
-  function rcKey() {
-    // Recorrência por TENANT (não cruza restaurantes diferentes)
-    const t = (config.tenant || 'global').toLowerCase();
-    return `arcardapio_rec_${t}`;
-  }
 
   // ----------- ITEM VIEW TIME -----------
   function startItemTimer(item) {
     stopItemTimer('item_change'); // fecha anterior, se houver
     currentItem = item ? { ...item } : null;
     if (currentItem) currentItemStart = nowMs();
-    if (currentItem) {
-      pushEvent(ev('item_view_start', { item: currentItem }));
-    }
+    if (currentItem) pushEvent(ev('item_view_start', { item: currentItem }));
   }
 
   function stopItemTimer(reason = 'stop') {
@@ -216,6 +261,7 @@
     currentCategory = cat || null;
     if (currentCategory) currentCategoryStart = nowMs();
   }
+
   function endCategory(reason = 'stop') {
     if (currentCategory && currentCategoryStart != null) {
       const durMs = Math.max(0, Math.round(nowMs() - currentCategoryStart));
@@ -233,6 +279,7 @@
       pushEvent(ev('info_open'));
     }
   }
+
   function infoClosed() {
     if (infoWasOpen && infoOpenSince != null) {
       const durMs = Math.max(0, Math.round(nowMs() - infoOpenSince));
@@ -268,32 +315,30 @@
     // Info BTN
     const infoBtn = document.getElementById('infoBtn');
     if (infoBtn) {
-      infoBtn.addEventListener('click', () => {
-        pushEvent(ev('info_click'));
-        // A abertura/fechamento real do painel é observado abaixo
-      }, { passive: true });
+      infoBtn.addEventListener('click', () => { pushEvent(ev('info_click')); }, { passive: true });
     }
 
-    // Observa o painel de info abrir/fechar (mudança de style.display)
+    // Observa o painel de info abrir/fechar (mudança de style/class)
     const infoPanel = document.getElementById('infoPanel');
     if (infoPanel) {
       const obs = new MutationObserver(() => {
         const display = (infoPanel.style && infoPanel.style.display) || '';
-        if (display && display.toLowerCase() !== 'none') infoOpened();
-        else infoClosed();
+        const visible =
+          (display && display.toLowerCase() !== 'none') ||
+          infoPanel.classList.contains('open') ||
+          infoPanel.classList.contains('show');
+        if (visible) infoOpened(); else infoClosed();
       });
       obs.observe(infoPanel, { attributes: true, attributeFilter: ['style', 'class'] });
     }
 
     // Observa mudanças no nome do produto para inferir troca de item (fallback)
-    // -> Caso você chame setCurrentItem no app.js, este fallback será secundário.
     const nameEl = document.getElementById('productNameDisplay');
     if (nameEl) {
       let lastName = (nameEl.textContent || '').trim();
       const itemObs = new MutationObserver(() => {
         const newName = (nameEl.textContent || '').trim();
         if (newName && newName !== lastName) {
-          // iniciamos um novo item pelo nome (id/categoria ficam nulos se não houver setCurrentItem)
           startItemTimer({ id: null, name: newName, category: null, price: null });
           lastName = newName;
         }
@@ -305,8 +350,19 @@
     const modelEl = document.getElementById('modelContainer');
     if (modelEl) {
       modelEl.addEventListener('model-loaded', () => pushEvent(ev('model_loaded')), { passive: true });
-      modelEl.addEventListener('model-error', (e) => pushEvent(ev('model_error', { detail: String(e && e.detail) })), { passive: true });
+      modelEl.addEventListener('model-error', (e) =>
+        pushEvent(ev('model_error', { detail: String(e && e.detail) })), { passive: true });
     }
+  }
+
+  // ----------- HEARTBEAT / CICLO DE SESSÃO -----------
+  function startHeartbeat() {
+    stopHeartbeat();
+    heartbeatTimer = setInterval(() => { pushEvent(ev('heartbeat')); }, config.heartbeatMs);
+  }
+
+  function stopHeartbeat() {
+    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
   }
 
   function bindSessionLifecycle() {
@@ -321,18 +377,21 @@
     recurrenceData = loadRecurrence();
     pushEvent(ev('visitor_status', { ...recurrenceData }));
 
-    // Visibilidade
+    // Visibilidade (pausa/retoma heartbeat e timers)
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
         const visibleMs = Math.max(0, Math.round(nowMs() - visibleSince));
         pushEvent(ev('page_hidden', { visibleMs }));
+        stopHeartbeat();
         // Fechar tempos abertos
         stopItemTimer('page_hidden');
         endCategory('page_hidden');
         infoClosed();
+        scheduleFlush();
       } else {
         visibleSince = nowMs();
         pushEvent(ev('page_visible'));
+        startHeartbeat();
       }
     });
 
@@ -344,14 +403,15 @@
     window.addEventListener('beforeunload', () => {
       const visibleMs = Math.max(0, Math.round(nowMs() - visibleSince));
       pushEvent(ev('page_unload', { visibleMs }));
+      stopHeartbeat();
       stopItemTimer('unload');
       endCategory('unload');
       infoClosed();
       flush('unload');
     });
 
-    // Heartbeat
-    setInterval(() => { pushEvent(ev('heartbeat')); }, 30000);
+    // Heartbeat inicial
+    startHeartbeat();
   }
 
   // ----------- PUBLIC API -----------
@@ -360,27 +420,31 @@
     restore();
     bindUI();
     bindSessionLifecycle();
-    pushEvent(ev('metrics_initialized', { config }));
+    pushEvent(ev('metrics_initialized', { config: {
+      endpoint: config.endpoint,
+      env: config.env,
+      anonymizeIp: config.anonymizeIp,
+      sampleRate: config.sampleRate,
+      heartbeatMs: config.heartbeatMs,
+      sdkVersion: config.sdkVersion
+    }}));
     return M;
   };
 
   M.flush = function () { flush('manual_flush'); };
 
-  // Precisão máxima de tempo por item:
-  // Chame isso no SEU app.js assim que trocar o item/modelo.
-  // Ex.: MetricaApp.setCurrentItem({ id, name, category, price })
-  M.setCurrentItem = function (item) {
-    startItemTimer(item);
-  };
+  // Chame isso no seu app sempre que trocar o item/modelo ativo:
+  // MetricaApp.setCurrentItem({ id, name, category, price })
+  M.setCurrentItem = function (item) { startItemTimer(item); };
 
-  // Eventos customizáveis já existentes:
+  // Eventos utilitários
   M.trackItemView = function (item) { pushEvent(ev('item_view', { item })); };
   M.trackAddToCart = function (item, qty = 1) { pushEvent(ev('add_to_cart', { item, qty })); };
   M.trackRemoveFromCart = function (item, qty = 1) { pushEvent(ev('remove_from_cart', { item, qty })); };
   M.trackCheckout = function (order) { pushEvent(ev('checkout', { order })); };
   M.trackEvent = function (name, payload = {}) { pushEvent(ev(name, payload)); };
 
-  // Bind básico de cliques com data-metric
+  // Bind básico de cliques com data-metric='{"event":"ui_click","id":"..."}'
   M.autoBind = function () {
     document.addEventListener('click', (e) => {
       let el = e.target;
@@ -399,6 +463,7 @@
     }, { passive: true });
   };
 
+  // Debug leve
   M._getState = function () {
     return {
       config,
@@ -410,12 +475,14 @@
     };
   };
 
-  // Auto-init se __AR_METRICA_INIT já existir ao carregar
+  // Auto-init se __AR_METRICA_INIT existir antes do load
   window.addEventListener('load', () => {
-    if (window.__AR_METRICA_INIT && typeof window.__AR_METRICA_INIT === 'object') {
-      try { M.init(window.__AR_METRICA_INIT); } catch (e) { /* noop */ }
+    if (global.__AR_METRICA_INIT && typeof global.__AR_METRICA_INIT === 'object') {
+      try { M.init(global.__AR_METRICA_INIT); } catch (_) {}
     }
   });
 
+  // Expor global
   global.MetricaApp = M;
+
 })(window);

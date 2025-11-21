@@ -9,6 +9,38 @@
 const USE_MOCK = true; // Altere para false quando tiver API real
 const API_BASE = "https://SEU_API_GATEWAY/dev/metricasCliente";
 
+/* -------------------- MAPEAMENTO DE NOMES -------------------- */
+const CATEGORY_MAP = {
+  "Categoria 1": "Bebidas",
+  "Categoria 2": "Pizzas",
+  "Categoria 3": "Sobremesas",
+  "Categoria 4": "Carnes",
+  "Categoria 5": "Lanches",
+  // Adicione mais categorias conforme necessário
+};
+
+const ITEM_MAP = {
+  "Item 1": "Absolut Vodka",
+  "Item 2": "Mussarela",
+  "Item 3": "Coca-Cola",
+  "Item 4": "Pizza Calabresa",
+  "Item 5": "Tiramisu",
+  "Item 6": "Picanha",
+  "Item 7": "Sanduíche X-Tudo",
+  "Item 8": "Suco de Laranja",
+  "Item 9": "Brigadeiro",
+  "Item 10": "Salada Caesar",
+  // Adicione mais itens conforme necessário
+};
+
+function mapCategoryName(genericName) {
+  return CATEGORY_MAP[genericName] || genericName;
+}
+
+function mapItemName(genericName) {
+  return ITEM_MAP[genericName] || genericName;
+}
+
 /* -------------------- ELEMENTOS (DOM) -------------------- */
 function byId(id) { return document.getElementById(id); }
 
@@ -158,10 +190,10 @@ function buildMockData(tenant,startDate,endDate){
   ];
 
   const topItems = Array.from({length:10}).map((_,i)=>({
-    item:`Item ${i+1}`, views:randomInt(50,500), avgTimeSec:randomInt(10,60), category:`Categoria ${randomInt(1,5)}`, clicksInfo: randomInt(5, 50)
+    item: mapItemName(`Item ${i+1}`), views:randomInt(50,500), avgTimeSec:randomInt(10,60), category: mapCategoryName(`Categoria ${randomInt(1,5)}`), clicksInfo: randomInt(5, 50)
   })).sort((a,b)=>b.views-a.views);
 
-  const categories = Array.from({length:5}).map((_,i)=>`Categoria ${i+1}`);
+  const categories = Array.from({length:5}).map((_,i)=>mapCategoryName(`Categoria ${i+1}`));
   const timeByCategory = categories.map(cat=>({
     category:cat, avgTimeSec:randomInt(30,180), sessions:randomInt(50,300), totalTimeSec:randomInt(5000,20000)
   }));
@@ -200,11 +232,11 @@ function buildMockData(tenant,startDate,endDate){
   }));
 
   const topModels = Array.from({length:5}).map((_,i)=>({
-    model:`Modelo ${i+1}`, views:randomInt(10,100), avgTimeSec:randomInt(5,30), errors:randomInt(0,5)
+    model:mapItemName(`Item ${i+1}`), views:randomInt(10,100), avgTimeSec:randomInt(5,30), errors:randomInt(0,5)
   })).sort((a,b)=>b.views-a.views);
 
   const modelErrors = Array.from({length:3}).map((_,i)=>({
-    itemModel:`Item/Modelo ${i+1}`, error:`Erro ${i+1}`, occurrences:randomInt(1,10), last:new Date()
+    itemModel:mapItemName(`Item ${i+1}`), error:`Erro ${i+1}`, occurrences:randomInt(1,10), last:new Date()
   }));
 
   return {
@@ -228,28 +260,70 @@ async function fetchMetrics({tenant,startDate,endDate}){
 }
 
 /* ==========================================================
-   TOOLTIP “?” E CHART.JS
+   TOOLTIP “?” — Portal com clamps de viewport
    ========================================================== */
-const HelpPortal = (()=>{
+const HelpPortal = (() => {
   let el;
-  function show(text, target){
-    if(!el){
+
+  function ensure() {
+    if (!el) {
       el = document.createElement("div");
       el.className = "tooltip-portal";
       document.body.appendChild(el);
     }
-    el.innerHTML = text;
-    el.style.display = "block";
-    const rect = target.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height + 5;
-    el.style.left = `${x}px`;
-    el.style.top = `${y}px`;
-    el.style.transform = "translateX(-50%)";
+    return el;
   }
-  function hide(){
-    if(el) el.style.display = "none";
+
+  function clamp(v, min, max) {
+    return Math.min(Math.max(v, min), max);
   }
+
+  function show(text, target) {
+    const tip = ensure();
+    tip.innerHTML = text || "";
+    tip.style.display = "block";
+
+    // Força o browser a calcular o tamanho
+    tip.style.left = "-9999px";
+    tip.style.top  = "-9999px";
+
+    const pad = 12; // margem da tela
+    const trg = target.getBoundingClientRect();
+    const vw  = window.innerWidth;
+    const vh  = window.innerHeight;
+
+    // Posição preferida: abaixo e centralizado ao alvo
+    let x = trg.left + (trg.width / 2);
+    let y = trg.bottom + 8;
+
+    // Mede o tooltip depois de mostrar
+    const r = tip.getBoundingClientRect();
+
+    // Centraliza horizontalmente e aplica limites
+    x = x - (r.width / 2);
+    x = clamp(x, pad, vw - pad - r.width);
+
+    // Se não couber abaixo, tenta posicionar acima
+    if (y + r.height > vh - pad) {
+      y = trg.top - r.height - 8;
+    }
+    // Se ainda assim extrapolar o topo, gruda no topo com margem
+    y = clamp(y, pad, vh - pad - r.height);
+
+    // Como usamos position: fixed no CSS, coordenadas são de viewport
+    tip.style.left = `${x}px`;
+    tip.style.top  = `${y}px`;
+    tip.style.transform = "none";
+  }
+
+  function hide() {
+    if (el) el.style.display = "none";
+  }
+
+  // Esconde em scroll/resize para evitar ficar “pendurado”
+  window.addEventListener("scroll", hide, { passive: true });
+  window.addEventListener("resize", hide);
+
   return { show, hide };
 })();
 
@@ -579,7 +653,7 @@ function renderTabelaTopItems(list){
   if(!tbody) return;
   const rows = list.map(i=>`
     <tr>
-      <td>${i.item}</td>
+      <td>${mapItemName(i.item)}</td>
       <td style="text-align:center">${toBR(i.views)}</td>
       <td style="text-align:center">${formatDurationMMSS(i.avgTimeSec)}</td>
       <td style="text-align:right">${i.category}</td>
@@ -592,7 +666,7 @@ function renderTabelaTimeByCategory(list){
   const tbody=elements.tbodyTimeByCategory; if(!tbody) return;
   const rows = list.map(i=>`
     <tr>
-      <td>${i.category}</td>
+      <td>${mapCategoryName(i.category)}</td>
       <td style="text-align:center">${formatDurationMMSS(i.avgTimeSec)}</td>
       <td style="text-align:center">${toBR(i.sessions)}</td>
       <td style="text-align:right">${i.pctTotalTime}</td>
@@ -605,7 +679,7 @@ function renderTabelaTopCategories(list){
   const tbody=elements.tableCategoryPopularity; if(!tbody) return;
   const rows = list.map(i=>`
     <tr>
-      <td>${i.category}</td>
+      <td>${mapCategoryName(i.category)}</td>
       <td style="text-align:center">${toBR(i.clicks)}</td>
       <td style="text-align:center">${formatDurationMMSS(i.avgTimeSec)}</td>
       <td style="text-align:right">${i.pctTotal}</td>
@@ -619,7 +693,7 @@ function renderTabelaTimePerItem(list){
   const totalViews = sum(list.map(i=>i.views));
   const rows = list.map(i=>`
     <tr>
-      <td>${i.item}</td>
+      <td>${mapItemName(i.item)}</td>
       <td style="text-align:center">${formatDurationMMSS(i.avgTimeSec)}</td>
       <td style="text-align:center">${toBR(i.views)}</td>
       <td style="text-align:right">${pct(i.views,totalViews)}</td>
@@ -696,7 +770,7 @@ function renderTabelaTopModels(list){
   const tbody=elements.tableTopModels; if(!tbody) return;
   const rows = list.map(item=>`
     <tr>
-      <td>${item.model}</td>
+      <td>${mapItemName(item.model)}</td>
       <td style="text-align:center">${toBR(item.views)}</td>
       <td style="text-align:center">${formatDurationMMSS(item.avgTimeSec)}</td>
       <td style="text-align:right">${toBR(item.errors)}</td>
@@ -709,7 +783,7 @@ function renderTabelaModelErrors(list){
   const tbody=elements.tableModelErrors; if(!tbody) return;
   const rows = list.map(item=>`
     <tr>
-      <td>${item.itemModel}</td>
+      <td>${mapItemName(item.itemModel)}</td>
       <td>${item.error}</td>
       <td style="text-align:center">${toBR(item.occurrences)}</td>
       <td style="text-align:right">${formatDateBR(item.last)}</td>
@@ -1310,6 +1384,8 @@ document.addEventListener("DOMContentLoaded", ()=>{
     elements.filterRange.value = `${formatDateBR(dates[0])} a ${formatDateBR(dates[dates.length-1])}`;
   }
 
+  
+
   initFlatpickrIfAny();
   wireFilters();
   wireHelpBadges(document);
@@ -1329,4 +1405,60 @@ document.addEventListener("DOMContentLoaded", ()=>{
   });
 });
 
+// === Centralizar KPI rows de 3 seções específicas, individualmente ===
+function centerBlockByTitle(titleRegex, styleObj = {}) {
+  // acha a seção pelo título
+  const sections = document.querySelectorAll('.chart-section');
+  for (const section of sections) {
+    const titleEl = section.querySelector('h2, .section-title, header h2, .card-title');
+    if (!titleEl) continue;
+    const txt = (titleEl.textContent || '').trim();
+    if (!titleRegex.test(txt)) continue;
+
+    // acha o container que segura os cards KPI dentro da seção
+    const kpiContainer =
+      section.querySelector('.kpi-grid, .kpi-row, .kpi-wrap, .metrics-row, .cards, .cards-row') ||
+      // fallback: primeira linha com cards
+      section.querySelector('.kpi-card')?.parentElement;
+
+    if (!kpiContainer) continue;
+
+    // aplica estilos de centralização só neste container
+    kpiContainer.style.display = 'flex';
+    kpiContainer.style.flexWrap = 'wrap';
+    kpiContainer.style.justifyContent = 'center';
+    kpiContainer.style.gap = '2rem';
+    kpiContainer.style.width = '100%';
+    kpiContainer.style.marginInline = 'auto';
+
+    // estilos específicos (se quiser diferenciar cada bloco)
+    Object.entries(styleObj).forEach(([k, v]) => (kpiContainer.style[k] = v));
+
+    // ajuste auxiliar para alinhar conteúdo do cartão
+    kpiContainer.querySelectorAll('.kpi-card, .card, .metric-card')
+      .forEach(el => (el.style.textAlign = 'center'));
+  }
+}
+
+// chame após montar a página e sempre que recarregar os blocos:
+function centerSelectedKPIBlocks() {
+  // 1) Uso do botão "Info"
+  centerBlockByTitle(/Uso do bot[aã]o/i, {
+    // exemplo: gap diferente só aqui
+    gap: '1.5rem'
+  });
+
+  // 2) Recorrência de Clientes
+  centerBlockByTitle(/Recorr[eê]ncia de Clientes/i, {
+    // exemplo: largura máxima do grupo
+    maxWidth: '980px'
+  });
+
+  // 3) Saúde dos Modelos
+  centerBlockByTitle(/Sa[úu]de dos Modelos/i, {
+    // exemplo: nenhum extra; já centraliza
+  });
+}
+
+document.addEventListener('DOMContentLoaded', centerSelectedKPIBlocks);
 })();

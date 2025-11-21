@@ -597,7 +597,10 @@ body{
 .kpis-section{
   width:100%; background:var(--color-bg-secondary); border:1px solid var(--color-border);
   border-radius:12px; padding:var(--spacing-lg); box-shadow:var(--shadow-sm);
-  margin-top:var(--spacing-xl); position:relative; overflow:visible; z-index:0;
+  margin-top:var(--spacing-xl); 
+  /* LINHA ADICIONADA PARA O ESPAÇAMENTO */
+  margin-bottom:var(--spacing-2xl); 
+  position:relative; overflow:visible; z-index:0;
 }
 .kpis-grid{
   display:grid; grid-template-columns:repeat(4,1fr); column-gap:1.6rem; row-gap:0;
@@ -2070,41 +2073,6 @@ body{
   text-decoration: none;
 }
 
-/* Tooltip flutuante do Insights */
-.tooltip-portal{
-  position: fixed;              /* fica fora de clipping do card */
-  z-index: 99999;
-  display: none;
-  padding: 6px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: rgba(15,18,25,.96);
-  color: var(--color-text-primary);
-  box-shadow: var(--shadow-md);
-  pointer-events: none;
-  white-space: nowrap;
-  font-size: .85rem;
-}
-
-/* Garante que o card do Insights não corte o tooltip */
-.insights-section{ overflow: visible; }
-
-/* Estética da linha */
-.insight-item{
-  list-style: none;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: .55rem .8rem;
-  margin: .4rem 0;
-  display: flex;
-  gap: .9rem;
-  align-items: center;
-}
-.insight-item:hover{ border-color: var(--color-accent); }
-.insight-stamp{ font-size:.85rem; color:var(--color-text-secondary); }
-.insight-msg{ cursor: help; }
-
-
 /* ===================================================================
    BLOCO 23: RODAPÉ
    =================================================================== */
@@ -2273,3 +2241,17 @@ body{
 #tableAvgTimeMenu th:nth-child(3), #tableAvgTimeMenu td:nth-child(3){ width: 20%; text-align:center; }
 #tableAvgTimeMenu th:nth-child(4), #tableAvgTimeMenu td:nth-child(4){ width: 20%; text-align:right; }
 
+footer {
+  text-align: center;
+  width: 100%;
+  padding: 20px 0;
+  font-size: 0.9rem;
+  color: #a0aec0;
+  margin-top: 20px;
+}
+
+/* Remove completamente a faixa superior dos KPI cards */
+.kpi-card::before {
+  display: none !important;
+  content: none !important;
+}

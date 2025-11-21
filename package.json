@@ -1,6 +1,26 @@
 {
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.926.0",
+    "jsonwebtoken": "^9.0.2",
     "qrcode": "^1.5.4",
     "sharp": "^0.34.4"
-  }
+  },
+  "name": "ar-cardapio-site",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ranie2019/ar-cardapio-site.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ranie2019/ar-cardapio-site/issues"
+  },
+  "homepage": "https://github.com/ranie2019/ar-cardapio-site#readme",
+  "description": ""
 }

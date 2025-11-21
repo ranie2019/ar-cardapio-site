@@ -22,20 +22,22 @@
     }
   </style>
 
-  <!-- Define apenas os parâmetros de métricas (sem iniciar ainda) -->
+  <!-- CONFIGURAÇÃO DAS MÉTRICAS (apenas inicialização) -->
   <script>
     (function(){
       const url = new URL(location.href);
       window.__AR_METRICA_INIT = {
-        endpoint: 'https://SEU-API-GATEWAY.execute-api.us-east-1.amazonaws.com/dev/collectMetrics', // troque pelo seu endpoint real
+        endpoint: 'https://SEU-API-GATEWAY.execute-api.us-east-1.amazonaws.com/dev/collectMetrics',
         tenant: url.searchParams.get('tenant') || url.searchParams.get('u') || null,
         table:  url.searchParams.get('table')  || url.searchParams.get('mesa') || null,
         qrId:   url.searchParams.get('qr')     || url.searchParams.get('qrId') || null,
         env: 'prod',
         flushIntervalMs: 10000,
         maxBufferSize: 30,
-        persistKey: 'arcardapio_metrics_v1',
-        sampleRate: 1.0
+        persistKey: 'arcardapio_metrics_v2',
+        sampleRate: 1.0,
+        consentMetrics: true,
+        heartbeatMs: 30000
       };
     })();
   </script>
@@ -43,7 +45,7 @@
 
 <body>
   <!-- Botão de menu -->
-  <button id="menuBtn">Cardapio</button>
+  <button id="menuBtn">Cardápio</button>
 
   <!-- Botões de categoria -->
   <div id="categoryButtons" style="display: none">
@@ -135,19 +137,72 @@
     <a-camera position="0 1.5 3"></a-camera>
   </a-scene>
 
-  <!-- Scripts do projeto (com controle de cache) -->
+  <!-- Scripts do projeto -->
   <script src="../app/models.js?v=1.2"></script>
   <script src="../app/app.js?v=1.2"></script>
   <script src="../app/metricaapp.js?v=1.2"></script>
 
-  <!-- Inicializa métricas após o script estar disponível (sem alterar UI) -->
+  <!-- INTEGRAÇÃO DE MÉTRICAS (apenas essa parte foi atualizada) -->
   <script>
+    // Inicializa métricas quando tudo carregar
     window.addEventListener('load', function () {
       if (window.MetricaApp && window.__AR_METRICA_INIT) {
-        try { MetricaApp.init(window.__AR_METRICA_INIT); } catch (e) {}
-        try { MetricaApp.autoBind(); } catch (e) {}
+        try { MetricaApp.init(window.__AR_METRICA_INIT); } catch (e) { console.error(e); }
+        try { MetricaApp.autoBind(); } catch (e) { console.error(e); }
       }
     });
+
+    // Controle do painel Info (compatível com SDK)
+    (function () {
+      const panel = document.getElementById('infoPanel');
+      const btn = document.getElementById('infoBtn');
+
+      window.toggleInfo = function () {
+        if (!panel) return;
+        const visible = panel.style.display !== 'none' && panel.style.display !== '';
+        if (visible) {
+          panel.style.display = 'none';
+          panel.classList.remove('open', 'show');
+        } else {
+          panel.style.display = 'block';
+          panel.classList.add('open');
+        }
+      };
+
+      if (btn) btn.addEventListener('click', toggleInfo, { passive: true });
+    })();
+
+    // Integração com mudança de modelo
+    (function () {
+      const originalChangeModel = window.changeModel;
+      window.changeModel = function (dir) {
+        if (typeof originalChangeModel === 'function') {
+          const next = originalChangeModel(dir) || {};
+          if (window.MetricaApp && (next.id || next.name)) {
+            try {
+              MetricaApp.setCurrentItem({
+                id: next.id ?? null,
+                name: next.name ?? (document.getElementById('productNameDisplay')?.textContent?.trim() || null),
+                category: next.category ?? null,
+                price: next.price ?? null
+              });
+            } catch (e) {}
+          }
+          return next;
+        }
+      };
+    })();
+
+    // Integração com categorias
+    (function () {
+      const originalSelectCategory = window.selectCategory;
+      window.selectCategory = function (cat) {
+        if (typeof originalSelectCategory === 'function') originalSelectCategory(cat);
+        if (window.MetricaApp) {
+          try { MetricaApp.trackEvent('category_select', { category: cat }); } catch (e) {}
+        }
+      };
+    })();
   </script>
 </body>
 </html>

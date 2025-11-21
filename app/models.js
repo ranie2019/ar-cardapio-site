@@ -29,7 +29,12 @@ const models = {
     { path: `${modelBaseURL}/bebidas/champagne.glb`,     price: 98.50, info: `${modelBaseURL}/informacao/${nomeRestaurante}/champagne.json` },
     { path: `${modelBaseURL}/bebidas/heineken.glb`,      price: 12.90, info: `${modelBaseURL}/informacao/${nomeRestaurante}/heineken.json` },
     { path: `${modelBaseURL}/bebidas/jack_daniels.glb`,  price: 130.00, info: `${modelBaseURL}/informacao/${nomeRestaurante}/jack_daniels.json` },
-    { path: `${modelBaseURL}/bebidas/redbull.glb`,       price: 9.90,  info: `${modelBaseURL}/informacao/${nomeRestaurante}/redbull.json` }
+    { path: `${modelBaseURL}/bebidas/redbull.glb`,       price: 9.90,  info: `${modelBaseURL}/informacao/${nomeRestaurante}/redbull.json` },
+    { path: `${modelBaseURL}/bebidas/cerveja_imperio.glb`, price: 9.90,  info: `${modelBaseURL}/informacao/${nomeRestaurante}/cerveja_imperio.json` },
+    { path: `${modelBaseURL}/bebidas/vinho_pergola.glb`, price: 9.90,  info: `${modelBaseURL}/informacao/${nomeRestaurante}/vinho_pergola.json` },
+    { path: `${modelBaseURL}/bebidas/champagne_prestige.glb`, price: 19.90,  info: `${modelBaseURL}/informacao/${nomeRestaurante}/champagne_prestige.json` },
+    { path: `${modelBaseURL}/bebidas/cerveja_corona.glb`, price: 19.90,  info: `${modelBaseURL}/informacao/${nomeRestaurante}/cerveja_corona.json` },
+    { path: `${modelBaseURL}/bebidas/cerveja_budweiser.glb`, price: 19.90,  info: `${modelBaseURL}/informacao/${nomeRestaurante}/cerveja_budweiser.json` }
   ],
   pizzas: [
     // ✅ sem acento nos nomes de arquivo/chaves do S3
@@ -40,7 +45,8 @@ const models = {
   sobremesas: [
     { path: `${modelBaseURL}/sobremesas/cupcake_chocolate.glb`,       price: 12.00, info: `${modelBaseURL}/informacao/${nomeRestaurante}/cupcake_chocolate.json` },
     { path: `${modelBaseURL}/sobremesas/rosquinha_de_chocolate.glb`,  price: 10.50, info: `${modelBaseURL}/informacao/${nomeRestaurante}/rosquinha_de_chocolate.json` },
-    { path: `${modelBaseURL}/sobremesas/sundae.glb`,                  price: 10.50, info: `${modelBaseURL}/informacao/${nomeRestaurante}/sundae.json` }
+    { path: `${modelBaseURL}/sobremesas/sundae.glb`,                  price: 10.50, info: `${modelBaseURL}/informacao/${nomeRestaurante}/sundae.json` },
+    { path: `${modelBaseURL}/sobremesas/late.glb`,                  price: 10.50, info: `${modelBaseURL}/informacao/${nomeRestaurante}/late.json` }
   ],
   carnes: [
     { path: `${modelBaseURL}/carnes/bisteca_suina_grelhada.glb`, price: 20.89, info: `${modelBaseURL}/informacao/${nomeRestaurante}/bisteca_suina_grelhada.json` },

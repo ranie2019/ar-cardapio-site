@@ -29,176 +29,215 @@
     }
   </style>
 </head>
+
 <body>
+<!-- ======= Topo ======= -->
+<header class="site-header">
+  <h1>ARCardápio</h1>
+  <button id="abrirModal" class="btn-acesso" type="button">Área do cliente</button>
+</header>
 
-  <!-- ======= Topo ======= -->
-  <header class="site-header">
-    <h1>ARCardápio</h1>
-    <button id="abrirModal" class="btn-acesso" type="button">Área do cliente</button>
-  </header>
 
-  <!-- ======= Seção: Sobre ======= -->
-  <section class="sobre">
-    <h2>O que é o ARCardápio?</h2>
-    <p>
-      O ARCardápio é uma solução inovadora para restaurantes e bares que permite apresentar os pratos em 3D usando
-      realidade aumentada. Com ele, seus clientes têm uma experiência imersiva ao visualizar os alimentos
-      diretamente pelo celular.
-    </p>
-  </section>
+<!-- SEÇÃO: MÉTRICAS -->
+<section class="sobre" id="metricas">
+  <h2>Aumente suas vendas em Até 30%</h2>
+  <p style="margin-bottom:18px">
+    Nosso dashboard mostra, em tempo real, <strong>itens mais vistos</strong>, <strong>horários de pico</strong>,
+    <strong>tempo de permanência</strong> e muito mais. Com esses dados, você entende o comportamento
+    do cliente e pode alcançar <strong>até 30% de crescimento</strong>.
+  </p>
 
-  <!-- ======= Seção: Planos ======= -->
-  <h2>Escolha seu plano ideal</h2>
-  <section class="planos">
+  <!-- Destaque curto de valor -->
+  <p style="font-weight:700;margin-bottom:22px">
+    Encante seus clientes com um cardápio interativo e modelos 3D realistas — experiência que vende mais.
+  </p>
 
-    <div class="plano">
-      <h3>Teste (1 Semana)</h3>
-      <p class="preco">R$ 10,00</p>
-      <button type="button" onclick="window.location.href='html/cadastro.html'">Cadastre-se</button>
-    </div>
+  <!-- Benefícios (3 colunas simples) -->
+  <div class="metricas-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;text-align:left">
+    <article class="metricas-card" style="background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px">
+      <h3 style="margin:0 0 8px 0">Horário de Pico</h3>
+      <p style="margin:0">Descubra quando o público compra mais e ajuste promoções e equipe.</p>
+    </article>
 
-    <div class="plano">
-      <h3>Plus (1 Mês)</h3>
-      <p class="preco">R$ 200,00</p>
-      <button type="button" onclick="window.location.href='html/cadastro.html'">Cadastre-se</button>
-    </div>
+    <article class="metricas-card" style="background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px">
+      <h3 style="margin:0 0 8px 0">Tempo no Cardápio</h3>
+      <p style="margin:0">Entenda onde o cliente hesita e otimize imagens, preços e combos.</p>
+    </article>
 
-    <div class="plano">
-      <h3>Pro (1 Ano)</h3>
-      <p class="preco">R$ 2.200,00</p>
-      <button type="button" onclick="window.location.href='html/cadastro.html'">Cadastre-se</button>
-    </div>
+    <article class="metricas-card" style="background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px">
+      <h3 style="margin:0 0 8px 0">Botão “Info”</h3>
+      <p style="margin:0">Meça curiosidade e gere confiança com informaçoes e descrição diferenciada.</p>
+    </article>
+  </div>
+</section>
 
-    <div class="plano">
-      <h3>Ultra (5 Anos)</h3>
-      <p class="preco">R$ 12.500,00</p>
-      <button type="button" onclick="window.location.href='html/cadastro.html'">Cadastre-se</button>
-    </div>
-  </section>
+<!-- ======= Seção: Sobre ======= -->
+<section class="sobre">
+  <h2>O que é o ARCardápio?</h2>
+  <p>
+    O ARCardápio é uma solução inovadora para restaurantes e bares que permite apresentar os pratos em 3D usando
+    realidade aumentada. Com ele, seus clientes têm uma experiência imersiva ao visualizar os alimentos
+    diretamente pelo celular.
+  </p>
+</section>
 
-  <!-- ======= Seção: Contato ======= -->
-  <section class="contato">
-    <div class="container-form">
-      <span class="subtitulo-form">Vem para <strong>ARCardápio</strong></span>
-      <h2>Entre em contato conosco</h2>
+<!-- ======= Seção: Planos ======= -->
+<h2>Escolha seu plano ideal</h2>
+<section class="planos">
 
-      <form id="form-contato" novalidate>
-        <div id="mensagem-sucesso" style="display:none; color:#00ffc8; margin-top:20px; font-weight:700;">
-          Mensagem enviada com sucesso! Entraremos em contato em breve.
-        </div>
-
-        <div class="linha">
-          <input type="text" name="Nome" placeholder="Nome" required />
-          <input type="email" name="Email" placeholder="Email" required />
-        </div>
-
-        <div class="linha">
-          <input type="tel" name="Telefone" placeholder="Telefone" required />
-          <select name="Setor da empresa" required>
-            <option value="">Setor da empresa</option>
-            <option>Restaurantes e Lanchonetes</option>
-            <option>Padarias</option>
-            <option>Cafeterias</option>
-            <option>Outro</option>
-          </select>
-        </div>
-
-        <textarea name="Observações" placeholder="Observações"></textarea>
-
-        <button type="submit" class="btn-atendimento">SOLICITAR ATENDIMENTO</button>
-      </form>
-    </div>
-  </section>
-
-  <!-- ======= Modal: Área do Cliente (sem botão X) ======= -->
-  <div id="modal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="titulo-modal">
-    <div class="modal-content" role="document" aria-modal="true">
-      <h2 id="titulo-modal" class="titulo-modal">Área do cliente</h2>
-      <p class="texto-modal">Para acessar, clique em Acessar. Se ainda não tem conta, clique em Criar cadastro.</p>
-
-      <div class="botao-video">
-        <button type="button" onclick="window.location.href='html/login.html'">Acessar</button>
-        <video autoplay loop muted playsinline class="video-fundo-botao">
-          <source src="videos/botao-index.mp4" type="video/mp4" />
-        </video>
-      </div>
-
-      <div class="botao-video">
-        <button type="button" onclick="window.location.href='html/cadastro.html'">Criar cadastro</button>
-        <video autoplay loop muted playsinline class="video-fundo-botao">
-          <source src="videos/botao-index.mp4" type="video/mp4" />
-        </video>
-      </div>
-    </div>
+  <div class="plano">
+    <h3>Teste (1 Semana)</h3>
+    <p class="preco">R$ 10,00</p>
+    <button type="button" onclick="window.location.href='html/cadastro.html'">Cadastre-se</button>
   </div>
 
-  <!-- ======= Rodapé + links legais ======= -->
-  <footer class="site-footer">
-    <div class="footer-inner">
-      <span>© <span id="yr"></span> ARCardápio — Todos os direitos reservados</span>
-      <span class="sep">|</span>
-      <a href="/html/privacidade.html">Política de Privacidade</a>
-      <span class="sep">|</span>
-      <a href="/html/termos.html">Termos de Uso</a>
-    </div>
-  </footer>
-
-  <!-- Banner simples de cookies (LGPD) -->
-  <div id="cookie-banner" class="cookie-banner" hidden>
-    Utilizamos cookies essenciais para funcionamento e métricas agregadas.
-    <a href="/html/privacidade.html#cookies">Saiba mais</a>.
-    <button id="cookie-accept" type="button">Ok, entendi</button>
+  <div class="plano">
+    <h3>Plus (1 Mês)</h3>
+    <p class="preco">R$ 200,00</p>
+    <button type="button" onclick="window.location.href='html/cadastro.html'">Cadastre-se</button>
   </div>
 
-  <!-- ======= Scripts ======= -->
-  <script>
-    // ano dinâmico no rodapé
-    document.getElementById('yr').textContent = new Date().getFullYear();
+  <div class="plano">
+    <h3>Pro (1 Ano)</h3>
+    <p class="preco">R$ 2.200,00</p>
+    <button type="button" onclick="window.location.href='html/cadastro.html'">Cadastre-se</button>
+  </div>
 
-    // banner de cookies
-    (function(){
-      const KEY = 'arcardapio_cookie_consent_v1';
-      const banner = document.getElementById('cookie-banner');
-      if (!localStorage.getItem(KEY)) banner.hidden = false;
-      document.getElementById('cookie-accept')?.addEventListener('click', () => {
-        localStorage.setItem(KEY, 'yes');
-        banner.hidden = true;
-      });
-    })();
+  <div class="plano">
+    <h3>Ultra (5 Anos)</h3>
+    <p class="preco">R$ 12.500,00</p>
+    <button type="button" onclick="window.location.href='html/cadastro.html'">Cadastre-se</button>
+  </div>
+</section>
 
-    // ===== Modal: abrir e fechar (clicando fora) =====
-    const modal = document.getElementById('modal');
-    const abrir = document.getElementById('abrirModal');
-    const conteudo = modal.querySelector('.modal-content');
+<!-- ======= Seção: Contato ======= -->
+<section class="contato">
+  <div class="container-form">
+    <span class="subtitulo-form">Vem para <strong>ARCardápio</strong></span>
+    <h2>Entre em contato conosco</h2>
 
-    function abrirModal() {
-      modal.classList.remove('hidden');
-      modal.setAttribute('aria-hidden', 'false');
-    }
-    function fecharModal() {
-      modal.classList.add('hidden');
-      modal.setAttribute('aria-hidden', 'true');
-    }
+    <form id="form-contato" novalidate>
+      <div id="mensagem-sucesso" style="display:none; color:#00ffc8; margin-top:20px; font-weight:700;">
+        Mensagem enviada com sucesso! Entraremos em contato em breve.
+      </div>
 
-    // abre pelo botão do topo
-    abrir?.addEventListener('click', abrirModal);
+      <div class="linha">
+        <input type="text" name="Nome" placeholder="Nome" required />
+        <input type="email" name="Email" placeholder="Email" required />
+      </div>
 
-    // fecha clicando no overlay (só se o alvo for o próprio overlay)
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) fecharModal();
+      <div class="linha">
+        <input type="tel" name="Telefone" placeholder="Telefone" required />
+        <select name="Setor da empresa" required>
+          <option value="">Setor da empresa</option>
+          <option>Restaurantes e Lanchonetes</option>
+          <option>Padarias</option>
+          <option>Cafeterias</option>
+          <option>Outro</option>
+        </select>
+      </div>
+
+      <textarea name="Observações" placeholder="Observações"></textarea>
+
+      <button type="submit" class="btn-atendimento">SOLICITAR ATENDIMENTO</button>
+    </form>
+  </div>
+</section>
+
+<!-- ======= Modal: Área do Cliente (sem botão X) ======= -->
+<div id="modal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="titulo-modal">
+  <div class="modal-content" role="document" aria-modal="true">
+    <h2 id="titulo-modal" class="titulo-modal">Área do cliente</h2>
+    <p class="texto-modal">Para acessar, clique em Acessar. Se ainda não tem conta, clique em Criar cadastro.</p>
+
+    <div class="botao-video">
+      <button type="button" onclick="window.location.href='html/login.html'">Acessar</button>
+      <video autoplay loop muted playsinline class="video-fundo-botao">
+        <source src="videos/botao-index.mp4" type="video/mp4" />
+      </video>
+    </div>
+
+    <div class="botao-video">
+      <button type="button" onclick="window.location.href='html/cadastro.html'">Criar cadastro</button>
+      <video autoplay loop muted playsinline class="video-fundo-botao">
+        <source src="videos/botao-index.mp4" type="video/mp4" />
+      </video>
+    </div>
+  </div>
+</div>
+
+<!-- BOTÃO FIXO DO WHATSAPP -->
+<a href="https://wa.me/83987687638?text=Ol%C3%A1%2C%20quero%20saber%20mais%20sobre%20o%20ARCard%C3%A1pio!" 
+  class="whatsapp-fixo" target="_blank" rel="noopener">
+  <div class="whatsapp-conteudo">
+    <img src="imagens/whatsapp.png" alt="WhatsApp" class="whatsapp-icon" />
+    <span class="whatsapp-texto">Fale agora!</span>
+  </div>
+</a>
+
+<!-- ======= Rodapé + links legais ======= -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <span>© <span id="yr"></span> ARCardápio — Todos os direitos reservados</span>
+    <span class="sep">|</span>
+    <a href="/html/privacidade.html">Política de Privacidade</a>
+    <span class="sep">|</span>
+    <a href="/html/termos.html">Termos de Uso</a>
+  </div>
+</footer>
+
+<!-- Banner simples de cookies (LGPD) -->
+<div id="cookie-banner" class="cookie-banner" hidden>
+  Utilizamos cookies essenciais para funcionamento e métricas agregadas.
+  <a href="/html/privacidade.html#cookies">Saiba mais</a>.
+  <button id="cookie-accept" type="button">Ok, entendi</button>
+</div>
+
+<!-- ======= Scripts ======= -->
+<script>
+  // ano dinâmico no rodapé
+  document.getElementById('yr').textContent = new Date().getFullYear();
+
+  // banner de cookies
+  (function(){
+    const KEY = 'arcardapio_cookie_consent_v1';
+    const banner = document.getElementById('cookie-banner');
+    if (!localStorage.getItem(KEY)) banner.hidden = false;
+    document.getElementById('cookie-accept')?.addEventListener('click', () => {
+      localStorage.setItem(KEY, 'yes');
+      banner.hidden = true;
     });
+  })();
 
-    // impede que cliques dentro do conteúdo fechem o modal
-    conteudo.addEventListener('click', (e) => e.stopPropagation());
+  // ===== Modal: abrir e fechar (clicando fora) =====
+  const modal = document.getElementById('modal');
+  const abrir = document.getElementById('abrirModal');
+  const conteudo = modal.querySelector('.modal-content');
 
-    // (opcional) ESC para fechar
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !modal.classList.contains('hidden')) fecharModal();
-    });
-  </script>
+  function abrirModal() {
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+  function fecharModal() {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+  }
 
-  <!-- Se você já carrega outros scripts, mantenha-os aqui -->
-  <!-- <script src="java/index.js"></script> -->
+  // abre pelo botão do topo
+  abrir?.addEventListener('click', abrirModal);
 
+  // fecha clicando no overlay (só se o alvo for o próprio overlay)
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) fecharModal();
+  });
+
+  // impede que cliques dentro do conteúdo fechem o modal
+  conteudo.addEventListener('click', (e) => e.stopPropagation());
+
+  // (opcional) ESC para fechar
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) fecharModal();
+  });
+</script>
 </body>
 </html>
