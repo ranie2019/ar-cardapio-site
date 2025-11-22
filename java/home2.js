@@ -156,6 +156,8 @@ class SistemaCardapioItens extends SistemaCardapioBase {
 
   configurarControlesPreview() {
     const cena = this.modelModal.querySelector("#previewScene");
+    // CORREÇÃO: Previne o menu de contexto (clique direito) na cena 3D
+    cena.addEventListener("contextmenu", (e) => e.preventDefault());
     const yaw = this.modelModal.querySelector("#previewYaw");
     const pitch = this.modelModal.querySelector("#previewPitch");
     const lift = this.modelModal.querySelector("#previewLift");
