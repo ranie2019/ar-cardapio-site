@@ -4,8 +4,18 @@
   <meta charset="utf-8" />
   <title>Visualizador 3D com Botões</title>
 
-  <!-- CSS externo com versão para evitar cache -->
-  <link rel="stylesheet" href="../app/app.css?v=1.2" />
+  <!-- Lógica para cache-buster dinâmico -->
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    // Prioriza o parâmetro 't' (timestamp) vindo do QR Code, senão usa um valor fixo (v=1.3)
+    const cacheBuster = urlParams.get('t') ? `?t=${urlParams.get('t')}` : `?v=1.3`;
+  </script>
+
+  <!-- CSS externo com cache-buster dinâmico -->
+  <link rel="stylesheet" id="app-css" />
+  <script>
+    document.getElementById('app-css').href = `../app/app.css${cacheBuster}`;
+  </script>
 
   <!-- Bibliotecas A-Frame e AR.js -->
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
@@ -22,19 +32,44 @@
     }
   </style>
 
-  <!-- CONFIGURAÇÃO DAS MÉTRICAS (apenas inicialização) -->
+  <!-- CONFIGURAÇÃO DAS MÉTRICAS -->
   <script>
-    (function(){
+    (function () {
       const url = new URL(location.href);
+
+      // URL base da API de métricas (HTTP API)
+      const API_BASE = "https://zoci6wmxqa.execute-api.us-east-1.amazonaws.com";
+
+      // Parâmetros vindos do QR / redirect:
+      // Exemplo final de URL:
+      // app.html?u=ranie.black29%40gmail.com&i=mesa1&v=123&restaurante=ranie-black29-gmail-com&t=1764...
+      const tenant =
+        url.searchParams.get("restaurante") ||
+        url.searchParams.get("tenant") ||
+        url.searchParams.get("u") ||
+        null;
+
+      const table =
+        url.searchParams.get("mesa") ||
+        url.searchParams.get("table") ||
+        url.searchParams.get("i") ||
+        null;
+
+      const qrId =
+        url.searchParams.get("qrId") ||
+        url.searchParams.get("qr") ||
+        url.searchParams.get("t") ||
+        null;
+
       window.__AR_METRICA_INIT = {
-        endpoint: 'https://SEU-API-GATEWAY.execute-api.us-east-1.amazonaws.com/dev/collectMetrics',
-        tenant: url.searchParams.get('tenant') || url.searchParams.get('u') || null,
-        table:  url.searchParams.get('table')  || url.searchParams.get('mesa') || null,
-        qrId:   url.searchParams.get('qr')     || url.searchParams.get('qrId') || null,
-        env: 'prod',
+        endpoint: API_BASE + "/metricas/ingest",
+        tenant: tenant,
+        table: table,
+        qrId: qrId,
+        env: "prod",
         flushIntervalMs: 10000,
         maxBufferSize: 30,
-        persistKey: 'arcardapio_metrics_v2',
+        persistKey: "arcardapio_metrics_v3",
         sampleRate: 1.0,
         consentMetrics: true,
         heartbeatMs: 30000
@@ -44,6 +79,7 @@
 </head>
 
 <body>
+
   <!-- Botão de menu -->
   <button id="menuBtn">Cardápio</button>
 
@@ -64,19 +100,22 @@
   <div id="priceDisplay">R$ 0,00</div>
 
   <!-- Nome do produto -->
-  <div id="productNameDisplay" style="
-    position: absolute;
-    bottom: 80px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #e0e0e0;
-    color: #000;
-    padding: 6px 16px;
-    border-radius: 12px;
-    font-size: 1.1em;
-    font-weight: 500;
-    z-index: 1000;
-  "></div>
+  <div
+    id="productNameDisplay"
+    style="
+      position: absolute;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #e0e0e0;
+      color: #000;
+      padding: 6px 16px;
+      border-radius: 12px;
+      font-size: 1.1em;
+      font-weight: 500;
+      z-index: 1000;
+    "
+  ></div>
 
   <!-- Botões para navegar entre os modelos -->
   <button id="prevBtn" class="btn" onclick="changeModel(-1)">
@@ -90,33 +129,39 @@
   <button id="infoBtn" class="btn" onclick="toggleInfo()" style="display: none;">ℹ️ Info</button>
 
   <!-- Painel de informações -->
-  <div id="infoPanel" style="
-    display: none;
-    position: absolute;
-    top: 80px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80vw;
-    max-height: 60vh;
-    overflow-y: auto;
-    background-color: rgba(255, 255, 255, 0.95);
-    color: #000;
-    padding: 16px 20px;
-    border-radius: 16px;
-    font-size: 1em;
-    z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    text-align: left;
-  ">
-    <button onclick="document.getElementById('infoPanel').style.display='none'" style="
+  <div
+    id="infoPanel"
+    style="
+      display: none;
       position: absolute;
-      top: 8px;
-      right: 12px;
-      background: transparent;
-      border: none;
-      font-size: 1.2em;
-      cursor: pointer;
-    ">✖</button>
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80vw;
+      max-height: 60vh;
+      overflow-y: auto;
+      background-color: rgba(255, 255, 255, 0.95);
+      color: #000;
+      padding: 16px 20px;
+      border-radius: 16px;
+      font-size: 1em;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      text-align: left;
+    "
+  >
+    <button
+      onclick="document.getElementById('infoPanel').style.display='none'"
+      style="
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        background: transparent;
+        border: none;
+        font-size: 1.2em;
+        cursor: pointer;
+      "
+    >✖</button>
     <div id="infoContent">Carregando...</div>
   </div>
 
@@ -137,69 +182,78 @@
     <a-camera position="0 1.5 3"></a-camera>
   </a-scene>
 
-  <!-- Scripts do projeto -->
-  <script src="../app/models.js?v=1.2"></script>
-  <script src="../app/app.js?v=1.2"></script>
-  <script src="../app/metricaapp.js?v=1.2"></script>
-
-  <!-- INTEGRAÇÃO DE MÉTRICAS (apenas essa parte foi atualizada) -->
+  <!-- Scripts do projeto com cache-buster dinâmico -->
   <script>
-    // Inicializa métricas quando tudo carregar
-    window.addEventListener('load', function () {
-      if (window.MetricaApp && window.__AR_METRICA_INIT) {
-        try { MetricaApp.init(window.__AR_METRICA_INIT); } catch (e) { console.error(e); }
+    document.write(`<script src="../app/models.js${cacheBuster}"><\/script>`);
+    document.write(`<script src="../app/app.js${cacheBuster}"><\/script>`);
+    document.write(`<script src="../app/metricaapp.js${cacheBuster}"><\/script>`);
+  </script>
+
+  <!-- INTEGRAÇÃO DE MÉTRICAS -->
+  <script>
+    // Deixa o SDK inicializar sozinho (metricaapp.js já faz isso usando __AR_METRICA_INIT)
+    // Aqui só ligamos o autoBind depois do load.
+    window.addEventListener("load", function () {
+      if (window.MetricaApp) {
         try { MetricaApp.autoBind(); } catch (e) { console.error(e); }
       }
     });
 
-    // Controle do painel Info (compatível com SDK)
+    // Controle do painel Info (compatível com o SDK)
     (function () {
-      const panel = document.getElementById('infoPanel');
-      const btn = document.getElementById('infoBtn');
+      const panel = document.getElementById("infoPanel");
+      const btn = document.getElementById("infoBtn");
 
       window.toggleInfo = function () {
         if (!panel) return;
-        const visible = panel.style.display !== 'none' && panel.style.display !== '';
+        const visible = panel.style.display !== "none" && panel.style.display !== "";
         if (visible) {
-          panel.style.display = 'none';
-          panel.classList.remove('open', 'show');
+          panel.style.display = "none";
+          panel.classList.remove("open", "show");
         } else {
-          panel.style.display = 'block';
-          panel.classList.add('open');
+          panel.style.display = "block";
+          panel.classList.add("open");
         }
       };
 
-      if (btn) btn.addEventListener('click', toggleInfo, { passive: true });
+      if (btn) btn.addEventListener("click", toggleInfo, { passive: true });
     })();
 
-    // Integração com mudança de modelo
+    // Integração com mudança de modelo (para medir tempo de visualização por item)
     (function () {
       const originalChangeModel = window.changeModel;
       window.changeModel = function (dir) {
-        if (typeof originalChangeModel === 'function') {
+        if (typeof originalChangeModel === "function") {
           const next = originalChangeModel(dir) || {};
           if (window.MetricaApp && (next.id || next.name)) {
             try {
               MetricaApp.setCurrentItem({
                 id: next.id ?? null,
-                name: next.name ?? (document.getElementById('productNameDisplay')?.textContent?.trim() || null),
+                name:
+                  next.name ??
+                  (document.getElementById("productNameDisplay")?.textContent?.trim() || null),
                 category: next.category ?? null,
                 price: next.price ?? null
               });
-            } catch (e) {}
+            } catch (e) {
+              console.error(e);
+            }
           }
           return next;
         }
       };
     })();
 
-    // Integração com categorias
+    // Integração com seleção de categoria
     (function () {
       const originalSelectCategory = window.selectCategory;
       window.selectCategory = function (cat) {
-        if (typeof originalSelectCategory === 'function') originalSelectCategory(cat);
+        if (typeof originalSelectCategory === "function") {
+          originalSelectCategory(cat);
+        }
         if (window.MetricaApp) {
-          try { MetricaApp.trackEvent('category_select', { category: cat }); } catch (e) {}
+          try { MetricaApp.trackEvent("category_select", { category: cat }); }
+          catch (e) { console.error(e); }
         }
       };
     })();

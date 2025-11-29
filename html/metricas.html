@@ -9,9 +9,9 @@
   <!-- Estilos principais -->
   <link rel="stylesheet" href="../css/metricas.css" />
 
-  <!-- Ajustes mínimos de estilo locais (sem tooltip duplicado) -->
+  <!-- Ajustes mínimos de estilo locais -->
   <style>
-    /* Ativa a barrinha gradiente no hover do KPI (garantia) */
+    /* Barrinha gradiente no hover do KPI */
     .kpi-card::before {
       content: "";
       position: absolute;
@@ -87,14 +87,12 @@
         <button id="btnApplyFilters" type="button" class="btn btn-primary">APLICAR FILTROS</button>
         <button id="clearRange" type="button" class="btn btn-secondary">LIMPAR</button>
 
-        <!-- Campo oculto que o metricas.js usa (range no formato "dd/mm/aaaa a dd/mm/aaaa") -->
+        <!-- Campo extra usado pelo JS (se precisar exibir "dd/mm/aaaa a dd/mm/aaaa") -->
         <input id="filterRange" type="text" style="display:none;" aria-hidden="true" />
       </div>
     </section>
 
-    <!-- ========= 
-     RESUMO (KPIs) 
-     ========= -->
+    <!-- ========= RESUMO (KPIs) ========= -->
     <section class="kpis-section" aria-labelledby="titulo-resumo">
       <h2 id="titulo-resumo" class="section-title">Resumo</h2>
 
@@ -241,12 +239,10 @@
       </div>
     </section>
 
-    <!-- ===== GRADE (2 colunas responsivas) ===== -->
+    <!-- ===== GRADE PRINCIPAL ===== -->
     <div class="dashboard-grid">
 
-      <!--=========================
-      Escaneamento Total de QR Code 
-      ==========================-->
+      <!-- Escaneamento Total de QR Code -->
       <section class="chart-section col-12" aria-labelledby="titulo-scans-geral">
         <div class="section-header">
           <h2 id="titulo-scans-geral" class="section-title">
@@ -264,9 +260,7 @@
         </div>
       </section>
 
-      <!--=============
-      Scans por Mesa/QR 
-      ==============-->
+      <!-- Scans por Mesa/QR -->
       <section class="chart-section col-4" aria-labelledby="titulo-escaneamento-mesa">
         <div class="chart-header is-inline-help">
           <h2 id="titulo-escaneamento-mesa" class="section-title">
@@ -298,9 +292,7 @@
         </div>
       </section>
 
-      <!--===============
-      Sessões por período 
-      ================-->
+      <!-- Sessões por período -->
       <section class="chart-section col-4" aria-labelledby="titulo-sessoes">
         <div class="section-header">
           <h2 id="titulo-sessoes" class="section-title">
@@ -331,9 +323,7 @@
         </div>
       </section>
 
-      <!--===================
-      Tempo médio no cardápio 
-      ====================-->
+      <!-- Tempo médio no cardápio -->
       <section class="chart-section col-4" aria-labelledby="titulo-tempo-menu">
         <div class="section-header">
           <h2 id="titulo-tempo-menu" class="section-title">
@@ -364,9 +354,7 @@
         </div>
       </section>
 
-      <!--===========
-      Horário de pico 
-      ============-->
+      <!-- Horário de pico -->
       <section class="chart-section col-4" aria-labelledby="titulo-horario-pico">
         <div class="section-header">
           <h2 id="titulo-horario-pico" class="section-title">
@@ -394,18 +382,14 @@
                 <th>Scans</th>
               </tr>
             </thead>
-            <tbody id="tablePeakHours"></tbody>
-          </table>
             <tbody id="tablePeakHours">
-              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+              <tr><td colspan="3" class="text-center">Carregando…</td></tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <!--=============
-      Uso do botão Info 
-      ==============-->
+      <!-- Uso do botão Info -->
       <section class="chart-section col-4" aria-labelledby="titulo-info">
         <div class="section-header">
           <h2 id="titulo-info" class="section-title">
@@ -443,9 +427,7 @@
         </div>
       </section>
 
-      <!--==========
-      Tempo por item 
-      ===========-->
+      <!-- Tempo por item -->
       <section class="chart-section col-4" aria-labelledby="titulo-tempo-item">
         <div class="section-header">
           <h2 id="titulo-tempo-item" class="section-title">
@@ -476,16 +458,14 @@
         </div>
       </section>
 
-      <!--===================
-      Itens mais visualizados 
-      ====================-->
+      <!-- Itens mais visualizados -->
       <section class="chart-section col-4" aria-labelledby="titulo-itens-mais-vistos">
         <div class="section-header">
           <h2 id="titulo-itens-mais-vistos" class="section-title">
             Itens mais visualizados
             <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Top de itens com maior número de visualizações no período.">?</button>
           </h2>
-        <span class="section-subtitle">Top 10 de interesse</span>
+          <span class="section-subtitle">Top 10 de interesse</span>
         </div>
 
         <div class="chart-container">
@@ -509,15 +489,12 @@
         </div>
       </section>
 
-      <!--===============
-      Tempo por Categoria 
-      ================-->
+      <!-- Tempo por Categoria -->
       <section class="chart-section col-6" aria-labelledby="titulo-tempo-categoria">
         <div class="section-header">
           <h2 id="titulo-tempo-categoria" class="section-title">
             Tempo por Categoria
-            <button class="kpi-help" aria-label="O que é isso?"
-              data-tooltip="Tempo médio de permanência por categoria (dwell time).">?</button>
+            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Tempo médio de permanência por categoria (dwell time).">?</button>
           </h2>
           <span class="section-subtitle">Tempo médio de permanência</span>
         </div>
@@ -543,25 +520,20 @@
         </div>
       </section>
 
-      <!--=====================
-        Categorias mais acessadas
-      ======================-->
+      <!-- Categorias mais acessadas -->
       <section class="chart-section col-6" aria-labelledby="titulo-categorias-mais">
         <div class="section-header">
           <h2 id="titulo-categorias-mais" class="section-title">
             Categorias mais acessadas
-            <button class="kpi-help" aria-label="O que é isso?"
-              data-tooltip="Categorias com maior volume de cliques de acesso no período.">?</button>
+            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Categorias com maior volume de cliques de acesso no período.">?</button>
           </h2>
           <span class="section-subtitle">Popularidade por cliques</span>
         </div>
 
-        <!-- Gráfico -->
         <div class="chart-container">
           <canvas id="chartCategoryPopularity" aria-label="Gráfico de categorias mais acessadas"></canvas>
         </div>
 
-        <!-- Tabela -->
         <div class="table-wrapper" role="region" aria-label="Tabela de categorias mais acessadas">
           <table class="data-table">
             <thead>
@@ -579,9 +551,7 @@
         </div>
       </section>
 
-      <!--=========
-      Botao Info 
-      ==========-->
+      <!-- Botão Info (por item) -->
       <section class="chart-section col-4" aria-labelledby="titulo-info-por-item">
         <div class="section-header">
           <h2 id="titulo-info-por-item" class="section-title">
@@ -612,9 +582,7 @@
         </div>
       </section>
 
-      <!--=======
-      Recorrência 
-      ========-->
+      <!-- Recorrência -->
       <section class="chart-section col-4" aria-labelledby="titulo-recorrencia">
         <div class="section-header">
           <h2 id="titulo-recorrencia" class="section-title">
@@ -678,9 +646,7 @@
         </div>
       </section>
 
-      <!--================
-      Engajamento por mesa 
-      =================-->
+      <!-- Engajamento por mesa -->
       <section class="chart-section col-4" aria-labelledby="titulo-engajamento-mesa">
         <div class="section-header">
           <h2 id="titulo-engajamento-mesa" class="section-title">
@@ -711,9 +677,7 @@
         </div>
       </section>
 
-      <!--========================
-      Distribuição por dispositivo 
-      =========================-->
+      <!-- Distribuição por dispositivo -->
       <section class="chart-section col-4" aria-labelledby="titulo-dispositivos">
         <div class="section-header">
           <h2 id="titulo-dispositivos" class="section-title">
@@ -744,9 +708,7 @@
         </div>
       </section>
 
-      <!--=================
-      Modelos mais exibidos 
-      ==================-->
+      <!-- Modelos mais exibidos -->
       <section class="chart-section col-4" aria-labelledby="titulo-modelos">
         <div class="section-header">
           <h2 id="titulo-modelos" class="section-title">
@@ -777,9 +739,7 @@
         </div>
       </section>
 
-      <!--=============
-      Saúde dos modelos 
-      ==============-->
+      <!-- Saúde dos modelos -->
       <section class="chart-section col-4" aria-labelledby="titulo-model-health">
         <div class="section-header">
           <h2 id="titulo-model-health" class="section-title">
@@ -835,9 +795,7 @@
 
     </div><!-- /dashboard-grid -->
 
-    <!-- ===== 
-     INSIGHTS 
-     ===== -->
+    <!-- ===== INSIGHTS ===== -->
     <section class="insights-section" aria-labelledby="titulo-insights">
       <h2 id="titulo-insights" class="section-title">
         Insights
@@ -846,7 +804,9 @@
         </button>
       </h2>
 
-      <ul id="insightsList" class="insights-list"><li>Carregando…</li></ul>
+      <ul id="insightsList" class="insights-list">
+        <li>Carregando…</li>
+      </ul>
     </section>
 
   </main>
@@ -857,117 +817,6 @@
   </footer>
 
   <noscript>Ative o JavaScript para visualizar gráficos e dados.</noscript>
-
-  <!-- Bibliotecas -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
-
-  <!-- Desativa a legenda globalmente para não exibir “Scans Totais” etc. -->
-  <script>
-    window.addEventListener('DOMContentLoaded', () => {
-      if (window.Chart && Chart.defaults?.plugins?.legend) {
-        Chart.defaults.plugins.legend.display = false;
-      }
-    });
-  </script>
-
-  <!-- Inicialização dos calendários + sincronização com #filterRange (usado por metricas.js) -->
-  <script>
-    // Utilitários de data
-    function pad2(n){ return String(n).padStart(2,'0'); }
-    function toBR(d){
-      const dt = (d instanceof Date) ? d : new Date(d);
-      return `${pad2(dt.getDate())}/${pad2(dt.getMonth()+1)}/${dt.getFullYear()}`;
-    }
-    function fromBR(s){
-      const [dd, mm, yyyy] = s.split('/').map(n => parseInt(n,10));
-      return new Date(yyyy, mm-1, dd);
-    }
-    function setFilterRange(start, end){
-      const fr = document.getElementById('filterRange');
-      if (!fr) return;
-      fr.value = `${toBR(start)} a ${toBR(end)}`;
-    }
-    function lastNDays(n){
-      const arr = [];
-      const today = new Date();
-      for (let i=n-1;i>=0;i--){
-        const d = new Date(today);
-        d.setDate(today.getDate()-i);
-        arr.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
-      }
-      return arr;
-    }
-    function getMonthRange(offset){ // 0 = mês atual, -1 = mês anterior
-      const now = new Date();
-      const first = new Date(now.getFullYear(), now.getMonth()+offset, 1);
-      const last  = new Date(now.getFullYear(), now.getMonth()+offset+1, 0);
-      return { start:first, end:last };
-    }
-
-    window.addEventListener('DOMContentLoaded', function () {
-      // Datas padrão (exemplo estático inicial; ajuste se quiser “hoje-14”)
-      const last14 = lastNDays(14);
-      const defaultStart = toBR(last14[0]);
-      const defaultEnd   = toBR(last14[last14.length-1]);
-
-      const startPicker = flatpickr("#startDate", {
-        locale: flatpickr.l10ns.pt,
-        dateFormat: "d/m/Y",
-        allowInput: true,
-        defaultDate: defaultStart,
-        monthSelectorType: "static",
-      });
-
-      const endPicker = flatpickr("#endDate", {
-        locale: flatpickr.l10ns.pt,
-        dateFormat: "d/m/Y",
-        allowInput: true,
-        defaultDate: defaultEnd,
-        monthSelectorType: "static",
-      });
-
-      // Inicializa o #filterRange que o metricas.js consome
-      setFilterRange(fromBR(defaultStart), fromBR(defaultEnd));
-
-      // Limpar período
-      document.getElementById("clearRange").addEventListener("click", () => {
-        startPicker.clear();
-        endPicker.clear();
-        document.getElementById("periodFilter").value = "custom";
-        // Mantém um range padrão de 14 dias para não quebrar o JS
-        const fallback = lastNDays(14);
-        setFilterRange(fallback[0], fallback[fallback.length-1]);
-      });
-
-      // Se escolheu um período rápido, zera os campos individuais e seta o range oculto
-      document.getElementById("periodFilter").addEventListener("change", (e) => {
-        const v = e.target.value;
-        if (v === "custom") return;
-
-        startPicker.clear();
-        endPicker.clear();
-
-        let start, end;
-        if (v === "7d")  { const r = lastNDays(7);  start=r[0]; end=r[r.length-1]; }
-        if (v === "15d") { const r = lastNDays(15); start=r[0]; end=r[r.length-1]; }
-        if (v === "30d") { const r = lastNDays(30); start=r[0]; end=r[r.length-1]; }
-        if (v === "60d") { const r = lastNDays(60); start=r[0]; end=r[r.length-1]; }
-        if (v === "mesAnterior"){ const {start:s,end:e2}=getMonthRange(-1); start=s; end=e2; }
-        if (v === "mesAtual"){ const {start:s,end:e2}=getMonthRange(0); start=s; end=e2; }
-
-        if (start && end) setFilterRange(start, end);
-      });
-
-      // Ao clicar em aplicar, se houver datas individuais, sincroniza com o range oculto
-      document.getElementById("btnApplyFilters").addEventListener("click", () => {
-        const sVal = document.getElementById("startDate").value?.trim();
-        const eVal = document.getElementById("endDate").value?.trim();
-        if (sVal && eVal) {
-          setFilterRange(fromBR(sVal), fromBR(eVal));
-        }
-      });
-    });
-  </script>
 
   <!-- Script de métricas (dados e gráficos) -->
   <script src="../java/metricas.js" defer></script>

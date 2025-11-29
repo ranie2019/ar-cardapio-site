@@ -150,39 +150,28 @@
 
     const body = safeJSON(payload);
 
-    // sendBeacon (bom para unload/background)
-    let sent = false;
+    // >>> REMOVIDO: bloco do navigator.sendBeacon <<<
     try {
-      if (navigator.sendBeacon) {
-        const blob = new Blob([body], { type: 'application/json' });
-        sent = navigator.sendBeacon(config.endpoint, blob);
-      }
-    } catch (_) { sent = false; }
+      const r = await fetch(config.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        keepalive: true,
+        mode: 'cors',
+        credentials: 'omit',
+        cache: 'no-store'
+      });
 
-    if (!sent) {
-      try {
-        const r = await fetch(config.endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body,
-          keepalive: true,
-          mode: 'cors',
-          cache: 'no-store'
-        });
-        if (r.ok) {
-          buffer = [];
-          persist();
-        } else {
-          // mantém buffer para retry
-          scheduleFlush();
-        }
-      } catch {
-        // mantém buffer para retry
+      if (r.ok) {
+        buffer = [];
+        persist();
+      } else {
+        // mantém buffer para tentar de novo depois
         scheduleFlush();
       }
-    } else {
-      buffer = [];
-      persist();
+    } catch (e) {
+      // em erro de rede, mantém buffer para retry
+      scheduleFlush();
     }
   }
 

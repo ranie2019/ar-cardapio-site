@@ -6,8 +6,8 @@
 /* ==========================================================
    BASE / CONFIGURAÇÃO GERAL
    ========================================================== */
-const USE_MOCK = true; // Altere para false quando tiver API real
-const API_BASE = "https://SEU_API_GATEWAY/dev/metricasCliente";
+const USE_MOCK = false; // PRODUÇÃO: só dados reais
+const API_BASE = "https://zoci6wmxqa.execute-api.us-east-1.amazonaws.com/dev/metricasCliente";
 
 /* -------------------- MAPEAMENTO DE NOMES -------------------- */
 const CATEGORY_MAP = {
@@ -247,15 +247,70 @@ function buildMockData(tenant,startDate,endDate){
   };
 }
 
+/* <<< NOVO: estrutura vazia para produção quando a API falhar >>> */
+function buildEmptyData(startDate, endDate){
+  const labels = [];
+  return {
+    rangeLabels: labels,
+    daily: { scans: [], sessoes: [], unicos: [], info: [] },
+    porMesa: [],
+    tempoMenu: [],
+    picos: [],
+    devices: [],
+    topItems: [],
+    timeByCategory: [],
+    topCategories: [],
+    kpis: {
+      scansTotal: 0,
+      sessoesTotal: 0,
+      unicosTotal: 0,
+      infoTotal: 0,
+      avgTimePerItem: 0,
+      avgTimePerCategory: 0,
+      infoClicks: 0,
+      infoAvgTime: 0,
+      activeClients: 0,
+      newClients: 0,
+      recurringClients: 0,
+      infoOpens: 0,
+      infoAvgTimeInfoBox: 0,
+      modelsLoaded: 0,
+      modelsErrors: 0
+    },
+    recurrenceData: [],
+    topModels: [],
+    modelErrors: []
+  };
+}
+
 async function fetchMetrics({tenant,startDate,endDate}){
-  if (USE_MOCK){ await new Promise(r=>setTimeout(r,60)); return buildMockData(tenant,startDate,endDate); }
-  try{
-    const params = new URLSearchParams({ tenant, startDate:formatDateBR(startDate), endDate:formatDateBR(endDate) });
-    const res = await fetch(`${API_BASE}?${params}`); if(!res.ok) throw new Error("Erro ao buscar dados");
-    return res.json();
-  }catch(e){
-    console.error("Erro ao buscar dados:", e);
+  // DEMO opcional, se você quiser testar sem backend é só voltar USE_MOCK = true
+  if (USE_MOCK){
+    await new Promise(r=>setTimeout(r,60));
     return buildMockData(tenant,startDate,endDate);
+  }
+
+  try{
+    // startDate / endDate em dd/mm/YYYY, igual filtros
+    const params = new URLSearchParams({
+      tenant: tenant || "",
+      startDate: formatDateBR(startDate),
+      endDate: formatDateBR(endDate)
+    });
+    const res = await fetch(`${API_BASE}?${params.toString()}`, {
+      method: "GET",
+      mode: "cors",
+      credentials: "omit"
+    });
+    if(!res.ok){
+      console.error("[METRICAS] Erro HTTP ao buscar dados reais:", res.status, res.statusText);
+      return buildEmptyData(startDate, endDate);
+    }
+    const data = await res.json();
+    return data;
+  }catch(e){
+    console.error("[METRICAS] Erro de rede/parse ao buscar dados reais:", e);
+    return buildEmptyData(startDate, endDate);
   }
 }
 
@@ -627,9 +682,9 @@ function renderTabelaSessoes(labels, sessoes, unicos){
   const rows = labels.map((label,idx)=>`
     <tr>
       <td>${label}</td>
-      <td style="text-align:center">${toBR(sessoes[idx])}</td>
-      <td style="text-align:center">${toBR(unicos[idx])}</td>
-      <td style="text-align:right">${(sessoes[idx] / unicos[idx]).toFixed(2)}</td>
+      <td style="text-align:center">${toBR(sessoes[idx] || 0)}</td>
+      <td style="text-align:center">${toBR(unicos[idx] || 0)}</td>
+      <td style="text-align:right">${(unicos[idx] ? (sessoes[idx] / unicos[idx]).toFixed(2) : "0.00")}</td>
     </tr>`).join("");
   tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
 }
@@ -1383,8 +1438,6 @@ document.addEventListener("DOMContentLoaded", ()=>{
     const dates=generateMockDates(14);
     elements.filterRange.value = `${formatDateBR(dates[0])} a ${formatDateBR(dates[dates.length-1])}`;
   }
-
-  
 
   initFlatpickrIfAny();
   wireFilters();
