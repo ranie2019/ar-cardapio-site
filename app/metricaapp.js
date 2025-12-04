@@ -1,5 +1,5 @@
 /* metricaapp.js — ARCardapio (métricas de uso no app do cliente final)
-   v2.0.1
+   v2.0.2
    - Envio em lote via sendBeacon/fetch(keepalive)
    - Buffer + persistência offline (localStorage)
    - Sessão, visibilidade, heartbeats (pausa em aba oculta)
@@ -24,7 +24,7 @@
     anonymizeIp: true,
     consentMetrics: true,
     heartbeatMs: 30000,
-    sdkVersion: '2.0.1'
+    sdkVersion: '2.0.2'
   };
 
   // ----------- STATE -----------
@@ -57,8 +57,17 @@
 
   // ----------- UTILS -----------
   function iso(d = new Date()) { return d.toISOString(); }
-  function rid(prefix = '') { return prefix + Math.random().toString(36).slice(2, 10) + '-' + Date.now().toString(36); }
-  function safeJSON(x) { try { return JSON.stringify(x); } catch { return '{}'; } }
+  function rid(prefix = '') {
+    return (
+      prefix +
+      Math.random().toString(36).slice(2, 10) +
+      '-' +
+      Date.now().toString(36)
+    );
+  }
+  function safeJSON(x) {
+    try { return JSON.stringify(x); } catch { return '{}'; }
+  }
   function nowMs() { return performance.now(); }
 
   function deviceClass(ua = navigator.userAgent || '') {
@@ -66,7 +75,7 @@
     if (/android|iphone|ipod|ipad|mobile/.test(s)) return 'Mobile';
     if (/tablet/.test(s)) return 'Tablet';
     return 'Desktop';
-    }
+  }
 
   function uaInfo() {
     if (!config.consentMetrics) {
@@ -105,7 +114,10 @@
 
   function persist() {
     try {
-      localStorage.setItem(config.persistKey, safeJSON({ session, buffer, savedAt: iso() }));
+      localStorage.setItem(
+        config.persistKey,
+        safeJSON({ session, buffer, savedAt: iso() })
+      );
     } catch (_) {}
   }
 
@@ -126,7 +138,10 @@
   }
 
   function clearFlushTimer() {
-    if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+    if (flushTimer) {
+      clearTimeout(flushTimer);
+      flushTimer = null;
+    }
   }
 
   async function flush(reason = 'manual') {
@@ -150,7 +165,6 @@
 
     const body = safeJSON(payload);
 
-    // >>> REMOVIDO: bloco do navigator.sendBeacon <<<
     try {
       const r = await fetch(config.endpoint, {
         method: 'POST',
@@ -169,7 +183,7 @@
         // mantém buffer para tentar de novo depois
         scheduleFlush();
       }
-    } catch (e) {
+    } catch (_) {
       // em erro de rede, mantém buffer para retry
       scheduleFlush();
     }
@@ -223,7 +237,9 @@
       scansTotal: data.scansTotal,
       scansByQr: data.byQr[qr],
       isReturning: data.scansTotal > 1,
-      daysSinceLastScan: prevLast ? Math.floor((Date.now() - prevLast.getTime()) / 86400000) : null
+      daysSinceLastScan: prevLast
+        ? Math.floor((Date.now() - prevLast.getTime()) / 86400000)
+        : null
     };
   }
 
@@ -238,7 +254,30 @@
   function stopItemTimer(reason = 'stop') {
     if (currentItem && currentItemStart != null) {
       const durMs = Math.max(0, Math.round(nowMs() - currentItemStart));
-      pushEvent(ev('item_view_end', { item: currentItem, durationMs: durMs, reason }));
+
+      // evento original (mantém compatibilidade)
+      pushEvent(
+        ev('item_view_end', {
+          item: currentItem,
+          durationMs: durMs,
+          reason
+        })
+      );
+
+      // evento canônico para cálculo de tempo médio por item / categoria
+      const category =
+        (currentItem && currentItem.category) ||
+        currentCategory ||
+        null;
+
+      pushEvent(
+        ev('item_view', {
+          item: currentItem,
+          category,
+          durationMs: durMs,
+          reason
+        })
+      );
     }
     currentItem = null;
     currentItemStart = null;
@@ -254,7 +293,9 @@
   function endCategory(reason = 'stop') {
     if (currentCategory && currentCategoryStart != null) {
       const durMs = Math.max(0, Math.round(nowMs() - currentCategoryStart));
-      pushEvent(ev('category_dwell', { category: currentCategory, durationMs: durMs, reason }));
+      pushEvent(
+        ev('category_dwell', { category: currentCategory, durationMs: durMs, reason })
+      );
     }
     currentCategory = null;
     currentCategoryStart = null;
@@ -274,37 +315,102 @@
       const durMs = Math.max(0, Math.round(nowMs() - infoOpenSince));
       infoWasOpen = false;
       infoOpenSince = null;
+
+      // evento original
       pushEvent(ev('info_close', { durationMs: durMs }));
+
+      // evento canônico para tempo médio de leitura
+      const itemSummary = currentItem
+        ? { id: currentItem.id || null, name: currentItem.name || null }
+        : null;
+
+      pushEvent(
+        ev('info_read', {
+          item: itemSummary,
+          durationMs: durMs
+        })
+      );
     }
   }
+
+  // ----------- FUNÇÕES GLOBAIS (para usar no app.js) -----------
+  // Exemplo de uso:
+  //   metricsStartItemView({ id: 'absolut', name: 'Absolut Vodka', category: 'Bebidas', price: 79.9 });
+  //   metricsEndItemView('next_item');
+  //   metricsInfoOpened({ id: 'absolut', name: 'Absolut Vodka' });
+  //   metricsInfoClosed({ id: 'absolut' });
+
+  global.metricsStartItemView = function (item) {
+    startItemTimer(item || null);
+  };
+
+  global.metricsEndItemView = function (reason) {
+    stopItemTimer(reason || 'manual');
+  };
+
+  global.metricsInfoOpened = function (item) {
+    // opcionalmente, atualiza item atual se vier algo
+    if (item && !currentItem) {
+      currentItem = { ...item };
+      currentItemStart = currentItemStart || nowMs();
+    }
+    infoOpened();
+  };
+
+  global.metricsInfoClosed = function (item) {
+    // item é opcional; infoClosed usa currentItem internamente
+    infoClosed();
+  };
 
   // ----------- AUTOBIND / OBSERVERS -----------
   function bindUI() {
     // Botão de menu
     const menuBtn = document.getElementById('menuBtn');
     if (menuBtn) {
-      menuBtn.addEventListener('click', () => pushEvent(ev('menu_click')), { passive: true });
+      menuBtn.addEventListener(
+        'click',
+        () => pushEvent(ev('menu_click')),
+        { passive: true }
+      );
     }
 
     // Botões de categoria + dwell
-    document.querySelectorAll('#categoryButtons .category-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const label = (btn.textContent || '').trim();
-        pushEvent(ev('category_click', { text: label }));
-        startCategory(label);
-      }, { passive: true });
-    });
+    document
+      .querySelectorAll('#categoryButtons .category-btn')
+      .forEach(btn => {
+        btn.addEventListener(
+          'click',
+          () => {
+            const label = (btn.textContent || '').trim();
+            pushEvent(ev('category_click', { text: label }));
+            startCategory(label);
+          },
+          { passive: true }
+        );
+      });
 
     // Navegação de modelos
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
-    if (prevBtn) prevBtn.addEventListener('click', () => pushEvent(ev('nav_prev')), { passive: true });
-    if (nextBtn) nextBtn.addEventListener('click', () => pushEvent(ev('nav_next')), { passive: true });
+    if (prevBtn) prevBtn.addEventListener(
+      'click',
+      () => pushEvent(ev('nav_prev')),
+      { passive: true }
+    );
+    if (nextBtn) nextBtn.addEventListener(
+      'click',
+      () => pushEvent(ev('nav_next')),
+      { passive: true }
+    );
 
     // Info BTN
     const infoBtn = document.getElementById('infoBtn');
     if (infoBtn) {
-      infoBtn.addEventListener('click', () => { pushEvent(ev('info_click')); }, { passive: true });
+      infoBtn.addEventListener(
+        'click',
+        () => { pushEvent(ev('info_click')); },
+        { passive: true }
+      );
     }
 
     // Observa o painel de info abrir/fechar (mudança de style/class)
@@ -328,39 +434,66 @@
       const itemObs = new MutationObserver(() => {
         const newName = (nameEl.textContent || '').trim();
         if (newName && newName !== lastName) {
-          startItemTimer({ id: null, name: newName, category: null, price: null });
+          startItemTimer({
+            id: null,
+            name: newName,
+            category: null,
+            price: null
+          });
           lastName = newName;
         }
       });
-      itemObs.observe(nameEl, { childList: true, subtree: true, characterData: true });
+      itemObs.observe(nameEl, {
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
     }
 
     // Modelo carregado/erro
     const modelEl = document.getElementById('modelContainer');
     if (modelEl) {
-      modelEl.addEventListener('model-loaded', () => pushEvent(ev('model_loaded')), { passive: true });
-      modelEl.addEventListener('model-error', (e) =>
-        pushEvent(ev('model_error', { detail: String(e && e.detail) })), { passive: true });
+      modelEl.addEventListener(
+        'model-loaded',
+        () => pushEvent(ev('model_loaded')),
+        { passive: true }
+      );
+      modelEl.addEventListener(
+        'model-error',
+        (e) =>
+          pushEvent(
+            ev('model_error', { detail: String(e && e.detail) })
+          ),
+        { passive: true }
+      );
     }
   }
 
   // ----------- HEARTBEAT / CICLO DE SESSÃO -----------
   function startHeartbeat() {
     stopHeartbeat();
-    heartbeatTimer = setInterval(() => { pushEvent(ev('heartbeat')); }, config.heartbeatMs);
+    heartbeatTimer = setInterval(
+      () => { pushEvent(ev('heartbeat')); },
+      config.heartbeatMs
+    );
   }
 
   function stopHeartbeat() {
-    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
   }
 
   function bindSessionLifecycle() {
     // Abertura da página
-    pushEvent(ev('page_open', {
-      startUrl: location.href,
-      referrer: document.referrer || null,
-      initSource: config.initSource || 'app_html'
-    }));
+    pushEvent(
+      ev('page_open', {
+        startUrl: location.href,
+        referrer: document.referrer || null,
+        initSource: config.initSource || 'app_html'
+      })
+    );
 
     // Status do visitante / recorrência
     recurrenceData = loadRecurrence();
@@ -385,8 +518,13 @@
     });
 
     // Interação básica
-    const act = () => { session.lastActivityAt = iso(); pushEvent(ev('activity', { type: 'interaction' })); };
-    ['click', 'touchstart', 'keydown'].forEach(evt => window.addEventListener(evt, act, { passive: true }));
+    const act = () => {
+      session.lastActivityAt = iso();
+      pushEvent(ev('activity', { type: 'interaction' }));
+    };
+    ['click', 'touchstart', 'keydown'].forEach(evt =>
+      window.addEventListener(evt, act, { passive: true })
+    );
 
     // Unload: fechar tempos e flush
     window.addEventListener('beforeunload', () => {
@@ -409,14 +547,18 @@
     restore();
     bindUI();
     bindSessionLifecycle();
-    pushEvent(ev('metrics_initialized', { config: {
-      endpoint: config.endpoint,
-      env: config.env,
-      anonymizeIp: config.anonymizeIp,
-      sampleRate: config.sampleRate,
-      heartbeatMs: config.heartbeatMs,
-      sdkVersion: config.sdkVersion
-    }}));
+    pushEvent(
+      ev('metrics_initialized', {
+        config: {
+          endpoint: config.endpoint,
+          env: config.env,
+          anonymizeIp: config.anonymizeIp,
+          sampleRate: config.sampleRate,
+          heartbeatMs: config.heartbeatMs,
+          sdkVersion: config.sdkVersion
+        }
+      })
+    );
     return M;
   };
 
@@ -427,29 +569,45 @@
   M.setCurrentItem = function (item) { startItemTimer(item); };
 
   // Eventos utilitários
-  M.trackItemView = function (item) { pushEvent(ev('item_view', { item })); };
-  M.trackAddToCart = function (item, qty = 1) { pushEvent(ev('add_to_cart', { item, qty })); };
-  M.trackRemoveFromCart = function (item, qty = 1) { pushEvent(ev('remove_from_cart', { item, qty })); };
-  M.trackCheckout = function (order) { pushEvent(ev('checkout', { order })); };
-  M.trackEvent = function (name, payload = {}) { pushEvent(ev(name, payload)); };
+  M.trackItemView = function (item) {
+    pushEvent(ev('item_view', { item }));
+  };
+  M.trackAddToCart = function (item, qty = 1) {
+    pushEvent(ev('add_to_cart', { item, qty }));
+  };
+  M.trackRemoveFromCart = function (item, qty = 1) {
+    pushEvent(ev('remove_from_cart', { item, qty }));
+  };
+  M.trackCheckout = function (order) {
+    pushEvent(ev('checkout', { order }));
+  };
+  M.trackEvent = function (name, payload = {}) {
+    pushEvent(ev(name, payload));
+  };
 
   // Bind básico de cliques com data-metric='{"event":"ui_click","id":"..."}'
   M.autoBind = function () {
-    document.addEventListener('click', (e) => {
-      let el = e.target;
-      while (el && el !== document.body) {
-        if (el.dataset && el.dataset.metric) {
-          try {
-            const meta = JSON.parse(el.dataset.metric);
-            M.trackEvent(meta.event || 'ui_click', { meta });
-          } catch (_) {
-            M.trackEvent('ui_click', { text: el.innerText ? el.innerText.slice(0, 200) : null });
+    document.addEventListener(
+      'click',
+      (e) => {
+        let el = e.target;
+        while (el && el !== document.body) {
+          if (el.dataset && el.dataset.metric) {
+            try {
+              const meta = JSON.parse(el.dataset.metric);
+              M.trackEvent(meta.event || 'ui_click', { meta });
+            } catch (_) {
+              M.trackEvent('ui_click', {
+                text: el.innerText ? el.innerText.slice(0, 200) : null
+              });
+            }
+            break;
           }
-          break;
+          el = el.parentElement;
         }
-        el = el.parentElement;
-      }
-    }, { passive: true });
+      },
+      { passive: true }
+    );
   };
 
   // Debug leve

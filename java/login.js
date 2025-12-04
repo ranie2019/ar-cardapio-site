@@ -4,10 +4,10 @@
 // 2) Persistir sessão (token, e-mail, expiração).
 // 3) Consultar o status do plano no backend e decidir o redirecionamento.
 
-// ------------------------------
-// Seletores e elementos de UI
-// ------------------------------
 document.addEventListener("DOMContentLoaded", () => {
+  // ------------------------------
+  // Seletores e elementos de UI
+  // ------------------------------
   const formularioLogin = document.getElementById("form-login");
   const caixaMensagemErro = document.getElementById("mensagem-erro");
   const botaoAcessar = document.getElementById("Acessar");
@@ -22,14 +22,17 @@ document.addEventListener("DOMContentLoaded", () => {
   // ------------------------------
   // Configurações de endpoints
   // ------------------------------
-  const ENDPOINT_LOGIN = "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/loginCliente";
+  const ENDPOINT_LOGIN =
+    "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/loginCliente";
+
   // Lambda URL pública para checar o plano (POST { email } )
-  const ENDPOINT_CHECK_PLANO = "https://bnmlq4xdbvdz45z2wcy7cpso440ysnzk.lambda-url.us-east-1.on.aws/";
+  const ENDPOINT_CHECK_PLANO =
+    "https://bnmlq4xdbvdz45z2wcy7cpso440ysnzk.lambda-url.us-east-1.on.aws/";
 
   // Páginas de destino
   const URL_PAGINA_HOME = "../html/home.html";
   const URL_PAGINA_PLANOS = "../html/plano.html";      // página com os planos
-  const URL_PAGINA_VENDA = "../html/vendaTeste.html";  // checkout do plano
+  const URL_PAGINA_VENDA = "../html/vendaTeste.html";  // checkout do plano (não usado aqui direto)
 
   // ------------------------------
   // Chaves de armazenamento
@@ -37,14 +40,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const CHAVE_TOKEN = "ar.token";
   const CHAVE_EMAIL = "ar.email";
   const CHAVE_EXPIRACAO = "ar.exp";
-  const CHAVE_STATUS_PLANO = "ar.statusPlano"; // Nova chave para o status do plano
-  const CHAVE_NOME_EMPRESA = "ar.nomeEmpresa"; // Nova chave para o nome da empresa
+  const CHAVE_STATUS_PLANO = "ar.statusPlano";
+  const CHAVE_NOME_EMPRESA = "ar.nomeEmpresa";
   const DURACAO_SESSAO_HORAS = 24;
 
   // ------------------------------
   // Utilitários
   // ------------------------------
-  function validarEmail(valor ) {
+  function validarEmail(valor) {
     const padrao = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return padrao.test(String(valor).toLowerCase());
   }
@@ -72,19 +75,38 @@ document.addEventListener("DOMContentLoaded", () => {
     botaoAcessar.disabled = ativo;
   }
 
-  // Modificada para salvar o status do plano
+  // Salva sessão usando os mesmos nomes que o métricas procura
   function salvarSessao(email, token, statusPlano, nomeEmpresa) {
-    const instanteExpiracao = Date.now() + DURACAO_SESSAO_HORAS * 60 * 60 * 1000;
+    const instanteExpiracao =
+      Date.now() + DURACAO_SESSAO_HORAS * 60 * 60 * 1000;
+
     try {
+      // Chaves novas (padrão ARCardápio)
       localStorage.setItem(CHAVE_EMAIL, email);
       localStorage.setItem(CHAVE_TOKEN, token);
       localStorage.setItem(CHAVE_EXPIRACAO, String(instanteExpiracao));
-      localStorage.setItem(CHAVE_STATUS_PLANO, statusPlano); // Salva o status do plano
-      localStorage.setItem(CHAVE_NOME_EMPRESA, nomeEmpresa); // Salva o nome da empresa
+      localStorage.setItem(CHAVE_STATUS_PLANO, statusPlano || "");
+      localStorage.setItem(CHAVE_NOME_EMPRESA, nomeEmpresa || "");
+
       sessionStorage.setItem(CHAVE_EMAIL, email);
       sessionStorage.setItem(CHAVE_TOKEN, token);
       sessionStorage.setItem(CHAVE_EXPIRACAO, String(instanteExpiracao));
-      sessionStorage.setItem(CHAVE_STATUS_PLANO, statusPlano); // Salva o status do plano
+      sessionStorage.setItem(CHAVE_STATUS_PLANO, statusPlano || "");
+
+      // Chaves de compatibilidade (para qualquer código antigo)
+      const backups = ["jwtToken", "token", "clienteToken"];
+      backups.forEach((k) => {
+        localStorage.setItem(k, token);
+        sessionStorage.setItem(k, token);
+      });
+
+      console.log("[LOGIN] sessão salva", {
+        origin: window.location.origin,
+        email,
+        statusPlano,
+        nomeEmpresa,
+        tokenPrefix: token ? token.slice(0, 16) + "..." : null
+      });
     } catch (erro) {
       console.warn("Falha ao gravar sessão:", erro);
     }
@@ -121,16 +143,19 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       const corpo = await resposta.json().catch(() => ({}));
-      if (!resposta.ok) return "inativo"; // Retorna \'inativo\' se a resposta não for OK
+      if (!resposta.ok) return "inativo";
 
       console.log("DEBUG verificarPlanoAtivo corpo:", corpo);
-      // Prioriza \'planoAtivo\', se não existir, tenta \'active\'
-      if (typeof corpo.planoAtivo === "boolean") return corpo.planoAtivo ? "ativo" : "inativo";
-      if (typeof corpo.active === "boolean") return corpo.active ? "ativo" : "inativo";
-      return "inativo"; // Padrão se não encontrar status
+
+      if (typeof corpo.planoAtivo === "boolean")
+        return corpo.planoAtivo ? "ativo" : "inativo";
+      if (typeof corpo.active === "boolean")
+        return corpo.active ? "ativo" : "inativo";
+
+      return "inativo";
     } catch (erro) {
       console.warn("Erro ao verificar plano:", erro);
-      return "inativo"; // Em caso de erro, assume plano inativo
+      return "inativo";
     }
   }
 
@@ -169,19 +194,30 @@ document.addEventListener("DOMContentLoaded", () => {
         {
           method: "POST",
           mode: "cors",
-          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json"
+          },
           body: JSON.stringify({ email: valorEmail, senha: valorSenha })
         },
         15000
       );
 
-      const texto = await resposta.text();   // <- funciona para text/plain e json
+      const texto = await resposta.text();
       let corpo = {};
-      try { corpo = JSON.parse(texto); } catch (_) {} // se não for JSON, fica objeto vazio
+      try {
+        corpo = JSON.parse(texto);
+      } catch (_) {
+        corpo = {};
+      }
+
       console.log("DEBUG login =>", resposta.status, texto, corpo);
 
       if (!resposta.ok || corpo?.success === false) {
-        const mensagemServidor = corpo?.message || corpo?.mensagem || `Erro HTTP: ${resposta.status}`;
+        const mensagemServidor =
+          corpo?.message ||
+          corpo?.mensagem ||
+          `Erro HTTP: ${resposta.status}`;
         throw new Error(mensagemServidor);
       }
 
@@ -193,20 +229,28 @@ document.addEventListener("DOMContentLoaded", () => {
         corpo?.data?.token;
 
       const emailConfirmado = corpo?.user?.email || corpo?.email || valorEmail;
-      const nomeEmpresa = corpo?.user?.nome || corpo?.nome || ""; // Adiciona a extração do nome da empresa
+      const nomeEmpresa =
+        corpo?.user?.nome || corpo?.nome || corpo?.empresa || "";
 
-      // se o backend avisar que o plano está inativo, redireciona já
       if (corpo?.reason === "plano_inativo" || corpo?.status === "inativo") {
-        window.location.assign(`${URL_PAGINA_PLANOS}?email=${encodeURIComponent(valorEmail)}`);
+        window.location.assign(
+          `${URL_PAGINA_PLANOS}?email=${encodeURIComponent(valorEmail)}`
+        );
         return;
       }
 
       // Checar plano e decidir destino
-      const statusPlano = await verificarPlanoAtivo(emailConfirmado, tokenAutenticacao);
+      const statusPlano = await verificarPlanoAtivo(
+        emailConfirmado,
+        tokenAutenticacao
+      );
+
+      if (!tokenAutenticacao) {
+        throw new Error("Resposta sem token de autenticação.");
+      }
 
       // Salva a sessão APÓS verificar o status do plano
-      if (!tokenAutenticacao) throw new Error("Resposta sem token de autenticação.");
-      salvarSessao(emailConfirmado, tokenAutenticacao, statusPlano, nomeEmpresa); // Passa nomeEmpresa
+      salvarSessao(emailConfirmado, tokenAutenticacao, statusPlano, nomeEmpresa);
 
       // Se já veio um parâmetro "next" na URL, respeitar quando o plano estiver ativo
       const parametros = new URLSearchParams(window.location.search);
@@ -215,14 +259,16 @@ document.addEventListener("DOMContentLoaded", () => {
       if (statusPlano === "ativo") {
         window.location.assign(urlNext || URL_PAGINA_HOME);
       } else {
-        // Sem plano: primeiro leva à página de planos; de lá o usuário vai ao checkout
         window.location.assign(URL_PAGINA_PLANOS);
       }
     } catch (erro) {
       console.error("Erro no login:", erro);
       const mensagemAmigavel = (() => {
         const texto = String(erro?.message || "");
-        if (texto.toLowerCase().includes("cors") || texto.toLowerCase().includes("conex")) {
+        if (
+          texto.toLowerCase().includes("cors") ||
+          texto.toLowerCase().includes("conex")
+        ) {
           return "Erro de conexão com o servidor. Tente novamente.";
         }
         return texto || "E-mail ou senha incorretos.";

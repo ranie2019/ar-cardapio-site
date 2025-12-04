@@ -7,7 +7,7 @@
    BASE / CONFIGURAÇÃO GERAL
    ========================================================== */
 const USE_MOCK = false; // PRODUÇÃO: só dados reais
-const API_BASE = "https://zoci6wmxqa.execute-api.us-east-1.amazonaws.com/dev/metricasCliente";
+const API_BASE = "https://zoci6wmxqa.execute-api.us-east-1.amazonaws.com/metricas/cliente";
 
 /* -------------------- MAPEAMENTO DE NOMES -------------------- */
 const CATEGORY_MAP = {
@@ -67,10 +67,10 @@ const elements = {
   kpiNewClients: byId("kpiNewClients"),
   kpiRecurringClients: byId("kpiRecurringClients"),
   kpiReturnRate: byId("kpiReturnRate"),
-  kpiInfoOpens: byId("kpiInfoOpens"), // Adicionado
-  kpiInfoAvgTimeInfoBox: byId("kpiInfoAvgTimeInfoBox"), // Adicionado
-  kpiModelsLoaded: byId("kpiModelsLoaded"), // Adicionado
-  kpiModelsErrors: byId("kpiModelsErrors"), // Adicionado
+  kpiInfoOpens: byId("kpiInfoOpens"),
+  kpiInfoAvgTimeInfoBox: byId("kpiInfoAvgTimeInfoBox"),
+  kpiModelsLoaded: byId("kpiModelsLoaded"),
+  kpiModelsErrors: byId("kpiModelsErrors"),
 
   // Gráficos
   chartScansTotal: byId("chartScansTotal"),
@@ -139,21 +139,44 @@ const $$ = (sel, parent = document) => [...parent.querySelectorAll(sel)];
 function toBR(num, opts = {}) { return new Intl.NumberFormat("pt-BR", opts).format(num); }
 function pct(part, total) { return total ? `${toBR((part / total) * 100, { maximumFractionDigits: 1 })}%` : "0%"; }
 function pad2(n){ return n.toString().padStart(2,"0"); }
-function formatDateBR(date){ const d=(date instanceof Date)?date:new Date(date); return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}`; }
-function formatTimeBR(date){ const d=(date instanceof Date)?date:new Date(date); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
-function formatDurationMMSS(seconds){ seconds=Math.max(0,Math.round(seconds||0)); const m=Math.floor(seconds/60), s=seconds%60; return `${pad2(m)}:${pad2(s)}`; }
+function formatDateBR(date){
+  const d=(date instanceof Date)?date:new Date(date);
+  return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}`;
+}
+function formatTimeBR(date){
+  const d=(date instanceof Date)?date:new Date(date);
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+function formatDurationMMSS(seconds){
+  seconds=Math.max(0,Math.round(seconds||0));
+  const m=Math.floor(seconds/60), s=seconds%60;
+  return `${pad2(m)}:${pad2(s)}`;
+}
 function average(arr){ return (!arr?.length)?0:arr.reduce((a,b)=>a+b,0)/arr.length; }
 function sum(arr){ return arr.reduce((a,b)=>a+b,0); }
 function roundUpToMultiple(value,step=10){ return (step<=0)?value:Math.ceil(value/step)*step; }
 function roundToNearest(value,step=10){ return (step<=0)?value:Math.round(value/step)*step; }
 function randomInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
 
+/** Normaliza qualquer identificador (e-mail, nome, etc.) para o mesmo slug usado nas pastas do S3 */
+function tenantKey(raw) {
+  return String(raw || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")   // tudo que não é [a-z0-9] vira "-"
+    .replace(/^-+|-+$/g, "");      // tira "-" do começo/fim
+}
+
 /* ==========================================================
    DADOS MOCK / FETCH
    ========================================================== */
 function generateMockDates(n=14){
   const out=[]; const today=new Date();
-  for(let i=n-1;i>=0;i--){ const d=new Date(today); d.setDate(today.getDate()-i); out.push(new Date(d.getFullYear(),d.getMonth(),d.getDate())); }
+  for(let i=n-1;i>=0;i--){
+    const d=new Date(today);
+    d.setDate(today.getDate()-i);
+    out.push(new Date(d.getFullYear(),d.getMonth(),d.getDate()));
+  }
   return out;
 }
 
@@ -171,7 +194,14 @@ function buildMockData(tenant,startDate,endDate){
   const mesaData = mesas.map((m)=>{
     const scansPeriodo=randomInt(8,120);
     const ts=new Date(endDate); ts.setHours(randomInt(10,22),randomInt(0,59),0,0);
-    return { mesa:m, scans:scansPeriodo, ultimoScan:ts, avgTimeSec:randomInt(30,180), interactionsPerSession: (Math.random()*5).toFixed(1), sessions: randomInt(10, 50) };
+    return {
+      mesa:m,
+      scans:scansPeriodo,
+      ultimoScan:ts,
+      avgTimeSec:randomInt(30,180),
+      interactionsPerSession:(Math.random()*5).toFixed(1),
+      sessions: randomInt(10, 50)
+    };
   });
 
   const tempoMenu = days.map(d=>({
@@ -181,7 +211,10 @@ function buildMockData(tenant,startDate,endDate){
     amostras:   Math.round(30 + Math.random()*130),
   }));
 
-  const picos = Array.from({length:24}).map((_,hora)=>({ hora, scans: Math.round(Math.max(0,(hora-9)*(Math.random()*6))) }));
+  const picos = Array.from({length:24}).map((_,hora)=>({
+    hora,
+    scans: Math.round(Math.max(0,(hora-9)*(Math.random()*6)))
+  }));
 
   const devices = [
     { label:"Mobile",  value: randomInt(70,90), sessions: randomInt(100, 300), avgTimeSec: randomInt(60, 180) },
@@ -190,18 +223,28 @@ function buildMockData(tenant,startDate,endDate){
   ];
 
   const topItems = Array.from({length:10}).map((_,i)=>({
-    item: mapItemName(`Item ${i+1}`), views:randomInt(50,500), avgTimeSec:randomInt(10,60), category: mapCategoryName(`Categoria ${randomInt(1,5)}`), clicksInfo: randomInt(5, 50)
+    item: mapItemName(`Item ${i+1}`),
+    views:randomInt(50,500),
+    avgTimeSec:randomInt(10,60),
+    category: mapCategoryName(`Categoria ${randomInt(1,5)}`),
+    clicksInfo: randomInt(5, 50)
   })).sort((a,b)=>b.views-a.views);
 
   const categories = Array.from({length:5}).map((_,i)=>mapCategoryName(`Categoria ${i+1}`));
   const timeByCategory = categories.map(cat=>({
-    category:cat, avgTimeSec:randomInt(30,180), sessions:randomInt(50,300), totalTimeSec:randomInt(5000,20000)
+    category:cat,
+    avgTimeSec:randomInt(30,180),
+    sessions:randomInt(50,300),
+    totalTimeSec:randomInt(5000,20000)
   }));
   const totalTime = sum(timeByCategory.map(c=>c.totalTimeSec));
   timeByCategory.forEach(c=> c.pctTotalTime = pct(c.totalTimeSec,totalTime));
 
   const topCategories = categories.map(cat=>({
-    category:cat, clicks:randomInt(100,800), avgTimeSec:randomInt(30,180), totalClicks:randomInt(1000,5000)
+    category:cat,
+    clicks:randomInt(100,800),
+    avgTimeSec:randomInt(30,180),
+    totalClicks:randomInt(1000,5000)
   })).sort((a,b)=>b.clicks-a.clicks);
   const totalClicks = sum(topCategories.map(c=>c.clicks));
   topCategories.forEach(c=> c.pctTotal = pct(c.clicks,totalClicks));
@@ -232,11 +275,17 @@ function buildMockData(tenant,startDate,endDate){
   }));
 
   const topModels = Array.from({length:5}).map((_,i)=>({
-    model:mapItemName(`Item ${i+1}`), views:randomInt(10,100), avgTimeSec:randomInt(5,30), errors:randomInt(0,5)
+    model:mapItemName(`Item ${i+1}`),
+    views:randomInt(10,100),
+    avgTimeSec:randomInt(5,30),
+    errors:randomInt(0,5)
   })).sort((a,b)=>b.views-a.views);
 
   const modelErrors = Array.from({length:3}).map((_,i)=>({
-    itemModel:mapItemName(`Item ${i+1}`), error:`Erro ${i+1}`, occurrences:randomInt(1,10), last:new Date()
+    itemModel:mapItemName(`Item ${i+1}`),
+    error:`Erro ${i+1}`,
+    occurrences:randomInt(1,10),
+    last:new Date()
   }));
 
   return {
@@ -247,11 +296,10 @@ function buildMockData(tenant,startDate,endDate){
   };
 }
 
-/* <<< NOVO: estrutura vazia para produção quando a API falhar >>> */
+/* Estrutura vazia quando a API falhar */
 function buildEmptyData(startDate, endDate){
-  const labels = [];
   return {
-    rangeLabels: labels,
+    rangeLabels: [],
     daily: { scans: [], sessoes: [], unicos: [], info: [] },
     porMesa: [],
     tempoMenu: [],
@@ -283,36 +331,100 @@ function buildEmptyData(startDate, endDate){
   };
 }
 
-async function fetchMetrics({tenant,startDate,endDate}){
-  // DEMO opcional, se você quiser testar sem backend é só voltar USE_MOCK = true
-  if (USE_MOCK){
-    await new Promise(r=>setTimeout(r,60));
-    return buildMockData(tenant,startDate,endDate);
+async function fetchMetrics({ tenant, startDate, endDate }) {
+  // 1) Pegar o token salvo pelo login (igual já estava)
+  const token =
+    localStorage.getItem("ar.token") ||
+    sessionStorage.getItem("ar.token") ||
+    localStorage.getItem("jwtToken") ||
+    localStorage.getItem("token") ||
+    localStorage.getItem("clienteToken") ||
+    sessionStorage.getItem("jwtToken") ||
+    sessionStorage.getItem("token") ||
+    sessionStorage.getItem("clienteToken");
+
+  console.log("[METRICAS] token lido?", token ? "OK" : "NENHUM");
+
+  if (!token) {
+    console.warn(
+      "[METRICAS] Não autenticado / token ausente. Dashboard ficará vazio até fazer login."
+    );
+    return buildEmptyData(startDate, endDate);
   }
 
-  try{
-    // startDate / endDate em dd/mm/YYYY, igual filtros
-    const params = new URLSearchParams({
-      tenant: tenant || "",
-      startDate: formatDateBR(startDate),
-      endDate: formatDateBR(endDate)
-    });
+  // 2) DEFINIR QUAL TENANT VAI PARA A API
+  //    Prioridade: ar.email  →  se não tiver, cai pro tenant que veio do estado
+  const emailTenant =
+    localStorage.getItem("ar.email") ||
+    sessionStorage.getItem("ar.email");
+
+  // raw = o que veio (e-mail ou tenant), slug = igual à pasta do S3
+  const tenantRaw  = (emailTenant || tenant || "").trim();
+  const tenantSlug = tenantKey(tenantRaw);
+
+  // A API hoje espera o e-mail (ela mesma faz o slug).
+  const tenantForApi = tenantRaw;
+
+  console.log(
+    "[METRICAS] tenant para API raw =", tenantRaw,
+    "slug =", tenantSlug,
+    "enviado =", tenantForApi
+  );
+
+  try {
+    const params = new URLSearchParams();
+    if (tenantForApi) params.append("tenant", tenantForApi);
+    if (startDate instanceof Date) {
+      params.append("startDate", formatDateBR(startDate));
+    }
+    if (endDate instanceof Date) {
+      params.append("endDate", formatDateBR(endDate));
+    }
+
+    // Chamar API com Authorization: Bearer <token>
     const res = await fetch(`${API_BASE}?${params.toString()}`, {
       method: "GET",
       mode: "cors",
-      credentials: "omit"
+      credentials: "omit",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
     });
-    if(!res.ok){
-      console.error("[METRICAS] Erro HTTP ao buscar dados reais:", res.status, res.statusText);
+
+    const urlFinal = `${API_BASE}?${params.toString()}`;
+    console.log("[METRICAS] URL chamada =", urlFinal);
+    console.log("[METRICAS] status =", res.status, res.statusText);
+
+    const json = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      console.error(
+        "[METRICAS] Erro HTTP ao buscar dados reais:",
+        res.status,
+        res.statusText,
+        json
+      );
       return buildEmptyData(startDate, endDate);
     }
-    const data = await res.json();
-    return data;
-  }catch(e){
+
+    if (!json || json.ok === false) {
+      console.warn(
+        "[METRICAS] API retornou erro lógico:",
+        json && json.code,
+        json && json.message
+      );
+      return buildEmptyData(startDate, endDate);
+    }
+
+    console.log("[METRICAS] data bruto da API:", json);
+    return json;
+  } catch (e) {
     console.error("[METRICAS] Erro de rede/parse ao buscar dados reais:", e);
     return buildEmptyData(startDate, endDate);
   }
 }
+
 
 /* ==========================================================
    TOOLTIP “?” — Portal com clamps de viewport
@@ -338,34 +450,27 @@ const HelpPortal = (() => {
     tip.innerHTML = text || "";
     tip.style.display = "block";
 
-    // Força o browser a calcular o tamanho
     tip.style.left = "-9999px";
     tip.style.top  = "-9999px";
 
-    const pad = 12; // margem da tela
+    const pad = 12;
     const trg = target.getBoundingClientRect();
     const vw  = window.innerWidth;
     const vh  = window.innerHeight;
 
-    // Posição preferida: abaixo e centralizado ao alvo
     let x = trg.left + (trg.width / 2);
     let y = trg.bottom + 8;
 
-    // Mede o tooltip depois de mostrar
     const r = tip.getBoundingClientRect();
 
-    // Centraliza horizontalmente e aplica limites
     x = x - (r.width / 2);
     x = clamp(x, pad, vw - pad - r.width);
 
-    // Se não couber abaixo, tenta posicionar acima
     if (y + r.height > vh - pad) {
       y = trg.top - r.height - 8;
     }
-    // Se ainda assim extrapolar o topo, gruda no topo com margem
     y = clamp(y, pad, vh - pad - r.height);
 
-    // Como usamos position: fixed no CSS, coordenadas são de viewport
     tip.style.left = `${x}px`;
     tip.style.top  = `${y}px`;
     tip.style.transform = "none";
@@ -375,7 +480,6 @@ const HelpPortal = (() => {
     if (el) el.style.display = "none";
   }
 
-  // Esconde em scroll/resize para evitar ficar “pendurado”
   window.addEventListener("scroll", hide, { passive: true });
   window.addEventListener("resize", hide);
 
@@ -517,116 +621,219 @@ function buildDoughnut(ctx, labels, data){
 /* ==========================================================
    FILTROS E ESTADO
    ========================================================== */
+
+// Resolve o tenant usando o MESMO padrão do backend (slug igual à pasta do S3)
+function resolveTenantInitial() {
+  // 1) Tenta primeiro algum e-mail salvo pelo app
+  const emailCandidates = [
+    localStorage.getItem("ar.email"),
+    sessionStorage.getItem("ar.email"),
+    localStorage.getItem("arEmail"),
+    sessionStorage.getItem("arEmail"),
+    localStorage.getItem("email"),
+    sessionStorage.getItem("email"),
+  ].filter(v => v && v.trim());
+
+  for (const v of emailCandidates) {
+    const t = tenantKey(v);
+    if (t) {
+      console.log("[METRICAS] tenant via email", v, "=>", t);
+      return t;
+    }
+  }
+
+  // 2) Se não achar e-mail, tenta IDs de tenant / restaurante
+  const keys = ["ar.tenant", "tenant", "tenantId", "restaurante"];
+  for (const k of keys) {
+    const v = localStorage.getItem(k) || sessionStorage.getItem(k);
+    if (v && v.trim()) {
+      const t = tenantKey(v);
+      console.log("[METRICAS] tenant via storage", k, "=", v, "=>", t);
+      return t;
+    }
+  }
+
+  // 3) Fallback: URL (?tenant=... ou ?r=...)
+  try {
+    const url = new URL(window.location.href);
+    const fromTenant = url.searchParams.get("tenant");
+    const fromR = url.searchParams.get("r");
+    const raw = (fromTenant || fromR || "").trim();
+    if (!raw) return "";
+
+    const t = tenantKey(
+      raw
+        .replace(/^https?:\/\//i, "")
+        .replace(/[?#].*$/, "")
+        .replace(/%40/gi, "@")
+    );
+    console.log("[METRICAS] tenant via URL", raw, "=>", t);
+    return t;
+  } catch (err) {
+    console.warn("[METRICAS] Não foi possível resolver tenant inicial:", err);
+    return "";
+  }
+}
+
 const AppState = {
-  tenant: "",
+  tenant: resolveTenantInitial(),
   startDate: null,
   endDate: null,
 };
 
-function wireFilters(){
-  if(typeof flatpickr !== "undefined"){
-    flatpickr(elements.startDate, {
-      dateFormat: "d/m/Y",
-      locale: "pt",
-      onChange: updateRangeInput,
-    });
-    flatpickr(elements.endDate, {
-      dateFormat: "d/m/Y",
-      locale: "pt",
-      onChange: updateRangeInput,
-    });
+console.log("[METRICAS] tenant inicial:", AppState.tenant);
+
+// flatpickr totalmente controlado aqui
+function initFlatpickrIfAny() {
+  if (typeof flatpickr === "undefined") {
+    console.warn("[METRICAS] flatpickr não carregado");
+    return;
   }
 
-  elements.btnApplyFilters?.addEventListener("click", applyFilters);
-  elements.clearRange?.addEventListener("click", clearRange);
-  elements.periodFilter?.addEventListener("change", handlePeriodChange);
-  elements.filterTenant?.addEventListener("change", applyFilters);
-}
+  const commonConfig = {
+    dateFormat: "d/m/Y",
+    locale: flatpickr.l10ns?.pt || "pt",
+    allowInput: true,
+    clickOpens: true,
+    monthSelectorType: "static",
+    onChange: () => {
+      updateRangeInput();
+    }
+  };
 
-function initFlatpickrIfAny(){
-  if(typeof flatpickr !== "undefined"){
-    flatpickr(elements.startDate, { dateFormat: "d/m/Y", locale: "pt", onChange: updateRangeInput });
-    flatpickr(elements.endDate, { dateFormat: "d/m/Y", locale: "pt", onChange: updateRangeInput });
+  if (elements.startDate && !elements.startDate._flatpickr) {
+    flatpickr(elements.startDate, commonConfig);
+  }
+  if (elements.endDate && !elements.endDate._flatpickr) {
+    flatpickr(elements.endDate, commonConfig);
   }
 }
 
-function updateRangeInput(){
+function updateRangeInput() {
   const start = elements.startDate?.value;
   const end = elements.endDate?.value;
-  if(elements.filterRange) elements.filterRange.value = (start && end) ? `${start} a ${end}` : "";
+  if (elements.filterRange) {
+    elements.filterRange.value = (start && end) ? `${start} a ${end}` : "";
+  }
 }
 
-function parseDate(dateStr){
-  if(!dateStr) return null;
+function parseDate(dateStr) {
+  if (!dateStr) return null;
   const [day, month, year] = dateStr.split("/").map(Number);
   return new Date(year, month - 1, day);
 }
 
-function applyFilters(){
-  const startStr = elements.startDate?.value;
-  const endStr = elements.endDate?.value;
+// seta HOJE como padrão (inputs + estado)
+function setDefaultTodayRange() {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  AppState.tenant = elements.filterTenant?.value?.trim() || "";
-  AppState.startDate = parseDate(startStr);
-  AppState.endDate = parseDate(endStr);
+  AppState.startDate = today;
+  AppState.endDate = today;
 
-  if(AppState.startDate && AppState.endDate && AppState.startDate > AppState.endDate){
+  const v = formatDateBR(today);
+  if (elements.startDate) elements.startDate.value = v;
+  if (elements.endDate) elements.endDate.value = v;
+  if (elements.filterRange) elements.filterRange.value = `${v} a ${v}`;
+}
+
+// aplica filtros (botão APLICAR)
+function applyFilters() {
+  let startStr = elements.startDate?.value?.trim();
+  let endStr   = elements.endDate?.value?.trim();
+
+  if (!AppState.tenant) {
+    const rawTenant =
+      elements.filterTenant?.value?.trim() ||
+      resolveTenantInitial() ||
+      "";
+    AppState.tenant = tenantKey(rawTenant);
+  }
+
+  if (!startStr || !endStr) {
+    // Nenhuma data preenchida → usa HOJE
+    setDefaultTodayRange();
+  } else {
+    AppState.startDate = parseDate(startStr);
+    AppState.endDate   = parseDate(endStr);
+  }
+
+  if (AppState.startDate && AppState.endDate && AppState.startDate > AppState.endDate) {
     alert("A data inicial não pode ser maior que a data final.");
     return;
   }
 
+  updateRangeInput();
   loadAndRender();
 }
 
-function clearRange(){
-  if(elements.startDate) elements.startDate.value = "";
-  if(elements.endDate) elements.endDate.value = "";
-  if(elements.filterRange) elements.filterRange.value = "";
-  if(elements.periodFilter) elements.periodFilter.value = "custom";
-  applyFilters();
+// botão LIMPAR → volta para HOJE
+function clearRange() {
+  if (elements.startDate) elements.startDate.value = "";
+  if (elements.endDate) elements.endDate.value = "";
+  if (elements.filterRange) elements.filterRange.value = "";
+  if (elements.periodFilter) elements.periodFilter.value = "custom";
+
+  setDefaultTodayRange();
+  loadAndRender();
 }
 
-function handlePeriodChange(){
+// período rápido (7/15/30/60, mês atual/anterior)
+function handlePeriodChange() {
   const period = elements.periodFilter?.value;
-  if(period === "custom") return;
+  if (!period || period === "custom") return;
 
   const today = new Date();
-  let startDate = new Date(today);
-  let endDate = new Date(today);
+  let startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  let endDate   = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-  const setDates = (start, end) => {
-    elements.startDate.value = formatDateBR(start);
-    elements.endDate.value = formatDateBR(end);
-    updateRangeInput();
-    applyFilters();
-  };
-
-  switch(period){
+  switch (period) {
     case "7d":
-      startDate.setDate(today.getDate() - 6);
-      setDates(startDate, endDate);
+      startDate.setDate(startDate.getDate() - 6);
       break;
     case "15d":
-      startDate.setDate(today.getDate() - 14);
-      setDates(startDate, endDate);
+      startDate.setDate(startDate.getDate() - 14);
       break;
     case "30d":
-      startDate.setDate(today.getDate() - 29);
-      setDates(startDate, endDate);
+      startDate.setDate(startDate.getDate() - 29);
       break;
     case "60d":
-      startDate.setDate(today.getDate() - 59);
-      setDates(startDate, endDate);
+      startDate.setDate(startDate.getDate() - 59);
       break;
     case "mesAnterior":
       startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      endDate = new Date(today.getFullYear(), today.getMonth(), 0);
-      setDates(startDate, endDate);
+      endDate   = new Date(today.getFullYear(), today.getMonth(), 0);
       break;
     case "mesAtual":
       startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-      setDates(startDate, endDate);
+      // endDate = hoje
       break;
+    default:
+      return;
+  }
+
+  if (elements.startDate) elements.startDate.value = formatDateBR(startDate);
+  if (elements.endDate)   elements.endDate.value   = formatDateBR(endDate);
+  updateRangeInput();
+
+  AppState.startDate = startDate;
+  AppState.endDate   = endDate;
+
+  loadAndRender();
+}
+
+// conecta botões/selects
+function wireFilters() {
+  elements.btnApplyFilters?.addEventListener("click", applyFilters);
+  elements.clearRange?.addEventListener("click", clearRange);
+  elements.periodFilter?.addEventListener("change", handlePeriodChange);
+
+  if (elements.filterTenant) {
+    elements.filterTenant.addEventListener("change", () => {
+      const raw = elements.filterTenant.value?.trim() || AppState.tenant;
+      AppState.tenant = tenantKey(raw);
+      loadAndRender();
+    });
   }
 }
 
@@ -651,7 +858,6 @@ function renderKPIs(kpis){
   if(elements.kpiModelsLoaded) elements.kpiModelsLoaded.textContent = toBR(kpis.modelsLoaded);
   if(elements.kpiModelsErrors) elements.kpiModelsErrors.textContent = toBR(kpis.modelsErrors);
 
-  // KPIs de Recorrência (para o bloco Recorrência)
   const totalClients = kpis.newClients + kpis.recurringClients;
   if(byId("kpiRecNew")) byId("kpiRecNew").textContent = toBR(kpis.newClients);
   if(byId("kpiRecReturning")) byId("kpiRecReturning").textContent = toBR(kpis.recurringClients);
@@ -662,7 +868,6 @@ function renderKPIs(kpis){
    BLOCO: TABELAS
    ========================================================== */
 
-/* tabela: Escaneamento por Mesa/QR Code */
 function renderTabelaMesaQR(list){
   const tbody=elements.tbodyMesaQR; if(!tbody) return;
   const totalScans = sum(list.map(i=>i.scans));
@@ -676,7 +881,6 @@ function renderTabelaMesaQR(list){
   tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
 }
 
-/* tabela: Sessões por Período */
 function renderTabelaSessoes(labels, sessoes, unicos){
   const tbody=elements.tbodySessoes; if(!tbody) return;
   const rows = labels.map((label,idx)=>`
@@ -689,7 +893,6 @@ function renderTabelaSessoes(labels, sessoes, unicos){
   tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
 }
 
-/* tabela: Tempo Médio (Cardápio) */
 function renderTabelaTempoMenu(list){
   const tbody=elements.tableAvgTimeMenu; if(!tbody) return;
   const rows = list.map(i=>`
@@ -702,7 +905,6 @@ function renderTabelaTempoMenu(list){
   tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
 }
 
-/* tabela: Itens mais visualizados */
 function renderTabelaTopItems(list){
   const tbody = elements.tableTopItems;
   if(!tbody) return;
@@ -716,7 +918,6 @@ function renderTabelaTopItems(list){
   tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
 }
 
-/* tabela: Tempo por Categoria */
 function renderTabelaTimeByCategory(list){
   const tbody=elements.tbodyTimeByCategory; if(!tbody) return;
   const rows = list.map(i=>`
@@ -729,7 +930,6 @@ function renderTabelaTimeByCategory(list){
   tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
 }
 
-/* tabela: Categorias mais acessadas */
 function renderTabelaTopCategories(list){
   const tbody=elements.tableCategoryPopularity; if(!tbody) return;
   const rows = list.map(i=>`
@@ -742,7 +942,6 @@ function renderTabelaTopCategories(list){
   tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
 }
 
-/* tabela: Tempo por Item */
 function renderTabelaTimePerItem(list){
   const tbody=elements.tableTimePerItem; if(!tbody) return;
   const totalViews = sum(list.map(i=>i.views));
@@ -756,7 +955,6 @@ function renderTabelaTimePerItem(list){
   tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
 }
 
-/* tabela: Horário de Pico (Data | Hora | Scans) */
 function renderTabelaPeakHours(list){
   const tbody = elements.tablePeakHours;
   if (!tbody) return;
@@ -777,23 +975,37 @@ function renderTabelaPeakHours(list){
   tbody.innerHTML = rows || `<tr><td colspan="3" class="text-center">Sem dados.</td></tr>`;
 }
 
-/* tabela: Recorrência de Clientes */
-function renderTabelaRecurrence(list){
-  const tbody=elements.tableRecurrence; if(!tbody) return;
-  const mockClients = Array.from({length:5}).map((_,i)=>({
-    id: `Cliente ${i+1}`, scans: randomInt(1, 10), lastScan: new Date(), daysSinceLast: randomInt(1, 30)
-  }));
-  const rows = mockClients.map(item=>`
-    <tr>
-      <td>${item.id}</td>
-      <td style="text-align:center">${toBR(item.scans)}</td>
-      <td style="text-align:center">${formatDateBR(item.lastScan)}</td>
-      <td style="text-align:right">${toBR(item.daysSinceLast)}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+function renderTabelaRecurrence(list) {
+  const tbody = elements.tableRecurrence;
+  if (!tbody) return;
+
+  const safe = Array.isArray(list) ? list : [];
+
+  if (!safe.length) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+    return;
+  }
+
+  const rows = safe.map((item, idx) => {
+    const id            = item.id || item.clientId || item.cliente || `Cliente ${idx+1}`;
+    const scans         = item.scans ?? item.totalScans ?? 0;
+    const lastScan      = item.lastScan || item.ultimoScan || null;
+    const daysSinceLast = item.daysSinceLast ?? item.diasDesdeUltimo ?? 0;
+
+    return `
+      <tr>
+        <td>${id}</td>
+        <td style="text-align:center">${toBR(scans)}</td>
+        <td style="text-align:center">${lastScan ? formatDateBR(lastScan) : "—"}</td>
+        <td style="text-align:right">${toBR(daysSinceLast)}</td>
+      </tr>
+    `;
+  }).join("");
+
+  tbody.innerHTML = rows;
 }
 
-/* tabela: Engajamento por Mesa */
+
 function renderTabelaEngagementByMesa(list){
   const tbody=elements.tableEngagementByMesa; if(!tbody) return;
   const rows = list.map(item=>`
@@ -806,7 +1018,6 @@ function renderTabelaEngagementByMesa(list){
   tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
 }
 
-/* tabela: Dispositivo Usados */
 function renderTabelaDeviceDistribution(list){
   const tbody=elements.tableDeviceDistribution; if(!tbody) return;
   const totalSessions = sum(list.map(i=>i.sessions));
@@ -820,7 +1031,6 @@ function renderTabelaDeviceDistribution(list){
   tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
 }
 
-/* tabela: Modelos mais exibidos */
 function renderTabelaTopModels(list){
   const tbody=elements.tableTopModels; if(!tbody) return;
   const rows = list.map(item=>`
@@ -833,7 +1043,6 @@ function renderTabelaTopModels(list){
   tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
 }
 
-/* tabela: Saúde dos Modelos */
 function renderTabelaModelErrors(list){
   const tbody=elements.tableModelErrors; if(!tbody) return;
   const rows = list.map(item=>`
@@ -846,7 +1055,6 @@ function renderTabelaModelErrors(list){
   tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
 }
 
-/* tabela: Botao Info */
 function renderTabelaInfoPerItem(list){
   const tbody=elements.tableInfoPerItem; if(!tbody) return;
   const rows = list.map(item=>`
@@ -860,8 +1068,9 @@ function renderTabelaInfoPerItem(list){
 }
 
 /* ==========================================================
-   BLOCO: ESCANEAMENTO TOTAL DE QR CODE
+   BLOCOS DE GRÁFICO
    ========================================================== */
+
 function renderScansTotalChart(data){
   if (!elements.chartScansTotal) return;
   if (charts.scansTotal) charts.scansTotal.destroy();
@@ -875,9 +1084,6 @@ function renderScansTotalChart(data){
   );
 }
 
-/* ==========================================================
-   BLOCO: ESCANEAMENTO POR MESA/QR CODE
-   ========================================================== */
 function renderScansByMesaChart(data){
   if (!elements.chartScansByMesa) return;
   if (charts.scansByMesa) charts.scansByMesa.destroy();
@@ -891,9 +1097,6 @@ function renderScansByMesaChart(data){
   );
 }
 
-/* ==========================================================
-   BLOCO: SESSÕES POR PERÍODO
-   ========================================================== */
 function renderSessoesChart(data){
   if (!elements.chartSessoes) return;
   if (charts.sessoes) charts.sessoes.destroy();
@@ -907,9 +1110,6 @@ function renderSessoesChart(data){
   );
 }
 
-/* ==========================================================
-   BLOCO: TEMPO MÉDIO (CARDÁPIO)
-   ========================================================== */
 function renderAvgTimeMenuChart(data){
   if (!elements.chartAvgTimeMenu) return;
   if (charts.avgTimeMenu) charts.avgTimeMenu.destroy();
@@ -923,9 +1123,6 @@ function renderAvgTimeMenuChart(data){
   );
 }
 
-/* ==========================================================
-   BLOCO: HORÁRIO DE PICO
-   ========================================================== */
 function renderPeakHoursChart(data){
   if (!elements.chartPeakHours) return;
   if (charts.peakHours) charts.peakHours.destroy();
@@ -938,9 +1135,6 @@ function renderPeakHoursChart(data){
   });
 }
 
-/* ==========================================================
-   BLOCO: USO DO BOTÃO "INFO"
-   ========================================================== */
 function renderInfoUsageChart(data){
   if (!elements.chartInfoUsage) return;
   if (charts.infoUsage) charts.infoUsage.destroy();
@@ -954,9 +1148,6 @@ function renderInfoUsageChart(data){
   );
 }
 
-/* ==========================================================
-   BLOCO: TEMPO POR ITEM
-   ========================================================== */
 function renderTimePerItemChart(data){
   if (!elements.chartTimePerItem) return;
   if (charts.timePerItem) charts.timePerItem.destroy();
@@ -970,9 +1161,6 @@ function renderTimePerItemChart(data){
   );
 }
 
-/* ==========================================================
-   BLOCO: ITENS MAIS VISUALIZADOS
-   ========================================================== */
 function renderTopItemsChart(data){
   if (!elements.chartTopItems) return;
   if (charts.topItems) charts.topItems.destroy();
@@ -986,9 +1174,6 @@ function renderTopItemsChart(data){
   );
 }
 
-/* ==========================================================
-   BLOCO: TEMPO POR CATEGORIA
-   ========================================================== */
 function renderTimeByCategoryChart(data){
   if (!elements.chartTimeByCategory) return;
   if (charts.timeByCategory) charts.timeByCategory.destroy();
@@ -1001,9 +1186,6 @@ function renderTimeByCategoryChart(data){
   );
 }
 
-/* ==========================================================
-   BLOCO: CATEGORIAS MAIS ACESSADAS
-   ========================================================== */
 function renderCategoryPopularityChart(data){
   const canvas = elements.chartCategoryPopularity;
   if (!canvas) return;
@@ -1034,9 +1216,6 @@ function renderCategoryPopularityChart(data){
   );
 }
 
-/* ==========================================================
-   BLOCO: BOTAO INFO (POR ITEM)
-   ========================================================== */
 function renderInfoPerItemChart(data){
   if (!elements.chartInfoPerItem) return;
   if (charts.infoPerItem) charts.infoPerItem.destroy();
@@ -1050,9 +1229,6 @@ function renderInfoPerItemChart(data){
   );
 }
 
-/* ==========================================================
-   BLOCO: RECORRÊNCIA DE CLIENTES
-   ========================================================== */
 function renderRecurrenceChart(data){
   if (!elements.chartRecurrence) return;
   if (charts.recurrence) charts.recurrence.destroy();
@@ -1079,9 +1255,6 @@ function renderRecurrenceChart(data){
   });
 }
 
-/* ==========================================================
-   BLOCO: ENGAJAMENTO POR MESA
-   ========================================================== */
 function renderEngagementByMesaChart(data){
   if (!elements.chartEngagementByMesa) return;
   if (charts.engagementByMesa) charts.engagementByMesa.destroy();
@@ -1095,9 +1268,6 @@ function renderEngagementByMesaChart(data){
   );
 }
 
-/* ==========================================================
-   BLOCO: DISPOSITIVOS USADOS
-   ========================================================== */
 function renderDevicesChart(data){
   if (!elements.chartDevices) return;
   if (charts.devices) charts.devices.destroy();
@@ -1108,9 +1278,6 @@ function renderDevicesChart(data){
   );
 }
 
-/* ==========================================================
-   BLOCO: MODELOS MAIS EXIBIDOS
-   ========================================================== */
 function renderTopModelsChart(data){
   if (!elements.chartTopModels) return;
   if (charts.topModels) charts.topModels.destroy();
@@ -1124,9 +1291,6 @@ function renderTopModelsChart(data){
   );
 }
 
-/* ==========================================================
-   BLOCO: SAÚDE DOS MODELOS
-   ========================================================== */
 function renderModelHealthChart(data){
   if (!elements.chartModelHealth) return;
   if (charts.modelHealth) charts.modelHealth.destroy();
@@ -1142,15 +1306,13 @@ function renderModelHealthChart(data){
 }
 
 /* ==========================================================
-   BLOCO: INSIGHTS (fila, tooltip, geração e agendamento)
+   INSIGHTS
    ========================================================== */
 
-/* Config e estado */
 const MAX_INSIGHTS = 5;
 const insightsQueue = [];
 let insightsTimer = null;
 
-/* Tooltip portal (melhor posicionamento e seguindo o mouse) */
 function ensureTooltipPortal(){
   let tip = document.querySelector('.tooltip-portal');
   if (!tip){
@@ -1181,7 +1343,6 @@ function hideInlineTooltip(){
   if (tip) tip.style.display = 'none';
 }
 
-/* Helpers BR para Insights */
 function fmt2(n){ return String(n).padStart(2,'0'); }
 function formatBRDate(d){
   const dt = (d instanceof Date) ? d : new Date(d);
@@ -1192,7 +1353,6 @@ function formatTimeHM(d){
   return `${fmt2(dt.getHours())}:${fmt2(dt.getMinutes())}`;
 }
 
-/* Fila + render */
 function pushInsight({date, time, title, detail}){
   insightsQueue.push({
     id: Date.now() + Math.random(),
@@ -1209,7 +1369,6 @@ function renderInsights(){
   if (!ul) return;
 
   ul.innerHTML = '';
-
   const list = [...insightsQueue].reverse();
 
   list.forEach(item => {
@@ -1243,7 +1402,6 @@ function renderInsights(){
   }
 }
 
-/* Constrói insights com base nos dados atuais (ou mock) */
 function buildInsightsFromMetrics(mock = false){
   const now = new Date();
   const today = formatBRDate(now);
@@ -1289,7 +1447,6 @@ function buildInsightsFromMetrics(mock = false){
   return out;
 }
 
-/* Seeds/mocks para preencher 5 linhas */
 function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 function seedMockInsights(n = 5){
   const now = new Date();
@@ -1314,15 +1471,12 @@ function seedMockInsights(n = 5){
   }
 }
 
-/* Alimenta variáveis globais usadas pelos Insights */
 function updateInsightGlobalsFromData(data){
   try{
-    // Pico de hora
     let max = { hour: 0, scans: -Infinity };
     (data.picos || []).forEach(p => { if (p.scans > max.scans) max = { hour: p.hora, scans: p.scans }; });
     window.__peakHoursMax = max.scans >= 0 ? max : null;
 
-    // Delta sessões (último vs anterior)
     const arr = (data.daily?.sessoes || []);
     if (arr.length >= 2){
       const last = arr[arr.length-1];
@@ -1333,7 +1487,6 @@ function updateInsightGlobalsFromData(data){
       window.__sessionsDeltaPct = 0;
     }
 
-    // Taxa Info (%)
     const scansT = data.kpis?.scansTotal || 0;
     const infoT  = data.kpis?.infoTotal || 0;
     window.__infoRatePct = scansT ? Math.round((infoT / scansT) * 1000) / 10 : 0;
@@ -1342,11 +1495,9 @@ function updateInsightGlobalsFromData(data){
   }
 }
 
-/* Inicia/agenda geração (evita múltiplos timers) */
 function startInsightScheduler(data){
   updateInsightGlobalsFromData(data);
 
-  // primeira carga: preenche 5
   const pack = buildInsightsFromMetrics(false);
   if (pack.length >= 5){
     pack.slice(-5).forEach(pushInsight);
@@ -1369,24 +1520,21 @@ function startInsightScheduler(data){
 }
 
 /* ==========================================================
-   BLOCO: RESUMO (LOAD & RENDER)
+   LOAD & RENDER GERAL
    ========================================================== */
 async function loadAndRender() {
-  // 1) Datas padrão
   if (!AppState.startDate || !AppState.endDate) {
-    const days = generateMockDates(14);
-    AppState.startDate = days[0];
-    AppState.endDate   = days[days.length - 1];
+    setDefaultTodayRange();
   }
 
-  // 2) Buscar dados
   const data = await fetchMetrics({
     tenant:    AppState.tenant,
     startDate: AppState.startDate,
     endDate:   AppState.endDate
   });
 
-  // 3) KPIs + Tabelas
+  console.log("[METRICAS] data bruto da API:", data);
+
   renderKPIs(data.kpis);
   renderTabelaMesaQR(data.porMesa);
   renderTabelaSessoes(data.rangeLabels, data.daily.sessoes, data.daily.unicos);
@@ -1403,7 +1551,6 @@ async function loadAndRender() {
   renderTabelaModelErrors(data.modelErrors);
   renderTabelaInfoPerItem(data.topItems);
 
-  // 4) Gráficos
   await ensureChartJs();
   renderScansTotalChart(data);
   renderScansByMesaChart(data);
@@ -1422,35 +1569,31 @@ async function loadAndRender() {
   renderTopModelsChart(data);
   renderModelHealthChart(data);
 
-  // 5) Insights (corrigido: apenas 1 chamada e com cálculo das variáveis globais)
   startInsightScheduler(data);
-
-  // 6) Tooltips “?”
   wireHelpBadges(document);
 }
 
 /* ==========================================================
-   BLOCO: BOOTSTRAP
+   Bootstrap
    ========================================================== */
 document.addEventListener("DOMContentLoaded", ()=>{
-  // Valor inicial do range se não usar flatpickr
-  if (elements.filterRange && typeof flatpickr === "undefined"){
-    const dates=generateMockDates(14);
-    elements.filterRange.value = `${formatDateBR(dates[0])} a ${formatDateBR(dates[dates.length-1])}`;
+  // Normaliza qualquer valor pré-existente
+  if (AppState.tenant) {
+    AppState.tenant = tenantKey(AppState.tenant);
+  }
+
+  if (!AppState.tenant) {
+    const raw = elements.filterTenant?.value?.trim() || "";
+    AppState.tenant = raw ? tenantKey(raw) : "";
   }
 
   initFlatpickrIfAny();
   wireFilters();
   wireHelpBadges(document);
 
-  // Primeiro carregamento
-  const dates=generateMockDates(14);
-  AppState.startDate=dates[0];
-  AppState.endDate=dates[dates.length-1];
-  AppState.tenant = elements.filterTenant?.value?.trim() || "";
+  setDefaultTodayRange();
   loadAndRender();
 
-  // Recalcular em resize (anti clipping)
   let t;
   window.addEventListener("resize", ()=>{
     clearTimeout(t);
@@ -1458,9 +1601,8 @@ document.addEventListener("DOMContentLoaded", ()=>{
   });
 });
 
-// === Centralizar KPI rows de 3 seções específicas, individualmente ===
+/* Centralização de alguns blocos KPI (como já estava) */
 function centerBlockByTitle(titleRegex, styleObj = {}) {
-  // acha a seção pelo título
   const sections = document.querySelectorAll('.chart-section');
   for (const section of sections) {
     const titleEl = section.querySelector('h2, .section-title, header h2, .card-title');
@@ -1468,15 +1610,12 @@ function centerBlockByTitle(titleRegex, styleObj = {}) {
     const txt = (titleEl.textContent || '').trim();
     if (!titleRegex.test(txt)) continue;
 
-    // acha o container que segura os cards KPI dentro da seção
     const kpiContainer =
       section.querySelector('.kpi-grid, .kpi-row, .kpi-wrap, .metrics-row, .cards, .cards-row') ||
-      // fallback: primeira linha com cards
       section.querySelector('.kpi-card')?.parentElement;
 
     if (!kpiContainer) continue;
 
-    // aplica estilos de centralização só neste container
     kpiContainer.style.display = 'flex';
     kpiContainer.style.flexWrap = 'wrap';
     kpiContainer.style.justifyContent = 'center';
@@ -1484,33 +1623,17 @@ function centerBlockByTitle(titleRegex, styleObj = {}) {
     kpiContainer.style.width = '100%';
     kpiContainer.style.marginInline = 'auto';
 
-    // estilos específicos (se quiser diferenciar cada bloco)
     Object.entries(styleObj).forEach(([k, v]) => (kpiContainer.style[k] = v));
 
-    // ajuste auxiliar para alinhar conteúdo do cartão
     kpiContainer.querySelectorAll('.kpi-card, .card, .metric-card')
       .forEach(el => (el.style.textAlign = 'center'));
   }
 }
 
-// chame após montar a página e sempre que recarregar os blocos:
 function centerSelectedKPIBlocks() {
-  // 1) Uso do botão "Info"
-  centerBlockByTitle(/Uso do bot[aã]o/i, {
-    // exemplo: gap diferente só aqui
-    gap: '1.5rem'
-  });
-
-  // 2) Recorrência de Clientes
-  centerBlockByTitle(/Recorr[eê]ncia de Clientes/i, {
-    // exemplo: largura máxima do grupo
-    maxWidth: '980px'
-  });
-
-  // 3) Saúde dos Modelos
-  centerBlockByTitle(/Sa[úu]de dos Modelos/i, {
-    // exemplo: nenhum extra; já centraliza
-  });
+  centerBlockByTitle(/Uso do bot[aã]o/i, { gap: '1.5rem' });
+  centerBlockByTitle(/Recorr[eê]ncia de Clientes/i, { maxWidth: '980px' });
+  centerBlockByTitle(/Sa[úu]de dos Modelos/i, {});
 }
 
 document.addEventListener('DOMContentLoaded', centerSelectedKPIBlocks);
