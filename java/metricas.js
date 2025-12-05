@@ -1121,6 +1121,20 @@ function renderScansTotalChart(data){
    5) ESCANEAMENTO POR MESA / QRCODE
    ========================================================== */
 
+// Normaliza rótulo de mesa: "mesa1" → "Mesa 1"
+function formatMesaLabel(raw) {
+  if (!raw) return "Mesa";
+
+  const s = String(raw).trim();
+
+  // "mesa1", "Mesa01", "mesa 2" → "Mesa 1" / "Mesa 2"
+  const m = s.match(/^mesa\s*0*(\d+)$/i);
+  if (m) return `Mesa ${m[1]}`;
+
+  // Se não bater com o padrão, só capitaliza a primeira letra
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 function renderTabelaMesaQR(list){
   const tbody = elements.tbodyMesaQR;
   if (!tbody) return;
@@ -1135,11 +1149,13 @@ function renderTabelaMesaQR(list){
   const totalScans = sum(safe.map(i => Number(i.scans ?? i.totalScans ?? 0)));
 
   const rows = safe.map(i => {
-    const mesaLabel =
+    const mesaRaw =
       i.mesa ||
       i.qrLabel ||
       i.label ||
       "QR/mesa-desconhecido";
+
+    const mesaLabel = formatMesaLabel(mesaRaw);
 
     const scans = Number(i.scans ?? i.totalScans ?? 0);
     const avgTimeSec = Number(i.avgTimeSec ?? i.avgTime ?? 0);
@@ -1162,10 +1178,17 @@ function renderTabelaMesaQR(list){
 function renderScansByMesaChart(data){
   if (!elements.chartScansByMesa) return;
   if (charts.scansByMesa) charts.scansByMesa.destroy();
-  const top = [...data.porMesa].sort((a,b)=> (b.scans ?? 0) - (a.scans ?? 0)).slice(0,10);
+
+  const top = [...data.porMesa]
+    .sort((a,b)=> (b.scans ?? 0) - (a.scans ?? 0))
+    .slice(0,10);
+
   charts.scansByMesa = buildBarHorizontal(
     elements.chartScansByMesa.getContext("2d"),
-    top.map(i=> i.mesa || i.qrLabel || "QR/mesa-desconhecido"),
+    top.map(i => {
+      const mesaRaw = i.mesa || i.qrLabel || "QR/mesa-desconhecido";
+      return formatMesaLabel(mesaRaw);
+    }),
     top.map(i=> i.scans ?? 0),
     "Scans por Mesa",
     "#00d9ff"
@@ -1202,34 +1225,125 @@ function renderSessoesChart(data){
   );
 }
 
-
 /* ==========================================================
    7) TEMPO MÉDIO (CARDÁPIO)
    ========================================================== */
 
-function renderTabelaTempoMenu(list){
-  const tbody=elements.tableAvgTimeMenu; if(!tbody) return;
-  const rows = list.map(i=>`
+// Helper: formata o valor numérico do eixo Y em S / M / H
+function formatAxisTimeShortFromSeconds(sec) {
+  const total = Math.max(0, Number(sec) || 0);
+
+  if (total === 0) return "0";
+
+  // até 59s → mostra em segundos
+  if (total < 60) {
+    const v = Math.round(total);
+    return `${v} S`;
+  }
+
+  // de 1min até 59min59s → mostra em minutos
+  if (total < 3600) {
+    const minutes = total / 60;
+    const v =
+      minutes < 10
+        ? minutes.toFixed(1)      // ex: 1,2 M
+        : Math.round(minutes).toString();
+    return `${v.replace(".", ",")} M`;
+  }
+
+  // 1h ou mais → mostra em horas
+  const hours = total / 3600;
+  const v =
+    hours < 10
+      ? hours.toFixed(1)          // ex: 1,5 H
+      : Math.round(hours).toString();
+  return `${v.replace(".", ",")} H`;
+}
+
+function renderTabelaTempoMenu(list) {
+  const tbody = elements.tableAvgTimeMenu;
+  if (!tbody) return;
+
+  const safe = Array.isArray(list) ? list : [];
+
+  if (!safe.length) {
+    tbody.innerHTML =
+      `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+    return;
+  }
+
+  const rows = safe.map((i) => `
     <tr>
       <td>${i.periodo}</td>
       <td style="text-align:center">${formatDurationMMSS(i.mediaSec)}</td>
       <td style="text-align:center">${formatDurationMMSS(i.medianaSec)}</td>
       <td style="text-align:right">${toBR(i.amostras)}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+    </tr>
+  `).join("");
+
+  tbody.innerHTML = rows;
 }
 
-function renderAvgTimeMenuChart(data){
+function renderAvgTimeMenuChart(data) {
   if (!elements.chartAvgTimeMenu) return;
   if (charts.avgTimeMenu) charts.avgTimeMenu.destroy();
-  charts.avgTimeMenu = buildLineChart(
-    elements.chartAvgTimeMenu.getContext("2d"),
-    data.tempoMenu.map(i=>i.periodo),
-    data.tempoMenu.map(i=>i.mediaSec),
-    "Tempo Médio (s)",
-    "#10b981",
-    (ctx)=>` ${formatDurationMMSS(ctx.parsed.y)}`
-  );
+
+  const ctx = elements.chartAvgTimeMenu.getContext("2d");
+  const tempoMenu = Array.isArray(data.tempoMenu) ? data.tempoMenu : [];
+
+  const labels = tempoMenu.map((i) => i.periodo);
+  const values = tempoMenu.map((i) => Number(i.mediaSec || 0)); // segundos
+
+  charts.avgTimeMenu = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Tempo Médio",
+          data: values,
+          borderColor: "#10b981",
+          backgroundColor: "rgba(16,185,129,0.15)",
+          borderWidth: 2,
+          tension: 0.3,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            // Tooltip sempre em MM:SS bonitinho
+            label: (context) => {
+              const sec = context.parsed.y || 0;
+              return ` ${formatDurationMMSS(sec)}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: "#1f2937" },
+          ticks: { color: "#9ca3af" },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: "#1f2937" },
+          ticks: {
+            color: "#9ca3af",
+            // Aqui entra o S / M / H no eixo
+            callback: (value) =>
+              formatAxisTimeShortFromSeconds(Number(value)),
+          },
+        },
+      },
+    },
+  });
 }
 
 
