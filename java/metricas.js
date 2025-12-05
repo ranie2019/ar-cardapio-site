@@ -1406,32 +1406,96 @@ function renderInfoUsageChart(data){
    10) TEMPO POR ITEM
    ========================================================== */
 
-function renderTabelaTimePerItem(list){
-  const tbody=elements.tableTimePerItem; if(!tbody) return;
-  const totalViews = sum(list.map(i=>i.views));
-  const rows = list.map(i=>`
-    <tr>
-      <td>${mapItemName(i.item)}</td>
-      <td style="text-align:center">${formatDurationMMSS(i.avgTimeSec)}</td>
-      <td style="text-align:center">${toBR(i.views)}</td>
-      <td style="text-align:right">${pct(i.views,totalViews)}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+// Helper: encurta nome só para o gráfico (tabela continua full)
+function shortenItemLabel(label, max = 18) {
+  const s = String(label || "");
+  if (s.length <= max) return s;
+  return s.slice(0, max - 1) + "…";
 }
 
-function renderTimePerItemChart(data){
-  if (!elements.chartTimePerItem) return;
-  if (charts.timePerItem) charts.timePerItem.destroy();
-  const top = data.topItems.sort((a,b)=>b.avgTimeSec-a.avgTimeSec).slice(0,10);
+// Espera receber OU:
+//   renderTabelaTimePerItem(data.topItems)
+//   renderTabelaTimePerItem(data)   // onde data.topItems existe
+function renderTabelaTimePerItem(source) {
+  const tbody = elements.tableTimePerItem;
+  if (!tbody) return;
+
+  // Aceita tanto array direto quanto objeto com .topItems
+  const list = Array.isArray(source)
+    ? source
+    : (source && Array.isArray(source.topItems) ? source.topItems : []);
+
+  if (!list.length) {
+    tbody.innerHTML =
+      `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+    return;
+  }
+
+  const totalViews = sum(list.map(i => i.views || 0));
+
+  const rows = list.map(i => `
+    <tr>
+      <td>${mapItemName(i.item)}</td>
+      <td style="text-align:center">
+        ${formatDurationMMSS(i.avgTimeSec || 0)}
+      </td>
+      <td style="text-align:center">
+        ${toBR(i.views || 0)}
+      </td>
+      <td style="text-align:right">
+        ${pct(i.views || 0, totalViews)}
+      </td>
+    </tr>
+  `).join("");
+
+  tbody.innerHTML = rows;
+}
+
+function renderTimePerItemChart(data) {
+  const canvas = elements.chartTimePerItem;
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  if (charts.timePerItem) {
+    charts.timePerItem.destroy();
+    charts.timePerItem = null;
+  }
+
+  const listRaw = (data && Array.isArray(data.topItems))
+    ? data.topItems
+    : [];
+  const top = listRaw
+    .slice() // copia
+    .sort((a, b) => (b.avgTimeSec || 0) - (a.avgTimeSec || 0))
+    .slice(0, 10);
+
+  // Se não tiver nada, desenha um gráfico "Sem dados" pra não quebrar layout
+  if (!top.length) {
+    charts.timePerItem = buildBarHorizontal(
+      ctx,
+      ["Sem dados"],
+      [0],
+      "Tempo médio (s)",
+      "#f59e0b"
+    );
+    return;
+  }
+
+  // Nome completo (usado na tabela e para lógica)
+  const fullNames = top.map(i => mapItemName(i.item));
+  // Nome encurtado só para o eixo do gráfico
+  const axisLabels = fullNames.map(n => shortenItemLabel(n, 18));
+  const values     = top.map(i => i.avgTimeSec || 0);
+
   charts.timePerItem = buildBarHorizontal(
-    elements.chartTimePerItem.getContext("2d"),
-    top.map(i=>i.item),
-    top.map(i=>i.avgTimeSec),
+    ctx,
+    axisLabels,
+    values,
     "Tempo médio (s)",
     "#f59e0b"
   );
 }
-
 
 /* ==========================================================
    11) ITENS MAIS VISUALIZADOS

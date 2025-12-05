@@ -614,7 +614,43 @@
   M.trackCheckout = function (order) {
     pushEvent(ev("checkout", { order }));
   };
+
+  // >>>>>>>>>> AQUI ESTÁ A NOVA LÓGICA DE LIKE <<<<<<<<<<
   M.trackEvent = function (name, payload = {}) {
+    if (name === "like") {
+      const value = payload.value || "nenhum"; // positivo | negativo | nenhum
+      const itemPath = payload.itemPath || null;
+      const itemName = payload.itemName || null;
+      const category = payload.category || null;
+
+      // gera itemSlug se não vier pronto
+      let itemSlug = payload.itemSlug || null;
+      if (!itemSlug) {
+        if (itemPath) {
+          itemSlug = itemPath.split("/").pop().replace(".glb", "");
+        } else if (itemName) {
+          itemSlug = itemName
+            .toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/\s+/g, "_");
+        }
+      }
+
+      const enriched = {
+        ...payload,
+        likeValue: value,                  // "positivo" | "negativo" | "nenhum"
+        likeSource: payload.source || null,
+        category,
+        itemPath,
+        itemName,
+        itemSlug
+      };
+
+      pushEvent(ev("like", enriched));
+      return;
+    }
+
+    // eventos normais permanecem iguais
     pushEvent(ev(name, payload));
   };
 
