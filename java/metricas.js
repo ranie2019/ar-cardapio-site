@@ -1,22 +1,45 @@
 /* ==========================================================
-   Métricas.js — Arquivo organizado por BLOCOS (títulos azuis do dashboard)
+   MÉTRICAS DASHBOARD — ARCardápio
+   Organização em blocos:
+
+   1) GERAL
+   2) FILTROS
+   3) RESUMO
+   4) ESCANEAMENTO TOTAL DE QR CODE
+   5) ESCANEAMENTO POR MESA / QRCODE
+   6) SESSÕES POR PERÍODO
+   7) TEMPO MÉDIO (CARDÁPIO)
+   8) HORÁRIO DE PICO
+   9) USO DO BOTÃO "INFO"
+   10) TEMPO POR ITEM
+   11) ITENS MAIS VISUALIZADOS
+   12) TEMPO POR CATEGORIA
+   13) CATEGORIAS MAIS ACESSADAS
+   14) BOTÃO INFO (POR ITEM)
+   15) RECORRÊNCIA DE CLIENTES
+   16) ENGAJAMENTO POR MESA
+   17) DISPOSITIVOS USADOS
+   18) MODELOS MAIS EXIBIDOS
+   19) SAÚDE DOS MODELOS
    ========================================================== */
 
 (function () {
+
 /* ==========================================================
-   BASE / CONFIGURAÇÃO GERAL
+   1) GERAL — CONFIG, DOM, HELPERS, FETCH, CHART, INSIGHTS
    ========================================================== */
+
+/* --------- BASE / CONFIGURAÇÃO GERAL --------- */
 const USE_MOCK = false; // PRODUÇÃO: só dados reais
 const API_BASE = "https://zoci6wmxqa.execute-api.us-east-1.amazonaws.com/metricas/cliente";
 
-/* -------------------- MAPEAMENTO DE NOMES -------------------- */
+/* --------- MAPEAMENTO DE NOMES --------- */
 const CATEGORY_MAP = {
   "Categoria 1": "Bebidas",
   "Categoria 2": "Pizzas",
   "Categoria 3": "Sobremesas",
   "Categoria 4": "Carnes",
   "Categoria 5": "Lanches",
-  // Adicione mais categorias conforme necessário
 };
 
 const ITEM_MAP = {
@@ -30,18 +53,16 @@ const ITEM_MAP = {
   "Item 8": "Suco de Laranja",
   "Item 9": "Brigadeiro",
   "Item 10": "Salada Caesar",
-  // Adicione mais itens conforme necessário
 };
 
 function mapCategoryName(genericName) {
   return CATEGORY_MAP[genericName] || genericName;
 }
-
 function mapItemName(genericName) {
   return ITEM_MAP[genericName] || genericName;
 }
 
-/* -------------------- ELEMENTOS (DOM) -------------------- */
+/* --------- ELEMENTOS (DOM) --------- */
 function byId(id) { return document.getElementById(id); }
 
 const elements = {
@@ -110,7 +131,7 @@ const elements = {
   insightsList: byId("insightsList"),
 };
 
-/* -------------------- INSTÂNCIAS CHART ------------------- */
+/* --------- INSTÂNCIAS CHART --------- */
 const charts = {
   scansTotal: null,
   scansByMesa: null,
@@ -130,15 +151,14 @@ const charts = {
   topModels: null
 };
 
-/* ==========================================================
-   UTILITÁRIOS GERAIS
-   ========================================================== */
+/* --------- HELPERS GERAIS --------- */
 const $  = (sel, parent = document) => parent.querySelector(sel);
 const $$ = (sel, parent = document) => [...parent.querySelectorAll(sel)];
 
 function toBR(num, opts = {}) { return new Intl.NumberFormat("pt-BR", opts).format(num); }
 function pct(part, total) { return total ? `${toBR((part / total) * 100, { maximumFractionDigits: 1 })}%` : "0%"; }
 function pad2(n){ return n.toString().padStart(2,"0"); }
+
 function formatDateBR(date){
   const d=(date instanceof Date)?date:new Date(date);
   return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}`;
@@ -147,6 +167,14 @@ function formatTimeBR(date){
   const d=(date instanceof Date)?date:new Date(date);
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
+// segura contra NaN:NaN
+function formatTimeBRSafe(date){
+  if (!date) return "--";
+  const d = (date instanceof Date) ? date : new Date(date);
+  if (isNaN(d.getTime())) return "--";
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
 function formatDurationMMSS(seconds){
   seconds=Math.max(0,Math.round(seconds||0));
   const m=Math.floor(seconds/60), s=seconds%60;
@@ -163,13 +191,11 @@ function tenantKey(raw) {
   return String(raw || "")
     .normalize("NFKC")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")   // tudo que não é [a-z0-9] vira "-"
-    .replace(/^-+|-+$/g, "");      // tira "-" do começo/fim
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
-/* ==========================================================
-   DADOS MOCK / FETCH
-   ========================================================== */
+/* --------- MOCK / EMPTY DATA --------- */
 function generateMockDates(n=14){
   const out=[]; const today=new Date();
   for(let i=n-1;i>=0;i--){
@@ -297,7 +323,7 @@ function buildMockData(tenant,startDate,endDate){
 }
 
 /* Estrutura vazia quando a API falhar */
-function buildEmptyData(startDate, endDate){
+function buildEmptyData(){
   return {
     rangeLabels: [],
     daily: { scans: [], sessoes: [], unicos: [], info: [] },
@@ -331,8 +357,8 @@ function buildEmptyData(startDate, endDate){
   };
 }
 
+/* --------- FETCH REAL (LAMBDA) --------- */
 async function fetchMetrics({ tenant, startDate, endDate }) {
-  // 1) Pegar o token salvo pelo login (igual já estava)
   const token =
     localStorage.getItem("ar.token") ||
     sessionStorage.getItem("ar.token") ||
@@ -346,23 +372,21 @@ async function fetchMetrics({ tenant, startDate, endDate }) {
   console.log("[METRICAS] token lido?", token ? "OK" : "NENHUM");
 
   if (!token) {
-    console.warn(
-      "[METRICAS] Não autenticado / token ausente. Dashboard ficará vazio até fazer login."
-    );
-    return buildEmptyData(startDate, endDate);
+    console.warn("[METRICAS] Não autenticado / token ausente. Dashboard ficará vazio até fazer login.");
+    return buildEmptyData();
   }
 
-  // 2) DEFINIR QUAL TENANT VAI PARA A API
-  //    Prioridade: ar.email  →  se não tiver, cai pro tenant que veio do estado
+  if (USE_MOCK) {
+    console.warn("[METRICAS] USE_MOCK = true → usando dados falsos.");
+    return buildMockData(tenant, startDate, endDate);
+  }
+
   const emailTenant =
     localStorage.getItem("ar.email") ||
     sessionStorage.getItem("ar.email");
 
-  // raw = o que veio (e-mail ou tenant), slug = igual à pasta do S3
   const tenantRaw  = (emailTenant || tenant || "").trim();
   const tenantSlug = tenantKey(tenantRaw);
-
-  // A API hoje espera o e-mail (ela mesma faz o slug).
   const tenantForApi = tenantRaw;
 
   console.log(
@@ -381,8 +405,8 @@ async function fetchMetrics({ tenant, startDate, endDate }) {
       params.append("endDate", formatDateBR(endDate));
     }
 
-    // Chamar API com Authorization: Bearer <token>
-    const res = await fetch(`${API_BASE}?${params.toString()}`, {
+    const urlFinal = `${API_BASE}?${params.toString()}`;
+    const res = await fetch(urlFinal, {
       method: "GET",
       mode: "cors",
       credentials: "omit",
@@ -392,43 +416,30 @@ async function fetchMetrics({ tenant, startDate, endDate }) {
       },
     });
 
-    const urlFinal = `${API_BASE}?${params.toString()}`;
     console.log("[METRICAS] URL chamada =", urlFinal);
     console.log("[METRICAS] status =", res.status, res.statusText);
 
     const json = await res.json().catch(() => null);
 
     if (!res.ok) {
-      console.error(
-        "[METRICAS] Erro HTTP ao buscar dados reais:",
-        res.status,
-        res.statusText,
-        json
-      );
-      return buildEmptyData(startDate, endDate);
+      console.error("[METRICAS] Erro HTTP ao buscar dados reais:", res.status, res.statusText, json);
+      return buildEmptyData();
     }
 
     if (!json || json.ok === false) {
-      console.warn(
-        "[METRICAS] API retornou erro lógico:",
-        json && json.code,
-        json && json.message
-      );
-      return buildEmptyData(startDate, endDate);
+      console.warn("[METRICAS] API retornou erro lógico:", json && json.code, json && json.message);
+      return buildEmptyData();
     }
 
     console.log("[METRICAS] data bruto da API:", json);
     return json;
   } catch (e) {
     console.error("[METRICAS] Erro de rede/parse ao buscar dados reais:", e);
-    return buildEmptyData(startDate, endDate);
+    return buildEmptyData();
   }
 }
 
-
-/* ==========================================================
-   TOOLTIP “?” — Portal com clamps de viewport
-   ========================================================== */
+/* --------- TOOLTIP “?” (PORTAL) --------- */
 const HelpPortal = (() => {
   let el;
 
@@ -498,6 +509,7 @@ function wireHelpBadges(container){
   });
 }
 
+/* --------- CHART.JS + HELPERS DE GRÁFICO --------- */
 let chartJsLoaded = false;
 async function ensureChartJs(){
   if(chartJsLoaded) return;
@@ -559,14 +571,19 @@ function buildLineChart(ctx, labels, data, label, color, tooltipCallback){
   });
 }
 
+// eixo X SEM números fracionados (step inteiro)
 function buildBarHorizontal(ctx, labels, data, label, color){
+  const numeric = (data || []).map(v => Number(v) || 0);
+  const maxVal = numeric.length ? Math.max(...numeric) : 0;
+  const step = maxVal <= 5 ? 1 : Math.max(1, Math.round(maxVal / 4));
+
   return new Chart(ctx, {
     type: "bar",
     data: {
       labels,
       datasets: [{
         label,
-        data,
+        data: numeric,
         backgroundColor: color,
         borderColor: color,
         borderWidth: 1
@@ -585,7 +602,16 @@ function buildBarHorizontal(ctx, labels, data, label, color){
         }
       },
       scales: {
-        x: { beginAtZero: true, grid: { color: "rgba(255,255,255,.08)" } },
+        x: {
+          beginAtZero: true,
+          grid: { color: "rgba(255,255,255,.08)" },
+          ticks: {
+            stepSize: step || 1,
+            precision: 0,
+            callback: (value) => toBR(value)
+          },
+          suggestedMax: maxVal || 1
+        },
         y: { grid: { display: false } }
       }
     }
@@ -618,696 +644,7 @@ function buildDoughnut(ctx, labels, data){
   });
 }
 
-/* ==========================================================
-   FILTROS E ESTADO
-   ========================================================== */
-
-// Resolve o tenant usando o MESMO padrão do backend (slug igual à pasta do S3)
-function resolveTenantInitial() {
-  // 1) Tenta primeiro algum e-mail salvo pelo app
-  const emailCandidates = [
-    localStorage.getItem("ar.email"),
-    sessionStorage.getItem("ar.email"),
-    localStorage.getItem("arEmail"),
-    sessionStorage.getItem("arEmail"),
-    localStorage.getItem("email"),
-    sessionStorage.getItem("email"),
-  ].filter(v => v && v.trim());
-
-  for (const v of emailCandidates) {
-    const t = tenantKey(v);
-    if (t) {
-      console.log("[METRICAS] tenant via email", v, "=>", t);
-      return t;
-    }
-  }
-
-  // 2) Se não achar e-mail, tenta IDs de tenant / restaurante
-  const keys = ["ar.tenant", "tenant", "tenantId", "restaurante"];
-  for (const k of keys) {
-    const v = localStorage.getItem(k) || sessionStorage.getItem(k);
-    if (v && v.trim()) {
-      const t = tenantKey(v);
-      console.log("[METRICAS] tenant via storage", k, "=", v, "=>", t);
-      return t;
-    }
-  }
-
-  // 3) Fallback: URL (?tenant=... ou ?r=...)
-  try {
-    const url = new URL(window.location.href);
-    const fromTenant = url.searchParams.get("tenant");
-    const fromR = url.searchParams.get("r");
-    const raw = (fromTenant || fromR || "").trim();
-    if (!raw) return "";
-
-    const t = tenantKey(
-      raw
-        .replace(/^https?:\/\//i, "")
-        .replace(/[?#].*$/, "")
-        .replace(/%40/gi, "@")
-    );
-    console.log("[METRICAS] tenant via URL", raw, "=>", t);
-    return t;
-  } catch (err) {
-    console.warn("[METRICAS] Não foi possível resolver tenant inicial:", err);
-    return "";
-  }
-}
-
-const AppState = {
-  tenant: resolveTenantInitial(),
-  startDate: null,
-  endDate: null,
-};
-
-console.log("[METRICAS] tenant inicial:", AppState.tenant);
-
-// flatpickr totalmente controlado aqui
-function initFlatpickrIfAny() {
-  if (typeof flatpickr === "undefined") {
-    console.warn("[METRICAS] flatpickr não carregado");
-    return;
-  }
-
-  const commonConfig = {
-    dateFormat: "d/m/Y",
-    locale: flatpickr.l10ns?.pt || "pt",
-    allowInput: true,
-    clickOpens: true,
-    monthSelectorType: "static",
-    onChange: () => {
-      updateRangeInput();
-    }
-  };
-
-  if (elements.startDate && !elements.startDate._flatpickr) {
-    flatpickr(elements.startDate, commonConfig);
-  }
-  if (elements.endDate && !elements.endDate._flatpickr) {
-    flatpickr(elements.endDate, commonConfig);
-  }
-}
-
-function updateRangeInput() {
-  const start = elements.startDate?.value;
-  const end = elements.endDate?.value;
-  if (elements.filterRange) {
-    elements.filterRange.value = (start && end) ? `${start} a ${end}` : "";
-  }
-}
-
-function parseDate(dateStr) {
-  if (!dateStr) return null;
-  const [day, month, year] = dateStr.split("/").map(Number);
-  return new Date(year, month - 1, day);
-}
-
-// seta HOJE como padrão (inputs + estado)
-function setDefaultTodayRange() {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  AppState.startDate = today;
-  AppState.endDate = today;
-
-  const v = formatDateBR(today);
-  if (elements.startDate) elements.startDate.value = v;
-  if (elements.endDate) elements.endDate.value = v;
-  if (elements.filterRange) elements.filterRange.value = `${v} a ${v}`;
-}
-
-// aplica filtros (botão APLICAR)
-function applyFilters() {
-  let startStr = elements.startDate?.value?.trim();
-  let endStr   = elements.endDate?.value?.trim();
-
-  if (!AppState.tenant) {
-    const rawTenant =
-      elements.filterTenant?.value?.trim() ||
-      resolveTenantInitial() ||
-      "";
-    AppState.tenant = tenantKey(rawTenant);
-  }
-
-  if (!startStr || !endStr) {
-    // Nenhuma data preenchida → usa HOJE
-    setDefaultTodayRange();
-  } else {
-    AppState.startDate = parseDate(startStr);
-    AppState.endDate   = parseDate(endStr);
-  }
-
-  if (AppState.startDate && AppState.endDate && AppState.startDate > AppState.endDate) {
-    alert("A data inicial não pode ser maior que a data final.");
-    return;
-  }
-
-  updateRangeInput();
-  loadAndRender();
-}
-
-// botão LIMPAR → volta para HOJE
-function clearRange() {
-  if (elements.startDate) elements.startDate.value = "";
-  if (elements.endDate) elements.endDate.value = "";
-  if (elements.filterRange) elements.filterRange.value = "";
-  if (elements.periodFilter) elements.periodFilter.value = "custom";
-
-  setDefaultTodayRange();
-  loadAndRender();
-}
-
-// período rápido (7/15/30/60, mês atual/anterior)
-function handlePeriodChange() {
-  const period = elements.periodFilter?.value;
-  if (!period || period === "custom") return;
-
-  const today = new Date();
-  let startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  let endDate   = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-  switch (period) {
-    case "7d":
-      startDate.setDate(startDate.getDate() - 6);
-      break;
-    case "15d":
-      startDate.setDate(startDate.getDate() - 14);
-      break;
-    case "30d":
-      startDate.setDate(startDate.getDate() - 29);
-      break;
-    case "60d":
-      startDate.setDate(startDate.getDate() - 59);
-      break;
-    case "mesAnterior":
-      startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      endDate   = new Date(today.getFullYear(), today.getMonth(), 0);
-      break;
-    case "mesAtual":
-      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-      // endDate = hoje
-      break;
-    default:
-      return;
-  }
-
-  if (elements.startDate) elements.startDate.value = formatDateBR(startDate);
-  if (elements.endDate)   elements.endDate.value   = formatDateBR(endDate);
-  updateRangeInput();
-
-  AppState.startDate = startDate;
-  AppState.endDate   = endDate;
-
-  loadAndRender();
-}
-
-// conecta botões/selects
-function wireFilters() {
-  elements.btnApplyFilters?.addEventListener("click", applyFilters);
-  elements.clearRange?.addEventListener("click", clearRange);
-  elements.periodFilter?.addEventListener("change", handlePeriodChange);
-
-  if (elements.filterTenant) {
-    elements.filterTenant.addEventListener("change", () => {
-      const raw = elements.filterTenant.value?.trim() || AppState.tenant;
-      AppState.tenant = tenantKey(raw);
-      loadAndRender();
-    });
-  }
-}
-
-/* ==========================================================
-   BLOCO: RESUMO (KPIs)
-   ========================================================== */
-function renderKPIs(kpis){
-  if(elements.kpiScans) elements.kpiScans.textContent = toBR(kpis.scansTotal);
-  if(elements.kpiSessoes) elements.kpiSessoes.textContent = toBR(kpis.sessoesTotal);
-  if(elements.kpiUnicos) elements.kpiUnicos.textContent = toBR(kpis.unicosTotal);
-  if(elements.kpiInfoRate) elements.kpiInfoRate.textContent = pct(kpis.infoTotal, kpis.scansTotal);
-  if(elements.kpiAvgTimePerItem) elements.kpiAvgTimePerItem.textContent = formatDurationMMSS(kpis.avgTimePerItem);
-  if(elements.kpiAvgTimePerCategory) elements.kpiAvgTimePerCategory.textContent = formatDurationMMSS(kpis.avgTimePerCategory);
-  if(elements.kpiInfoClicks) elements.kpiInfoClicks.textContent = toBR(kpis.infoClicks);
-  if(elements.kpiInfoAvgTime) elements.kpiInfoAvgTime.textContent = formatDurationMMSS(kpis.infoAvgTime);
-  if(elements.kpiActiveClients) elements.kpiActiveClients.textContent = toBR(kpis.activeClients);
-  if(elements.kpiNewClients) elements.kpiNewClients.textContent = toBR(kpis.newClients);
-  if(elements.kpiRecurringClients) elements.kpiRecurringClients.textContent = toBR(kpis.recurringClients);
-  if(elements.kpiReturnRate) elements.kpiReturnRate.textContent = pct(kpis.recurringClients, kpis.newClients + kpis.recurringClients);
-  if(elements.kpiInfoOpens) elements.kpiInfoOpens.textContent = toBR(kpis.infoOpens);
-  if(elements.kpiInfoAvgTimeInfoBox) elements.kpiInfoAvgTimeInfoBox.textContent = formatDurationMMSS(kpis.infoAvgTimeInfoBox);
-  if(elements.kpiModelsLoaded) elements.kpiModelsLoaded.textContent = toBR(kpis.modelsLoaded);
-  if(elements.kpiModelsErrors) elements.kpiModelsErrors.textContent = toBR(kpis.modelsErrors);
-
-  const totalClients = kpis.newClients + kpis.recurringClients;
-  if(byId("kpiRecNew")) byId("kpiRecNew").textContent = toBR(kpis.newClients);
-  if(byId("kpiRecReturning")) byId("kpiRecReturning").textContent = toBR(kpis.recurringClients);
-  if(byId("kpiRecRate")) byId("kpiRecRate").textContent = pct(kpis.recurringClients, totalClients);
-}
-
-/* ==========================================================
-   BLOCO: TABELAS
-   ========================================================== */
-
-function renderTabelaMesaQR(list){
-  const tbody=elements.tbodyMesaQR; if(!tbody) return;
-  const totalScans = sum(list.map(i=>i.scans));
-  const rows = list.map(i=>`
-    <tr>
-      <td>${i.mesa}</td>
-      <td style="text-align:center">${formatDurationMMSS(i.avgTimeSec)}</td>
-      <td style="text-align:center">${formatTimeBR(i.ultimoScan)}</td>
-      <td style="text-align:right">${pct(i.scans,totalScans)}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
-}
-
-function renderTabelaSessoes(labels, sessoes, unicos){
-  const tbody=elements.tbodySessoes; if(!tbody) return;
-  const rows = labels.map((label,idx)=>`
-    <tr>
-      <td>${label}</td>
-      <td style="text-align:center">${toBR(sessoes[idx] || 0)}</td>
-      <td style="text-align:center">${toBR(unicos[idx] || 0)}</td>
-      <td style="text-align:right">${(unicos[idx] ? (sessoes[idx] / unicos[idx]).toFixed(2) : "0.00")}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
-}
-
-function renderTabelaTempoMenu(list){
-  const tbody=elements.tableAvgTimeMenu; if(!tbody) return;
-  const rows = list.map(i=>`
-    <tr>
-      <td>${i.periodo}</td>
-      <td style="text-align:center">${formatDurationMMSS(i.mediaSec)}</td>
-      <td style="text-align:center">${formatDurationMMSS(i.medianaSec)}</td>
-      <td style="text-align:right">${toBR(i.amostras)}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
-}
-
-function renderTabelaTopItems(list){
-  const tbody = elements.tableTopItems;
-  if(!tbody) return;
-  const rows = list.map(i=>`
-    <tr>
-      <td>${mapItemName(i.item)}</td>
-      <td style="text-align:center">${toBR(i.views)}</td>
-      <td style="text-align:center">${formatDurationMMSS(i.avgTimeSec)}</td>
-      <td style="text-align:right">${i.category}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
-}
-
-function renderTabelaTimeByCategory(list){
-  const tbody=elements.tbodyTimeByCategory; if(!tbody) return;
-  const rows = list.map(i=>`
-    <tr>
-      <td>${mapCategoryName(i.category)}</td>
-      <td style="text-align:center">${formatDurationMMSS(i.avgTimeSec)}</td>
-      <td style="text-align:center">${toBR(i.sessions)}</td>
-      <td style="text-align:right">${i.pctTotalTime}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
-}
-
-function renderTabelaTopCategories(list){
-  const tbody=elements.tableCategoryPopularity; if(!tbody) return;
-  const rows = list.map(i=>`
-    <tr>
-      <td>${mapCategoryName(i.category)}</td>
-      <td style="text-align:center">${toBR(i.clicks)}</td>
-      <td style="text-align:center">${formatDurationMMSS(i.avgTimeSec)}</td>
-      <td style="text-align:right">${i.pctTotal}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
-}
-
-function renderTabelaTimePerItem(list){
-  const tbody=elements.tableTimePerItem; if(!tbody) return;
-  const totalViews = sum(list.map(i=>i.views));
-  const rows = list.map(i=>`
-    <tr>
-      <td>${mapItemName(i.item)}</td>
-      <td style="text-align:center">${formatDurationMMSS(i.avgTimeSec)}</td>
-      <td style="text-align:center">${toBR(i.views)}</td>
-      <td style="text-align:right">${pct(i.views,totalViews)}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
-}
-
-function renderTabelaPeakHours(list){
-  const tbody = elements.tablePeakHours;
-  if (!tbody) return;
-
-  const ref = (AppState.endDate instanceof Date) ? AppState.endDate : new Date();
-  const dataStr = formatDateBR(ref);
-
-  const rows = [...list]
-    .sort((a,b) => a.hora - b.hora)
-    .map(item => `
-      <tr>
-        <td>${dataStr}</td>
-        <td style="text-align:center">${pad2(item.hora)}h</td>
-        <td style="text-align:right">${toBR(item.scans ?? 0)}</td>
-      </tr>
-    `).join("");
-
-  tbody.innerHTML = rows || `<tr><td colspan="3" class="text-center">Sem dados.</td></tr>`;
-}
-
-function renderTabelaRecurrence(list) {
-  const tbody = elements.tableRecurrence;
-  if (!tbody) return;
-
-  const safe = Array.isArray(list) ? list : [];
-
-  if (!safe.length) {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
-    return;
-  }
-
-  const rows = safe.map((item, idx) => {
-    const id            = item.id || item.clientId || item.cliente || `Cliente ${idx+1}`;
-    const scans         = item.scans ?? item.totalScans ?? 0;
-    const lastScan      = item.lastScan || item.ultimoScan || null;
-    const daysSinceLast = item.daysSinceLast ?? item.diasDesdeUltimo ?? 0;
-
-    return `
-      <tr>
-        <td>${id}</td>
-        <td style="text-align:center">${toBR(scans)}</td>
-        <td style="text-align:center">${lastScan ? formatDateBR(lastScan) : "—"}</td>
-        <td style="text-align:right">${toBR(daysSinceLast)}</td>
-      </tr>
-    `;
-  }).join("");
-
-  tbody.innerHTML = rows;
-}
-
-
-function renderTabelaEngagementByMesa(list){
-  const tbody=elements.tableEngagementByMesa; if(!tbody) return;
-  const rows = list.map(item=>`
-    <tr>
-      <td>${item.mesa}</td>
-      <td style="text-align:center">${formatDurationMMSS(item.avgTimeSec)}</td>
-      <td style="text-align:center">${item.interactionsPerSession}</td>
-      <td style="text-align:right">${toBR(item.sessions)}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
-}
-
-function renderTabelaDeviceDistribution(list){
-  const tbody=elements.tableDeviceDistribution; if(!tbody) return;
-  const totalSessions = sum(list.map(i=>i.sessions));
-  const rows = list.map(item=>`
-    <tr>
-      <td>${item.label}</td>
-      <td style="text-align:center">${pct(item.sessions, totalSessions)}</td>
-      <td style="text-align:center">${toBR(item.sessions)}</td>
-      <td style="text-align:right">${formatDurationMMSS(item.avgTimeSec)}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
-}
-
-function renderTabelaTopModels(list){
-  const tbody=elements.tableTopModels; if(!tbody) return;
-  const rows = list.map(item=>`
-    <tr>
-      <td>${mapItemName(item.model)}</td>
-      <td style="text-align:center">${toBR(item.views)}</td>
-      <td style="text-align:center">${formatDurationMMSS(item.avgTimeSec)}</td>
-      <td style="text-align:right">${toBR(item.errors)}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
-}
-
-function renderTabelaModelErrors(list){
-  const tbody=elements.tableModelErrors; if(!tbody) return;
-  const rows = list.map(item=>`
-    <tr>
-      <td>${mapItemName(item.itemModel)}</td>
-      <td>${item.error}</td>
-      <td style="text-align:center">${toBR(item.occurrences)}</td>
-      <td style="text-align:right">${formatDateBR(item.last)}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
-}
-
-function renderTabelaInfoPerItem(list){
-  const tbody=elements.tableInfoPerItem; if(!tbody) return;
-  const rows = list.map(item=>`
-    <tr>
-      <td>${item.item}</td>
-      <td style="text-align:center">${toBR(item.clicksInfo)}</td>
-      <td style="text-align:center">${formatDurationMMSS(item.avgTimeSec)}</td>
-      <td style="text-align:right">${toBR(item.views)}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
-}
-
-/* ==========================================================
-   BLOCOS DE GRÁFICO
-   ========================================================== */
-
-function renderScansTotalChart(data){
-  if (!elements.chartScansTotal) return;
-  if (charts.scansTotal) charts.scansTotal.destroy();
-  charts.scansTotal = buildLineChart(
-    elements.chartScansTotal.getContext("2d"),
-    data.rangeLabels,
-    data.daily.scans,
-    "Scans (dia)",
-    "#00d9ff",
-    (ctx)=>` ${toBR(ctx.parsed.y)} scan(s)`
-  );
-}
-
-function renderScansByMesaChart(data){
-  if (!elements.chartScansByMesa) return;
-  if (charts.scansByMesa) charts.scansByMesa.destroy();
-  const top = [...data.porMesa].sort((a,b)=>b.scans-a.scans).slice(0,10);
-  charts.scansByMesa = buildBarHorizontal(
-    elements.chartScansByMesa.getContext("2d"),
-    top.map(i=>i.mesa),
-    top.map(i=>i.scans),
-    "Scans por Mesa",
-    "#00d9ff"
-  );
-}
-
-function renderSessoesChart(data){
-  if (!elements.chartSessoes) return;
-  if (charts.sessoes) charts.sessoes.destroy();
-  charts.sessoes = buildLineChart(
-    elements.chartSessoes.getContext("2d"),
-    data.rangeLabels,
-    data.daily.sessoes,
-    "Sessões (dia)",
-    "#3b82f6",
-    (ctx)=>` ${toBR(ctx.parsed.y)} sessão(ões)`
-  );
-}
-
-function renderAvgTimeMenuChart(data){
-  if (!elements.chartAvgTimeMenu) return;
-  if (charts.avgTimeMenu) charts.avgTimeMenu.destroy();
-  charts.avgTimeMenu = buildLineChart(
-    elements.chartAvgTimeMenu.getContext("2d"),
-    data.tempoMenu.map(i=>i.periodo),
-    data.tempoMenu.map(i=>i.mediaSec),
-    "Tempo Médio (s)",
-    "#10b981",
-    (ctx)=>` ${formatDurationMMSS(ctx.parsed.y)}`
-  );
-}
-
-function renderPeakHoursChart(data){
-  if (!elements.chartPeakHours) return;
-  if (charts.peakHours) charts.peakHours.destroy();
-  const labels = data.picos.map(i=>`${i.hora}h`);
-  const values = data.picos.map(i=>i.scans);
-  charts.peakHours = new Chart(elements.chartPeakHours.getContext("2d"),{
-    type:"bar",
-    data:{ labels, datasets:[{ label:"Scans por hora", data:values, backgroundColor:"#3b82f6" }] },
-    options:{ responsive:true, maintainAspectRatio:false }
-  });
-}
-
-function renderInfoUsageChart(data){
-  if (!elements.chartInfoUsage) return;
-  if (charts.infoUsage) charts.infoUsage.destroy();
-  charts.infoUsage = buildLineChart(
-    elements.chartInfoUsage.getContext("2d"),
-    data.rangeLabels,
-    data.daily.info,
-    "Aberturas Info (dia)",
-    "#f59e0b",
-    (ctx)=>` ${toBR(ctx.parsed.y)} abertura(s)`
-  );
-}
-
-function renderTimePerItemChart(data){
-  if (!elements.chartTimePerItem) return;
-  if (charts.timePerItem) charts.timePerItem.destroy();
-  const top = data.topItems.sort((a,b)=>b.avgTimeSec-a.avgTimeSec).slice(0,10);
-  charts.timePerItem = buildBarHorizontal(
-    elements.chartTimePerItem.getContext("2d"),
-    top.map(i=>i.item),
-    top.map(i=>i.avgTimeSec),
-    "Tempo médio (s)",
-    "#f59e0b"
-  );
-}
-
-function renderTopItemsChart(data){
-  if (!elements.chartTopItems) return;
-  if (charts.topItems) charts.topItems.destroy();
-  const top = data.topItems.slice(0,10);
-  charts.topItems = buildBarHorizontal(
-    elements.chartTopItems.getContext("2d"),
-    top.map(i=>i.item),
-    top.map(i=>i.views),
-    "Views",
-    "#00d9ff"
-  );
-}
-
-function renderTimeByCategoryChart(data){
-  if (!elements.chartTimeByCategory) return;
-  if (charts.timeByCategory) charts.timeByCategory.destroy();
-  charts.timeByCategory = buildBarHorizontal(
-    elements.chartTimeByCategory.getContext("2d"),
-    data.timeByCategory.map(i=>i.category),
-    data.timeByCategory.map(i=>i.avgTimeSec),
-    "Tempo médio (s)",
-    "#10b981"
-  );
-}
-
-function renderCategoryPopularityChart(data){
-  const canvas = elements.chartCategoryPopularity;
-  if (!canvas) return;
-  if (charts.categoryPopularity) charts.categoryPopularity.destroy();
-
-  const src = data?.topCategories || [];
-  const rows = (Array.isArray(src) ? src : []).map((r) => ({
-    categoria: r.category ?? r.categoria ?? r.name ?? r.label ?? '—',
-    cliques:   Number(r.clicks ?? r.cliques ?? r.total ?? 0),
-    tempo:     r.avgTime ?? r.tempoMedio ?? r.time ?? 0,
-    pct:       Number(r.pct ?? r.percent ?? r.percentage ?? r.participacao ?? 0),
-  }));
-
-  if (!rows.length) return;
-
-  const labels = rows.map(r => r.categoria);
-  const values = rows.map(r => r.cliques);
-
-  const idealH = Math.max(220, rows.length * 28);
-  canvas.style.height = `${idealH}px`;
-
-  charts.categoryPopularity = buildBarHorizontal(
-    canvas.getContext('2d'),
-    labels,
-    values,
-    "Cliques",
-    "#00d9ff"
-  );
-}
-
-function renderInfoPerItemChart(data){
-  if (!elements.chartInfoPerItem) return;
-  if (charts.infoPerItem) charts.infoPerItem.destroy();
-  const top = data.topItems.sort((a,b)=>b.clicksInfo-a.clicksInfo).slice(0,10);
-  charts.infoPerItem = buildBarHorizontal(
-    elements.chartInfoPerItem.getContext("2d"),
-    top.map(i=>i.item),
-    top.map(i=>i.clicksInfo),
-    "Cliques Info",
-    "#3b82f6"
-  );
-}
-
-function renderRecurrenceChart(data){
-  if (!elements.chartRecurrence) return;
-  if (charts.recurrence) charts.recurrence.destroy();
-
-  const labels = data.recurrenceData.map(i=>i.periodo);
-  const newClients = data.recurrenceData.map(i=>i.newClients);
-  const returningClients = data.recurrenceData.map(i=>i.returningClients);
-
-  charts.recurrence = new Chart(elements.chartRecurrence.getContext("2d"),{
-    type:"line",
-    data:{
-      labels,
-      datasets:[
-        { label:"Novos", data:newClients, tension:.35, borderWidth:2, pointRadius:3, fill:false, borderColor:"#10b981", backgroundColor:"#10b981" },
-        { label:"Retornando", data:returningClients, tension:.35, borderWidth:2, pointRadius:3, fill:false, borderColor:"#f59e0b", backgroundColor:"#f59e0b" }
-      ]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false, interaction:{mode:"index",intersect:false},
-      plugins:{ legend:{display:true, position:"top"}, tooltip:{callbacks:{label:(ctx)=>` ${ctx.dataset.label}: ${toBR(ctx.parsed.y)}`}} },
-      scales:{ x:{grid:{display:false}, ticks:{maxRotation:0,autoSkip:true}},
-               y:{beginAtZero:true, grid:{color:"rgba(255,255,255,.08)"}} }
-    }
-  });
-}
-
-function renderEngagementByMesaChart(data){
-  if (!elements.chartEngagementByMesa) return;
-  if (charts.engagementByMesa) charts.engagementByMesa.destroy();
-  const top = [...data.porMesa].sort((a,b)=>b.sessions-a.sessions).slice(0,10);
-  charts.engagementByMesa = buildBarHorizontal(
-    elements.chartEngagementByMesa.getContext("2d"),
-    top.map(i=>i.mesa),
-    top.map(i=>i.sessions),
-    "Sessões",
-    "#3b82f6"
-  );
-}
-
-function renderDevicesChart(data){
-  if (!elements.chartDevices) return;
-  if (charts.devices) charts.devices.destroy();
-  charts.devices = buildDoughnut(
-    elements.chartDevices.getContext("2d"),
-    data.devices.map(d=>d.label),
-    data.devices.map(d=>d.value)
-  );
-}
-
-function renderTopModelsChart(data){
-  if (!elements.chartTopModels) return;
-  if (charts.topModels) charts.topModels.destroy();
-  const top = data.topModels.slice(0,5);
-  charts.topModels = buildBarHorizontal(
-    elements.chartTopModels.getContext("2d"),
-    top.map(i=>i.model),
-    top.map(i=>i.views),
-    "Exibições",
-    "#10b981"
-  );
-}
-
-function renderModelHealthChart(data){
-  if (!elements.chartModelHealth) return;
-  if (charts.modelHealth) charts.modelHealth.destroy();
-
-  const labels = ["Carregados", "Erros"];
-  const values = [data.kpis.modelsLoaded, data.kpis.modelsErrors];
-
-  charts.modelHealth = buildDoughnut(
-    elements.chartModelHealth.getContext("2d"),
-    labels,
-    values
-  );
-}
-
-/* ==========================================================
-   INSIGHTS
-   ========================================================== */
+/* --------- INSIGHTS (fila + tooltips inline) --------- */
 
 const MAX_INSIGHTS = 5;
 const insightsQueue = [];
@@ -1519,9 +856,790 @@ function startInsightScheduler(data){
   }, 60 * 60 * 1000);
 }
 
+
+/* ==========================================================
+   2) FILTROS — TENANT, RANGE DE DATAS, ESTADO
+   ========================================================== */
+
+// Resolve o tenant usando o MESMO padrão do backend
+function resolveTenantInitial() {
+  const emailCandidates = [
+    localStorage.getItem("ar.email"),
+    sessionStorage.getItem("ar.email"),
+    localStorage.getItem("arEmail"),
+    sessionStorage.getItem("arEmail"),
+    localStorage.getItem("email"),
+    sessionStorage.getItem("email"),
+  ].filter(v => v && v.trim());
+
+  for (const v of emailCandidates) {
+    const t = tenantKey(v);
+    if (t) {
+      console.log("[METRICAS] tenant via email", v, "=>", t);
+      return t;
+    }
+  }
+
+  const keys = ["ar.tenant", "tenant", "tenantId", "restaurante"];
+  for (const k of keys) {
+    const v = localStorage.getItem(k) || sessionStorage.getItem(k);
+    if (v && v.trim()) {
+      const t = tenantKey(v);
+      console.log("[METRICAS] tenant via storage", k, "=", v, "=>", t);
+      return t;
+    }
+  }
+
+  try {
+    const url = new URL(window.location.href);
+    const fromTenant = url.searchParams.get("tenant");
+    const fromR = url.searchParams.get("r");
+    const raw = (fromTenant || fromR || "").trim();
+    if (!raw) return "";
+
+    const t = tenantKey(
+      raw
+        .replace(/^https?:\/\//i, "")
+        .replace(/[?#].*$/, "")
+        .replace(/%40/gi, "@")
+    );
+    console.log("[METRICAS] tenant via URL", raw, "=>", t);
+    return t;
+  } catch (err) {
+    console.warn("[METRICAS] Não foi possível resolver tenant inicial:", err);
+    return "";
+  }
+}
+
+const AppState = {
+  tenant: resolveTenantInitial(),
+  startDate: null,
+  endDate: null,
+};
+
+console.log("[METRICAS] tenant inicial:", AppState.tenant);
+
+// flatpickr
+function initFlatpickrIfAny() {
+  if (typeof flatpickr === "undefined") {
+    console.warn("[METRICAS] flatpickr não carregado");
+    return;
+  }
+
+  const commonConfig = {
+    dateFormat: "d/m/Y",
+    locale: flatpickr.l10ns?.pt || "pt",
+    allowInput: true,
+    clickOpens: true,
+    monthSelectorType: "static",
+    onChange: () => {
+      updateRangeInput();
+    }
+  };
+
+  if (elements.startDate && !elements.startDate._flatpickr) {
+    flatpickr(elements.startDate, commonConfig);
+  }
+  if (elements.endDate && !elements.endDate._flatpickr) {
+    flatpickr(elements.endDate, commonConfig);
+  }
+}
+
+function updateRangeInput() {
+  const start = elements.startDate?.value;
+  const end = elements.endDate?.value;
+  if (elements.filterRange) {
+    elements.filterRange.value = (start && end) ? `${start} a ${end}` : "";
+  }
+}
+
+function parseDate(dateStr) {
+  if (!dateStr) return null;
+  const [day, month, year] = dateStr.split("/").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+// HOJE como padrão
+function setDefaultTodayRange() {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  AppState.startDate = today;
+  AppState.endDate = today;
+
+  const v = formatDateBR(today);
+  if (elements.startDate) elements.startDate.value = v;
+  if (elements.endDate) elements.endDate.value = v;
+  if (elements.filterRange) elements.filterRange.value = `${v} a ${v}`;
+}
+
+// botão APLICAR
+function applyFilters() {
+  let startStr = elements.startDate?.value?.trim();
+  let endStr   = elements.endDate?.value?.trim();
+
+  if (!AppState.tenant) {
+    const rawTenant =
+      elements.filterTenant?.value?.trim() ||
+      resolveTenantInitial() ||
+      "";
+    AppState.tenant = tenantKey(rawTenant);
+  }
+
+  if (!startStr || !endStr) {
+    setDefaultTodayRange();
+  } else {
+    AppState.startDate = parseDate(startStr);
+    AppState.endDate   = parseDate(endStr);
+  }
+
+  if (AppState.startDate && AppState.endDate && AppState.startDate > AppState.endDate) {
+    alert("A data inicial não pode ser maior que a data final.");
+    return;
+  }
+
+  updateRangeInput();
+  loadAndRender();
+}
+
+// botão LIMPAR
+function clearRange() {
+  if (elements.startDate) elements.startDate.value = "";
+  if (elements.endDate) elements.endDate.value = "";
+  if (elements.filterRange) elements.filterRange.value = "";
+  if (elements.periodFilter) elements.periodFilter.value = "custom";
+
+  setDefaultTodayRange();
+  loadAndRender();
+}
+
+// período rápido
+function handlePeriodChange() {
+  const period = elements.periodFilter?.value;
+  if (!period || period === "custom") return;
+
+  const today = new Date();
+  let startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  let endDate   = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  switch (period) {
+    case "7d":
+      startDate.setDate(startDate.getDate() - 6);
+      break;
+    case "15d":
+      startDate.setDate(startDate.getDate() - 14);
+      break;
+    case "30d":
+      startDate.setDate(startDate.getDate() - 29);
+      break;
+    case "60d":
+      startDate.setDate(startDate.getDate() - 59);
+      break;
+    case "mesAnterior":
+      startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      endDate   = new Date(today.getFullYear(), today.getMonth(), 0);
+      break;
+    case "mesAtual":
+      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      break;
+    default:
+      return;
+  }
+
+  if (elements.startDate) elements.startDate.value = formatDateBR(startDate);
+  if (elements.endDate)   elements.endDate.value   = formatDateBR(endDate);
+  updateRangeInput();
+
+  AppState.startDate = startDate;
+  AppState.endDate   = endDate;
+
+  loadAndRender();
+}
+
+function wireFilters() {
+  elements.btnApplyFilters?.addEventListener("click", applyFilters);
+  elements.clearRange?.addEventListener("click", clearRange);
+  elements.periodFilter?.addEventListener("change", handlePeriodChange);
+
+  if (elements.filterTenant) {
+    elements.filterTenant.addEventListener("change", () => {
+      const raw = elements.filterTenant.value?.trim() || AppState.tenant;
+      AppState.tenant = tenantKey(raw);
+      loadAndRender();
+    });
+  }
+}
+
+
+/* ==========================================================
+   3) RESUMO (KPIs)
+   ========================================================== */
+function renderKPIs(kpis){
+  if(elements.kpiScans) elements.kpiScans.textContent = toBR(kpis.scansTotal);
+  if(elements.kpiSessoes) elements.kpiSessoes.textContent = toBR(kpis.sessoesTotal);
+  if(elements.kpiUnicos) elements.kpiUnicos.textContent = toBR(kpis.unicosTotal);
+  if(elements.kpiInfoRate) elements.kpiInfoRate.textContent = pct(kpis.infoTotal, kpis.scansTotal);
+  if(elements.kpiAvgTimePerItem) elements.kpiAvgTimePerItem.textContent = formatDurationMMSS(kpis.avgTimePerItem);
+  if(elements.kpiAvgTimePerCategory) elements.kpiAvgTimePerCategory.textContent = formatDurationMMSS(kpis.avgTimePerCategory);
+  if(elements.kpiInfoClicks) elements.kpiInfoClicks.textContent = toBR(kpis.infoClicks);
+  if(elements.kpiInfoAvgTime) elements.kpiInfoAvgTime.textContent = formatDurationMMSS(kpis.infoAvgTime);
+  if(elements.kpiActiveClients) elements.kpiActiveClients.textContent = toBR(kpis.activeClients);
+  if(elements.kpiNewClients) elements.kpiNewClients.textContent = toBR(kpis.newClients);
+  if(elements.kpiRecurringClients) elements.kpiRecurringClients.textContent = toBR(kpis.recurringClients);
+  if(elements.kpiReturnRate) elements.kpiReturnRate.textContent = pct(kpis.recurringClients, kpis.newClients + kpis.recurringClients);
+  if(elements.kpiInfoOpens) elements.kpiInfoOpens.textContent = toBR(kpis.infoOpens);
+  if(elements.kpiInfoAvgTimeInfoBox) elements.kpiInfoAvgTimeInfoBox.textContent = formatDurationMMSS(kpis.infoAvgTimeInfoBox);
+  if(elements.kpiModelsLoaded) elements.kpiModelsLoaded.textContent = toBR(kpis.modelsLoaded);
+  if(elements.kpiModelsErrors) elements.kpiModelsErrors.textContent = toBR(kpis.modelsErrors);
+
+  const totalClients = kpis.newClients + kpis.recurringClients;
+  if(byId("kpiRecNew")) byId("kpiRecNew").textContent = toBR(kpis.newClients);
+  if(byId("kpiRecReturning")) byId("kpiRecReturning").textContent = toBR(kpis.recurringClients);
+  if(byId("kpiRecRate")) byId("kpiRecRate").textContent = pct(kpis.recurringClients, totalClients);
+}
+
+
+/* ==========================================================
+   4) ESCANEAMENTO TOTAL DE QR CODE
+   ========================================================== */
+
+function renderScansTotalChart(data){
+  if (!elements.chartScansTotal) return;
+  if (charts.scansTotal) charts.scansTotal.destroy();
+  charts.scansTotal = buildLineChart(
+    elements.chartScansTotal.getContext("2d"),
+    data.rangeLabels,
+    data.daily.scans,
+    "Scans (dia)",
+    "#00d9ff",
+    (ctx)=>` ${toBR(ctx.parsed.y)} scan(s)`
+  );
+}
+
+
+/* ==========================================================
+   5) ESCANEAMENTO POR MESA / QRCODE
+   ========================================================== */
+
+function renderTabelaMesaQR(list){
+  const tbody = elements.tbodyMesaQR;
+  if (!tbody) return;
+
+  const safe = Array.isArray(list) ? list : [];
+
+  if (!safe.length) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+    return;
+  }
+
+  const totalScans = sum(safe.map(i => Number(i.scans ?? i.totalScans ?? 0)));
+
+  const rows = safe.map(i => {
+    const mesaLabel =
+      i.mesa ||
+      i.qrLabel ||
+      i.label ||
+      "QR/mesa-desconhecido";
+
+    const scans = Number(i.scans ?? i.totalScans ?? 0);
+    const avgTimeSec = Number(i.avgTimeSec ?? i.avgTime ?? 0);
+    const lastScan = i.ultimoScan || i.lastScan || i.last || i.lastSeen || null;
+    const pctTotal = totalScans ? pct(scans, totalScans) : "0%";
+
+    return `
+      <tr>
+        <td>${mesaLabel}</td>
+        <td style="text-align:center">${formatDurationMMSS(avgTimeSec)}</td>
+        <td style="text-align:center">${formatTimeBRSafe(lastScan)}</td>
+        <td style="text-align:right">${pctTotal}</td>
+      </tr>
+    `;
+  }).join("");
+
+  tbody.innerHTML = rows;
+}
+
+function renderScansByMesaChart(data){
+  if (!elements.chartScansByMesa) return;
+  if (charts.scansByMesa) charts.scansByMesa.destroy();
+  const top = [...data.porMesa].sort((a,b)=> (b.scans ?? 0) - (a.scans ?? 0)).slice(0,10);
+  charts.scansByMesa = buildBarHorizontal(
+    elements.chartScansByMesa.getContext("2d"),
+    top.map(i=> i.mesa || i.qrLabel || "QR/mesa-desconhecido"),
+    top.map(i=> i.scans ?? 0),
+    "Scans por Mesa",
+    "#00d9ff"
+  );
+}
+
+
+/* ==========================================================
+   6) SESSÕES POR PERÍODO
+   ========================================================== */
+
+function renderTabelaSessoes(labels, sessoes, unicos){
+  const tbody=elements.tbodySessoes; if(!tbody) return;
+  const rows = labels.map((label,idx)=>`
+    <tr>
+      <td>${label}</td>
+      <td style="text-align:center">${toBR(sessoes[idx] || 0)}</td>
+      <td style="text-align:center">${toBR(unicos[idx] || 0)}</td>
+      <td style="text-align:right">${(unicos[idx] ? (sessoes[idx] / unicos[idx]).toFixed(2) : "0.00")}</td>
+    </tr>`).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+}
+
+function renderSessoesChart(data){
+  if (!elements.chartSessoes) return;
+  if (charts.sessoes) charts.sessoes.destroy();
+  charts.sessoes = buildLineChart(
+    elements.chartSessoes.getContext("2d"),
+    data.rangeLabels,
+    data.daily.sessoes,
+    "Sessões (dia)",
+    "#3b82f6",
+    (ctx)=>` ${toBR(ctx.parsed.y)} sessão(ões)`
+  );
+}
+
+
+/* ==========================================================
+   7) TEMPO MÉDIO (CARDÁPIO)
+   ========================================================== */
+
+function renderTabelaTempoMenu(list){
+  const tbody=elements.tableAvgTimeMenu; if(!tbody) return;
+  const rows = list.map(i=>`
+    <tr>
+      <td>${i.periodo}</td>
+      <td style="text-align:center">${formatDurationMMSS(i.mediaSec)}</td>
+      <td style="text-align:center">${formatDurationMMSS(i.medianaSec)}</td>
+      <td style="text-align:right">${toBR(i.amostras)}</td>
+    </tr>`).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+}
+
+function renderAvgTimeMenuChart(data){
+  if (!elements.chartAvgTimeMenu) return;
+  if (charts.avgTimeMenu) charts.avgTimeMenu.destroy();
+  charts.avgTimeMenu = buildLineChart(
+    elements.chartAvgTimeMenu.getContext("2d"),
+    data.tempoMenu.map(i=>i.periodo),
+    data.tempoMenu.map(i=>i.mediaSec),
+    "Tempo Médio (s)",
+    "#10b981",
+    (ctx)=>` ${formatDurationMMSS(ctx.parsed.y)}`
+  );
+}
+
+
+/* ==========================================================
+   8) HORÁRIO DE PICO
+   ========================================================== */
+
+function renderTabelaPeakHours(list){
+  const tbody = elements.tablePeakHours;
+  if (!tbody) return;
+
+  const ref = (AppState.endDate instanceof Date) ? AppState.endDate : new Date();
+  const dataStr = formatDateBR(ref);
+
+  const rows = [...list]
+    .sort((a,b) => a.hora - b.hora)
+    .map(item => `
+      <tr>
+        <td>${dataStr}</td>
+        <td style="text-align:center">${pad2(item.hora)}h</td>
+        <td style="text-align:right">${toBR(item.scans ?? 0)}</td>
+      </tr>
+    `).join("");
+
+  tbody.innerHTML = rows || `<tr><td colspan="3" class="text-center">Sem dados.</td></tr>`;
+}
+
+function renderPeakHoursChart(data){
+  if (!elements.chartPeakHours) return;
+  if (charts.peakHours) charts.peakHours.destroy();
+  const labels = data.picos.map(i=>`${i.hora}h`);
+  const values = data.picos.map(i=>i.scans);
+  charts.peakHours = new Chart(elements.chartPeakHours.getContext("2d"),{
+    type:"bar",
+    data:{ labels, datasets:[{ label:"Scans por hora", data:values, backgroundColor:"#3b82f6" }] },
+    options:{ responsive:true, maintainAspectRatio:false }
+  });
+}
+
+
+/* ==========================================================
+   9) USO DO BOTÃO "INFO"
+   ========================================================== */
+
+function renderInfoUsageChart(data){
+  if (!elements.chartInfoUsage) return;
+  if (charts.infoUsage) charts.infoUsage.destroy();
+  charts.infoUsage = buildLineChart(
+    elements.chartInfoUsage.getContext("2d"),
+    data.rangeLabels,
+    data.daily.info,
+    "Aberturas Info (dia)",
+    "#f59e0b",
+    (ctx)=>` ${toBR(ctx.parsed.y)} abertura(s)`
+  );
+}
+
+
+/* ==========================================================
+   10) TEMPO POR ITEM
+   ========================================================== */
+
+function renderTabelaTimePerItem(list){
+  const tbody=elements.tableTimePerItem; if(!tbody) return;
+  const totalViews = sum(list.map(i=>i.views));
+  const rows = list.map(i=>`
+    <tr>
+      <td>${mapItemName(i.item)}</td>
+      <td style="text-align:center">${formatDurationMMSS(i.avgTimeSec)}</td>
+      <td style="text-align:center">${toBR(i.views)}</td>
+      <td style="text-align:right">${pct(i.views,totalViews)}</td>
+    </tr>`).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+}
+
+function renderTimePerItemChart(data){
+  if (!elements.chartTimePerItem) return;
+  if (charts.timePerItem) charts.timePerItem.destroy();
+  const top = data.topItems.sort((a,b)=>b.avgTimeSec-a.avgTimeSec).slice(0,10);
+  charts.timePerItem = buildBarHorizontal(
+    elements.chartTimePerItem.getContext("2d"),
+    top.map(i=>i.item),
+    top.map(i=>i.avgTimeSec),
+    "Tempo médio (s)",
+    "#f59e0b"
+  );
+}
+
+
+/* ==========================================================
+   11) ITENS MAIS VISUALIZADOS
+   ========================================================== */
+
+function renderTabelaTopItems(list){
+  const tbody = elements.tableTopItems;
+  if(!tbody) return;
+  const rows = list.map(i=>`
+    <tr>
+      <td>${mapItemName(i.item)}</td>
+      <td style="text-align:center">${toBR(i.views)}</td>
+      <td style="text-align:center">${formatDurationMMSS(i.avgTimeSec)}</td>
+      <td style="text-align:right">${i.category}</td>
+    </tr>`).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+}
+
+function renderTopItemsChart(data){
+  if (!elements.chartTopItems) return;
+  if (charts.topItems) charts.topItems.destroy();
+  const top = data.topItems.slice(0,10);
+  charts.topItems = buildBarHorizontal(
+    elements.chartTopItems.getContext("2d"),
+    top.map(i=>i.item),
+    top.map(i=>i.views),
+    "Views",
+    "#00d9ff"
+  );
+}
+
+
+/* ==========================================================
+   12) TEMPO POR CATEGORIA
+   ========================================================== */
+
+function renderTabelaTimeByCategory(list){
+  const tbody=elements.tbodyTimeByCategory; if(!tbody) return;
+  const rows = list.map(i=>`
+    <tr>
+      <td>${mapCategoryName(i.category)}</td>
+      <td style="text-align:center">${formatDurationMMSS(i.avgTimeSec)}</td>
+      <td style="text-align:center">${toBR(i.sessions)}</td>
+      <td style="text-align:right">${i.pctTotalTime}</td>
+    </tr>`).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+}
+
+function renderTimeByCategoryChart(data){
+  if (!elements.chartTimeByCategory) return;
+  if (charts.timeByCategory) charts.timeByCategory.destroy();
+  charts.timeByCategory = buildBarHorizontal(
+    elements.chartTimeByCategory.getContext("2d"),
+    data.timeByCategory.map(i=>i.category),
+    data.timeByCategory.map(i=>i.avgTimeSec),
+    "Tempo médio (s)",
+    "#10b981"
+  );
+}
+
+
+/* ==========================================================
+   13) CATEGORIAS MAIS ACESSADAS
+   ========================================================== */
+
+function renderTabelaTopCategories(list){
+  const tbody=elements.tableCategoryPopularity; if(!tbody) return;
+  const rows = list.map(i=>`
+    <tr>
+      <td>${mapCategoryName(i.category)}</td>
+      <td style="text-align:center">${toBR(i.clicks)}</td>
+      <td style="text-align:center">${formatDurationMMSS(i.avgTimeSec)}</td>
+      <td style="text-align:right">${i.pctTotal}</td>
+    </tr>`).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+}
+
+function renderCategoryPopularityChart(data){
+  const canvas = elements.chartCategoryPopularity;
+  if (!canvas) return;
+  if (charts.categoryPopularity) charts.categoryPopularity.destroy();
+
+  const src = data?.topCategories || [];
+  const rows = (Array.isArray(src) ? src : []).map((r) => ({
+    categoria: r.category ?? r.categoria ?? r.name ?? r.label ?? '—',
+    cliques:   Number(r.clicks ?? r.cliques ?? r.total ?? 0),
+    tempo:     r.avgTime ?? r.tempoMedio ?? r.time ?? 0,
+    pct:       Number(r.pct ?? r.percent ?? r.percentage ?? r.participacao ?? 0),
+  }));
+
+  if (!rows.length) return;
+
+  const labels = rows.map(r => r.categoria);
+  const values = rows.map(r => r.cliques);
+
+  const idealH = Math.max(220, rows.length * 28);
+  canvas.style.height = `${idealH}px`;
+
+  charts.categoryPopularity = buildBarHorizontal(
+    canvas.getContext('2d'),
+    labels,
+    values,
+    "Cliques",
+    "#00d9ff"
+  );
+}
+
+
+/* ==========================================================
+   14) BOTÃO INFO (POR ITEM)
+   ========================================================== */
+
+function renderTabelaInfoPerItem(list){
+  const tbody=elements.tableInfoPerItem; if(!tbody) return;
+  const rows = list.map(item=>`
+    <tr>
+      <td>${item.item}</td>
+      <td style="text-align:center">${toBR(item.clicksInfo)}</td>
+      <td style="text-align:center">${formatDurationMMSS(item.avgTimeSec)}</td>
+      <td style="text-align:right">${toBR(item.views)}</td>
+    </tr>`).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+}
+
+function renderInfoPerItemChart(data){
+  if (!elements.chartInfoPerItem) return;
+  if (charts.infoPerItem) charts.infoPerItem.destroy();
+  const top = data.topItems.sort((a,b)=>b.clicksInfo-a.clicksInfo).slice(0,10);
+  charts.infoPerItem = buildBarHorizontal(
+    elements.chartInfoPerItem.getContext("2d"),
+    top.map(i=>i.item),
+    top.map(i=>i.clicksInfo),
+    "Cliques Info",
+    "#3b82f6"
+  );
+}
+
+
+/* ==========================================================
+   15) RECORRÊNCIA DE CLIENTES
+   ========================================================== */
+
+function renderTabelaRecurrence(list) {
+  const tbody = elements.tableRecurrence;
+  if (!tbody) return;
+
+  const safe = Array.isArray(list) ? list : [];
+
+  if (!safe.length) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+    return;
+  }
+
+  const rows = safe.map((item, idx) => {
+    const id            = item.id || item.clientId || item.cliente || `Cliente ${idx+1}`;
+    const scans         = item.scans ?? item.totalScans ?? 0;
+    const lastScan      = item.lastScan || item.ultimoScan || null;
+    const daysSinceLast = item.daysSinceLast ?? item.diasDesdeUltimo ?? 0;
+
+    return `
+      <tr>
+        <td>${id}</td>
+        <td style="text-align:center">${toBR(scans)}</td>
+        <td style="text-align:center">${lastScan ? formatDateBR(lastScan) : "—"}</td>
+        <td style="text-align:right">${toBR(daysSinceLast)}</td>
+      </tr>
+    `;
+  }).join("");
+
+  tbody.innerHTML = rows;
+}
+
+function renderRecurrenceChart(data){
+  if (!elements.chartRecurrence) return;
+  if (charts.recurrence) charts.recurrence.destroy();
+
+  const labels = data.recurrenceData.map(i=>i.periodo);
+  const newClients = data.recurrenceData.map(i=>i.newClients);
+  const returningClients = data.recurrenceData.map(i=>i.returningClients);
+
+  charts.recurrence = new Chart(elements.chartRecurrence.getContext("2d"),{
+    type:"line",
+    data:{
+      labels,
+      datasets:[
+        { label:"Novos", data:newClients, tension:.35, borderWidth:2, pointRadius:3, fill:false, borderColor:"#10b981", backgroundColor:"#10b981" },
+        { label:"Retornando", data:returningClients, tension:.35, borderWidth:2, pointRadius:3, fill:false, borderColor:"#f59e0b", backgroundColor:"#f59e0b" }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, interaction:{mode:"index",intersect:false},
+      plugins:{ legend:{display:true, position:"top"}, tooltip:{callbacks:{label:(ctx)=>` ${ctx.dataset.label}: ${toBR(ctx.parsed.y)}`}} },
+      scales:{ x:{grid:{display:false}, ticks:{maxRotation:0,autoSkip:true}},
+               y:{beginAtZero:true, grid:{color:"rgba(255,255,255,.08)"}} }
+    }
+  });
+}
+
+
+/* ==========================================================
+   16) ENGAJAMENTO POR MESA
+   ========================================================== */
+
+function renderTabelaEngagementByMesa(list){
+  const tbody=elements.tableEngagementByMesa; if(!tbody) return;
+  const rows = list.map(item=>`
+    <tr>
+      <td>${item.mesa}</td>
+      <td style="text-align:center">${formatDurationMMSS(item.avgTimeSec)}</td>
+      <td style="text-align:center">${item.interactionsPerSession}</td>
+      <td style="text-align:right">${toBR(item.sessions)}</td>
+    </tr>`).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+}
+
+function renderEngagementByMesaChart(data){
+  if (!elements.chartEngagementByMesa) return;
+  if (charts.engagementByMesa) charts.engagementByMesa.destroy();
+  const top = [...data.porMesa].sort((a,b)=>b.sessions-a.sessions).slice(0,10);
+  charts.engagementByMesa = buildBarHorizontal(
+    elements.chartEngagementByMesa.getContext("2d"),
+    top.map(i=>i.mesa),
+    top.map(i=>i.sessions),
+    "Sessões",
+    "#3b82f6"
+  );
+}
+
+
+/* ==========================================================
+   17) DISPOSITIVOS USADOS
+   ========================================================== */
+
+function renderTabelaDeviceDistribution(list){
+  const tbody=elements.tableDeviceDistribution; if(!tbody) return;
+  const totalSessions = sum(list.map(i=>i.sessions));
+  const rows = list.map(item=>`
+    <tr>
+      <td>${item.label}</td>
+      <td style="text-align:center">${pct(item.sessions, totalSessions)}</td>
+      <td style="text-align:center">${toBR(item.sessions)}</td>
+      <td style="text-align:right">${formatDurationMMSS(item.avgTimeSec)}</td>
+    </tr>`).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+}
+
+function renderDevicesChart(data){
+  if (!elements.chartDevices) return;
+  if (charts.devices) charts.devices.destroy();
+  charts.devices = buildDoughnut(
+    elements.chartDevices.getContext("2d"),
+    data.devices.map(d=>d.label),
+    data.devices.map(d=>d.value)
+  );
+}
+
+
+/* ==========================================================
+   18) MODELOS MAIS EXIBIDOS
+   ========================================================== */
+
+function renderTabelaTopModels(list){
+  const tbody=elements.tableTopModels; if(!tbody) return;
+  const rows = list.map(item=>`
+    <tr>
+      <td>${mapItemName(item.model)}</td>
+      <td style="text-align:center">${toBR(item.views)}</td>
+      <td style="text-align:center">${formatDurationMMSS(item.avgTimeSec)}</td>
+      <td style="text-align:right">${toBR(item.errors)}</td>
+    </tr>`).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+}
+
+function renderTopModelsChart(data){
+  if (!elements.chartTopModels) return;
+  if (charts.topModels) charts.topModels.destroy();
+  const top = data.topModels.slice(0,5);
+  charts.topModels = buildBarHorizontal(
+    elements.chartTopModels.getContext("2d"),
+    top.map(i=>i.model),
+    top.map(i=>i.views),
+    "Exibições",
+    "#10b981"
+  );
+}
+
+
+/* ==========================================================
+   19) SAÚDE DOS MODELOS
+   ========================================================== */
+
+function renderTabelaModelErrors(list){
+  const tbody=elements.tableModelErrors; if(!tbody) return;
+  const rows = list.map(item=>`
+    <tr>
+      <td>${mapItemName(item.itemModel)}</td>
+      <td>${item.error}</td>
+      <td style="text-align:center">${toBR(item.occurrences)}</td>
+      <td style="text-align:right">${formatDateBR(item.last)}</td>
+    </tr>`).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+}
+
+function renderModelHealthChart(data){
+  if (!elements.chartModelHealth) return;
+  if (charts.modelHealth) charts.modelHealth.destroy();
+
+  const labels = ["Carregados", "Erros"];
+  const values = [data.kpis.modelsLoaded, data.kpis.modelsErrors];
+
+  charts.modelHealth = buildDoughnut(
+    elements.chartModelHealth.getContext("2d"),
+    labels,
+    values
+  );
+}
+
+
 /* ==========================================================
    LOAD & RENDER GERAL
    ========================================================== */
+
 async function loadAndRender() {
   if (!AppState.startDate || !AppState.endDate) {
     setDefaultTodayRange();
@@ -1535,7 +1653,10 @@ async function loadAndRender() {
 
   console.log("[METRICAS] data bruto da API:", data);
 
+  // Resumo
   renderKPIs(data.kpis);
+
+  // Tabelas
   renderTabelaMesaQR(data.porMesa);
   renderTabelaSessoes(data.rangeLabels, data.daily.sessoes, data.daily.unicos);
   renderTabelaTempoMenu(data.tempoMenu);
@@ -1551,6 +1672,7 @@ async function loadAndRender() {
   renderTabelaModelErrors(data.modelErrors);
   renderTabelaInfoPerItem(data.topItems);
 
+  // Gráficos
   await ensureChartJs();
   renderScansTotalChart(data);
   renderScansByMesaChart(data);
@@ -1569,15 +1691,17 @@ async function loadAndRender() {
   renderTopModelsChart(data);
   renderModelHealthChart(data);
 
+  // Insights
   startInsightScheduler(data);
   wireHelpBadges(document);
 }
 
+
 /* ==========================================================
-   Bootstrap
+   BOOTSTRAP + AJUSTE VISUAL DE ALGUNS BLOCOS
    ========================================================== */
+
 document.addEventListener("DOMContentLoaded", ()=>{
-  // Normaliza qualquer valor pré-existente
   if (AppState.tenant) {
     AppState.tenant = tenantKey(AppState.tenant);
   }
@@ -1601,7 +1725,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   });
 });
 
-/* Centralização de alguns blocos KPI (como já estava) */
+// Centralização de alguns blocos KPI
 function centerBlockByTitle(titleRegex, styleObj = {}) {
   const sections = document.querySelectorAll('.chart-section');
   for (const section of sections) {
@@ -1637,4 +1761,5 @@ function centerSelectedKPIBlocks() {
 }
 
 document.addEventListener('DOMContentLoaded', centerSelectedKPIBlocks);
+
 })();

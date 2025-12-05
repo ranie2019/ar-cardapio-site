@@ -365,6 +365,9 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // Carrega o LOGO inicialmente (respeita itens desativados e a escolha salva)
   mostrarLogoInicial();
+
+  // Inicializa os botões de like / deslike
+  setupLikeButtons();
 });
 
 // ==================== VERIFICAÇÃO POR QR CODE ====================
@@ -540,6 +543,99 @@ function getCurrentModelData() {
   }
   return null;
 }
+
+// ==================== LIKE / DESLIKE (VISUAL + MÉTRICAS) ====================
+
+// caminhos das imagens
+const LIKE_EMPTY_SRC     = "../imagens/positivo.png";
+const LIKE_FILLED_SRC    = "../imagens/positivo1.png";
+const DISLIKE_EMPTY_SRC  = "../imagens/negativo.png";
+const DISLIKE_FILLED_SRC = "../imagens/negativo1.png";
+
+// estado atual do usuário: null | "like" | "dislike"
+let likeState = null;
+
+let btnLikeEl = null;
+let btnDislikeEl = null;
+let imgLikeEl = null;
+let imgDislikeEl = null;
+
+// aplica o visual de acordo com o estado (igual YouTube)
+function applyLikeVisual() {
+  if (!imgLikeEl || !imgDislikeEl) return;
+
+  if (likeState === "like") {
+    imgLikeEl.src = LIKE_FILLED_SRC;
+    imgDislikeEl.src = DISLIKE_EMPTY_SRC;
+  } else if (likeState === "dislike") {
+    imgLikeEl.src = LIKE_EMPTY_SRC;
+    imgDislikeEl.src = DISLIKE_FILLED_SRC;
+  } else {
+    // nenhum selecionado
+    imgLikeEl.src = LIKE_EMPTY_SRC;
+    imgDislikeEl.src = DISLIKE_EMPTY_SRC;
+  }
+}
+
+// envia evento para o sistema de métricas
+function trackLikeEvent(newState, source) {
+  if (!window.MetricaApp || typeof MetricaApp.trackEvent !== "function") return;
+
+  const current = getCurrentModelData() || {};
+  const itemPath = current.path || currentModelPath || null;
+  const itemName = itemPath ? formatProductName(itemPath) : null;
+
+  let value;
+  if (newState === "like") value = "positivo";
+  else if (newState === "dislike") value = "negativo";
+  else value = "nenhum"; // quando o usuário "desmarca"
+
+  try {
+    MetricaApp.trackEvent("like", {
+      value,                 // positivo / negativo / nenhum
+      source,                // "like" ou "dislike" (qual botão foi clicado)
+      category: currentCategory || null,
+      itemPath,
+      itemName
+    });
+  } catch (e) {
+    console.error("[METRICAS like] erro ao enviar:", e);
+  }
+}
+
+// inicializa os botões (roda uma vez quando o DOM carrega)
+function setupLikeButtons() {
+  btnLikeEl = document.getElementById("btnLike");
+  btnDislikeEl = document.getElementById("btnDislike");
+
+  if (!btnLikeEl || !btnDislikeEl) return;
+
+  imgLikeEl = btnLikeEl.querySelector("img");
+  imgDislikeEl = btnDislikeEl.querySelector("img");
+
+  if (!imgLikeEl || !imgDislikeEl) return;
+
+  // sempre começa vazio ao abrir o app
+  likeState = null;
+  applyLikeVisual();
+
+  // clique no LIKE
+  btnLikeEl.addEventListener("click", () => {
+    // toggle: se já estava like, volta pra nenhum
+    likeState = (likeState === "like") ? null : "like";
+    applyLikeVisual();
+    trackLikeEvent(likeState, "like");
+  });
+
+  // clique no DISLIKE
+  btnDislikeEl.addEventListener("click", () => {
+    // toggle: se já estava dislike, volta pra nenhum
+    likeState = (likeState === "dislike") ? null : "dislike";
+    applyLikeVisual();
+    trackLikeEvent(likeState, "dislike");
+  });
+}
+
 
 // ==================== HELPERS ====================
 // Normaliza "Porções", "porcoes", "PORÇÕES" -> "porcoes"

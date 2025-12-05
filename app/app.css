@@ -313,3 +313,84 @@ body {
 @media (prefers-color-scheme: dark) {
   #infoContent { color: #e6e6e6; }
 }
+
+/* =========================
+   LIKE / DESLIKE - MESMA LÓGICA DOS BOTÕES <>
+   ========================= */
+
+/* container não manda em nada, só existe pra agrupar */
+#likeBar {
+  position: static;
+  padding: 0;
+  margin: 0;
+}
+
+/* estilo base dos ícones de like/deslike */
+#btnLike,
+#btnDislike {
+  position: absolute;
+  /* FICA LOGO ACIMA DOS BOTÕES <>:
+     bottom dos botões (10px + safe-area)
+     + altura do botão (56px)
+     + margem (8px)
+  */
+  bottom: calc(10px + var(--sa-bottom) + 56px + 8px);
+
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  z-index: 1500;  /* acima das setas */
+  cursor: pointer;
+}
+
+#btnLike img,
+#btnDislike img {
+  max-width: 80%;
+  max-height: 80%;
+  pointer-events: none;
+}
+
+/* MESMA LÓGICA DO prevBtn (ESQUERDA) */
+#btnDislike {
+  left: calc(-970px + var(--sa-left));
+}
+
+/* MESMA LÓGICA DO nextBtn (DIREITA) */
+#btnLike {
+  right: calc(-970px + var(--sa-right));
+}
+
+#btnLike:active,
+#btnDislike:active {
+  transform: scale(0.9);
+}
+
+/* Ajuste para telas baixas em landscape (segue as setas) */
+@media (orientation: landscape) and (max-height: 480px) {
+  #btnLike,
+  #btnDislike {
+    bottom: calc(6px + var(--sa-bottom) + 56px + 6px);
+  }
+}
+
+/* Ajuste de tamanho em telas bem estreitas */
+@media (max-width: 420px) {
+  #btnLike,
+  #btnDislike {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+
+#btnDislike:active,
+#btnLike:active {
+  transform: scale(0.9);
+}
