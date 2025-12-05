@@ -206,6 +206,9 @@ async function loadModel(path) {
 
     loadingIndicator.style.display = "none";
     updateUI({ path, price: getModelPrice(path) });
+
+    // sincroniza o like/deslike deste item
+    syncLikeWithCurrentItem();
   } else {
     const xhr = new XMLHttpRequest();
     xhr.open("GET", path + "?v=" + Date.now(), true);
@@ -227,6 +230,9 @@ async function loadModel(path) {
 
       loadingIndicator.style.display = "none";
       updateUI({ path, price: getModelPrice(path) });
+
+      // sincroniza o like/deslike deste item
+      syncLikeWithCurrentItem();
     };
 
     xhr.onerror = () => {
@@ -363,11 +369,14 @@ window.addEventListener("DOMContentLoaded", async () => {
   await aplicarConfiguracaoDoRestaurante();
   verificarEstadoInicial();
 
+  // carrega estado de like salvo
+  loadLikeStateFromStorage();
+
+  // inicializa botões de like/deslike
+  setupLikeButtons();
+
   // Carrega o LOGO inicialmente (respeita itens desativados e a escolha salva)
   mostrarLogoInicial();
-
-  // Inicializa os botões de like / deslike
-  setupLikeButtons();
 });
 
 // ==================== VERIFICAÇÃO POR QR CODE ====================
@@ -552,6 +561,11 @@ const LIKE_FILLED_SRC    = "../imagens/positivo1.png";
 const DISLIKE_EMPTY_SRC  = "../imagens/negativo.png";
 const DISLIKE_FILLED_SRC = "../imagens/negativo1.png";
 
+// storage dos likes por item
+const LIKE_STORAGE_KEY = "arcardapio_like_state_v1";
+// { slugItem: "like" | "dislike" }
+let likeStateByItem = {};
+
 // estado atual do usuário: null | "like" | "dislike"
 let likeState = null;
 
@@ -575,6 +589,59 @@ function applyLikeVisual() {
     imgLikeEl.src = LIKE_EMPTY_SRC;
     imgDislikeEl.src = DISLIKE_EMPTY_SRC;
   }
+}
+
+// slug do item atual (ex.: "tabua_de_carne")
+function getCurrentItemKey() {
+  if (!currentModelPath) return null;
+  return currentModelPath.split("/").pop().replace(".glb", "");
+}
+
+function loadLikeStateFromStorage() {
+  try {
+    const raw = localStorage.getItem(LIKE_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") {
+      likeStateByItem = parsed;
+    }
+  } catch (e) {
+    console.warn("[LIKE] erro ao ler localStorage:", e);
+  }
+}
+
+function saveLikeStateToStorage() {
+  try {
+    localStorage.setItem(LIKE_STORAGE_KEY, JSON.stringify(likeStateByItem));
+  } catch (e) {
+    console.warn("[LIKE] erro ao salvar localStorage:", e);
+  }
+}
+
+// aplica o estado salvo do item atual no likeState + ícones
+function syncLikeWithCurrentItem() {
+  if (!btnLikeEl || !imgLikeEl) return; // ainda não inicializou os botões
+
+  const key = getCurrentItemKey();
+  if (!key) {
+    likeState = null;
+  } else {
+    likeState = likeStateByItem[key] || null;
+  }
+  applyLikeVisual();
+}
+
+// salva o estado (like/dislike/nenhum) do item atual no mapa + storage
+function setLikeForCurrentItem(state) {
+  const key = getCurrentItemKey();
+  if (!key) return;
+
+  if (state === null) {
+    delete likeStateByItem[key];
+  } else {
+    likeStateByItem[key] = state;
+  }
+  saveLikeStateToStorage();
 }
 
 // envia evento para o sistema de métricas
@@ -615,7 +682,7 @@ function setupLikeButtons() {
 
   if (!imgLikeEl || !imgDislikeEl) return;
 
-  // sempre começa vazio ao abrir o app
+  // começa vazio (será substituído pelo estado do item atual quando o modelo carregar)
   likeState = null;
   applyLikeVisual();
 
@@ -623,6 +690,7 @@ function setupLikeButtons() {
   btnLikeEl.addEventListener("click", () => {
     // toggle: se já estava like, volta pra nenhum
     likeState = (likeState === "like") ? null : "like";
+    setLikeForCurrentItem(likeState);
     applyLikeVisual();
     trackLikeEvent(likeState, "like");
   });
@@ -631,11 +699,11 @@ function setupLikeButtons() {
   btnDislikeEl.addEventListener("click", () => {
     // toggle: se já estava dislike, volta pra nenhum
     likeState = (likeState === "dislike") ? null : "dislike";
+    setLikeForCurrentItem(likeState);
     applyLikeVisual();
     trackLikeEvent(likeState, "dislike");
   });
 }
-
 
 // ==================== HELPERS ====================
 // Normaliza "Porções", "porcoes", "PORÇÕES" -> "porcoes"
