@@ -352,6 +352,38 @@
     }
   }
 
+  // ----------- INTERAÇÕES POR MESA (helper) -----------
+  function trackMesaInteraction(interactionType, details = {}) {
+    if (!interactionType) return;
+
+    const mesa = config.mesa || config.table || null;
+    const qrLabel = config.qrLabel || config.mesa || config.table || null;
+    const qrId = config.qrId || null;
+
+    // sem contexto de mesa/qr, não faz sentido para engajamento
+    if (!mesa && !qrLabel && !qrId) return;
+
+    const base = {
+      interactionType,
+      mesa,
+      qrLabel,
+      qrId
+    };
+
+    if (currentItem) {
+      base.item = {
+        id: currentItem.id || null,
+        name: currentItem.name || null,
+        category: currentItem.category || currentCategory || null
+      };
+    } else if (currentCategory && !details.category) {
+      base.category = currentCategory;
+    }
+
+    const payload = { ...details, ...base };
+    pushEvent(ev("mesa_interaction", payload));
+  }
+
   // ----------- FUNÇÕES GLOBAIS (para usar no app.js) -----------
   global.metricsStartItemView = function (item) {
     startItemTimer(item || null);
@@ -381,7 +413,10 @@
     if (menuBtn) {
       menuBtn.addEventListener(
         "click",
-        () => pushEvent(ev("menu_click")),
+        () => {
+          pushEvent(ev("menu_click"));
+          trackMesaInteraction("menu_click");
+        },
         { passive: true }
       );
     }
@@ -396,6 +431,7 @@
             const label = (btn.textContent || "").trim();
             pushEvent(ev("category_click", { text: label }));
             startCategory(label);
+            trackMesaInteraction("category_click", { category: label });
           },
           { passive: true }
         );
@@ -406,21 +442,40 @@
     const nextBtn = document.getElementById("nextBtn");
     if (prevBtn) prevBtn.addEventListener(
       "click",
-      () => pushEvent(ev("nav_prev")),
+      () => {
+        pushEvent(ev("nav_prev"));
+        trackMesaInteraction("nav_prev");
+      },
       { passive: true }
     );
     if (nextBtn) nextBtn.addEventListener(
       "click",
-      () => pushEvent(ev("nav_next")),
+      () => {
+        pushEvent(ev("nav_next"));
+        trackMesaInteraction("nav_next");
+      },
       { passive: true }
     );
 
-    // Info BTN
+    // Info BTN - sempre tenta mandar o item atual
     const infoBtn = document.getElementById("infoBtn");
     if (infoBtn) {
       infoBtn.addEventListener(
         "click",
-        () => { pushEvent(ev("info_click")); },
+        () => {
+          const payload = { source: "button" };
+
+          if (currentItem) {
+            payload.item = {
+              id: currentItem.id || null,
+              name: currentItem.name || null,
+              category: currentItem.category || currentCategory || null
+            };
+          }
+
+          pushEvent(ev("info_click", payload));
+          trackMesaInteraction("info_click", payload);
+        },
         { passive: true }
       );
     }
@@ -615,7 +670,7 @@
     pushEvent(ev("checkout", { order }));
   };
 
-  // >>>>>>>>>> AQUI ESTÁ A NOVA LÓGICA DE LIKE <<<<<<<<<<
+  // >>>>>>>>>> LÓGICA DE LIKE / DISLIKE <<<<<<<<<<
   M.trackEvent = function (name, payload = {}) {
     if (name === "like") {
       const value = payload.value || "nenhum"; // positivo | negativo | nenhum

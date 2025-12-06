@@ -36,7 +36,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
 
-  <meta name="description" content="Painel de métricas do ARCardápio: escaneamento por mesa/QRCode, sessões, tempo no cardápio, picos de acesso, uso do botão Info e modelos em AR." />
+  <meta name="description" content="Painel de métricas do ARCardápio: escaneamento por mesa/QRCode, sessões, tempo no cardápio, picos de acesso, uso do botão Like/Dislike, Info e modelos em AR." />
 </head>
 <body>
   <!-- NAVBAR -->
@@ -279,7 +279,7 @@
               <thead>
                 <tr>
                   <th scope="col">Mesa</th>
-                  <th scope="col">Período</th>
+                  <th scope="col">Scans no Período</th>
                   <th scope="col">Último Scan</th>
                   <th scope="col">% do Total</th>
                 </tr>
@@ -289,6 +289,37 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </section>
+
+      <!-- Engajamento por mesa -->
+      <section class="chart-section col-4" aria-labelledby="titulo-engajamento-mesa">
+        <div class="section-header">
+          <h2 id="titulo-engajamento-mesa" class="section-title">
+            Engajamento por Mesa
+            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Tempo médio e interações por sessão para cada mesa/QR.">?</button>
+          </h2>
+          <span class="section-subtitle">Tempo e interações</span>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="chartEngagementByMesa" aria-label="Gráfico de engajamento por mesa"></canvas>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-label="Tabela de engajamento por mesa">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Mesa/QR</th>
+                <th scope="col">Tempo Médio</th>
+                <th scope="col">Interações/Sessão</th>
+                <th scope="col">Sessões</th>
+              </tr>
+            </thead>
+            <tbody id="tableEngagementByMesa">
+              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -389,41 +420,72 @@
         </div>
       </section>
 
-      <!-- Uso do botão Info -->
-      <section class="chart-section col-4" aria-labelledby="titulo-info">
+      <!-- Uso do botão Like -->
+      <section class="chart-section chart-section-like col-4" aria-labelledby="titulo-like">
         <div class="section-header">
-          <h2 id="titulo-info" class="section-title">
-            Uso do botão "Info"
-            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Evolução de aberturas do painel de informações e tempo médio de leitura.">?</button>
+          <h2 id="titulo-like" class="section-title">
+            Uso do botão "Like"
+            <button
+              class="kpi-help"
+              aria-label="O que é isso?"
+              data-tooltip="Resumo de likes e deslikes por item no período selecionado."
+            >?</button>
           </h2>
-          <span class="section-subtitle">Aberturas e tempo</span>
+          <span class="section-subtitle">Curtidas</span>
         </div>
 
-        <div class="kpis-grid">
+        <!-- KPIs (linha de cima) -->
+        <div class="kpis-grid kpis-grid-like">
+          <!-- LIKE TOTAL -->
           <article class="kpi-card">
             <div class="kpi-header">
               <h3 class="kpi-title">
-                Aberturas
-                <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Número de vezes que o painel de informações dos itens foi aberto.">?</button>
+                Like Total
+                <button
+                  class="kpi-help"
+                  aria-label="O que é isso?"
+                  data-tooltip="Total de cliques no botão Like em todos os itens no período selecionado."
+                >?</button>
               </h3>
-              <span class="kpi-icon" aria-hidden="true">ℹ️</span>
+              <span class="kpi-icon kpi-icon-like" aria-hidden="true">👍</span>
             </div>
-            <p id="kpiInfoOpens" class="kpi-value">--</p>
+            <p id="kpi-like-total" class="kpi-value">0</p>
           </article>
+
+          <!-- DESLIKE TOTAL -->
           <article class="kpi-card">
             <div class="kpi-header">
               <h3 class="kpi-title">
-                Tempo Médio
-                <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Tempo médio que os usuários passaram lendo as informações.">?</button>
+                Deslike Total
+                <button
+                  class="kpi-help"
+                  aria-label="O que é isso?"
+                  data-tooltip="Total de cliques no botão Deslike em todos os itens no período selecionado."
+                >?</button>
               </h3>
-              <span class="kpi-icon" aria-hidden="true">⏱️</span>
+              <span class="kpi-icon kpi-icon-dislike" aria-hidden="true">👎</span>
             </div>
-            <p id="kpiInfoAvgTimeInfoBox" class="kpi-value">--</p>
+            <p id="kpi-dislike-total" class="kpi-value">0</p>
           </article>
         </div>
 
-        <div class="chart-container" style="margin-top: var(--spacing-lg);">
-          <canvas id="chartInfoUsage" aria-label="Gráfico de uso do botão Info"></canvas>
+        <!-- Tabela logo embaixo -->
+        <div class="table-wrapper table-wrapper-like" role="region" aria-label="Tabela de likes por item">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Item</th>
+                <th scope="col">Like</th>
+                <th scope="col">Deslike</th>
+                <th scope="col">% do Like</th>
+              </tr>
+            </thead>
+            <tbody id="table-like-usage-body">
+              <tr>
+                <td colspan="4" class="text-center">Carregando...</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -452,37 +514,6 @@
               </tr>
             </thead>
             <tbody id="tableTimePerItem">
-              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Itens mais visualizados -->
-      <section class="chart-section col-4" aria-labelledby="titulo-itens-mais-vistos">
-        <div class="section-header">
-          <h2 id="titulo-itens-mais-vistos" class="section-title">
-            Itens mais visualizados
-            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Top de itens com maior número de visualizações no período.">?</button>
-          </h2>
-          <span class="section-subtitle">Top 10 de interesse</span>
-        </div>
-
-        <div class="chart-container">
-          <canvas id="chartTopItems" aria-label="Gráfico de itens mais visualizados"></canvas>
-        </div>
-
-        <div class="table-wrapper" role="region" aria-label="Tabela de itens mais visualizados">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th scope="col">Item</th>
-                <th scope="col">Visualizações</th>
-                <th scope="col">Tempo Médio</th>
-                <th scope="col">Categoria</th>
-              </tr>
-            </thead>
-            <tbody id="tableTopItems">
               <tr><td colspan="4" class="text-center">Carregando…</td></tr>
             </tbody>
           </table>
@@ -520,37 +551,6 @@
         </div>
       </section>
 
-      <!-- Categorias mais acessadas -->
-      <section class="chart-section col-6" aria-labelledby="titulo-categorias-mais">
-        <div class="section-header">
-          <h2 id="titulo-categorias-mais" class="section-title">
-            Categorias mais acessadas
-            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Categorias com maior volume de cliques de acesso no período.">?</button>
-          </h2>
-          <span class="section-subtitle">Popularidade por cliques</span>
-        </div>
-
-        <div class="chart-container">
-          <canvas id="chartCategoryPopularity" aria-label="Gráfico de categorias mais acessadas"></canvas>
-        </div>
-
-        <div class="table-wrapper" role="region" aria-label="Tabela de categorias mais acessadas">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th scope="col">Categoria</th>
-                <th scope="col">Cliques</th>
-                <th scope="col">Tempo Médio</th>
-                <th scope="col">% do Total</th>
-              </tr>
-            </thead>
-            <tbody id="tableCategoryPopularity">
-              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
       <!-- Botão Info (por item) -->
       <section class="chart-section col-4" aria-labelledby="titulo-info-por-item">
         <div class="section-header">
@@ -570,9 +570,8 @@
             <thead>
               <tr>
                 <th scope="col">Item</th>
-                <th scope="col">CliquesInfo </th>
                 <th scope="col">Tempo Médio (Info)</th>
-                <th scope="col">Visualizações</th>
+                <th scope="col">Cliques Info </th>
               </tr>
             </thead>
             <tbody id="tableInfoPerItem">
@@ -640,37 +639,6 @@
               </tr>
             </thead>
             <tbody id="tableRecurrence">
-              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Engajamento por mesa -->
-      <section class="chart-section col-4" aria-labelledby="titulo-engajamento-mesa">
-        <div class="section-header">
-          <h2 id="titulo-engajamento-mesa" class="section-title">
-            Engajamento por Mesa
-            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Tempo médio e interações por sessão para cada mesa/QR.">?</button>
-          </h2>
-          <span class="section-subtitle">Tempo e interações</span>
-        </div>
-
-        <div class="chart-container">
-          <canvas id="chartEngagementByMesa" aria-label="Gráfico de engajamento por mesa"></canvas>
-        </div>
-
-        <div class="table-wrapper" role="region" aria-label="Tabela de engajamento por mesa">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th scope="col">Mesa/QR</th>
-                <th scope="col">Tempo Médio</th>
-                <th scope="col">Interações/Sessão</th>
-                <th scope="col">Sessões</th>
-              </tr>
-            </thead>
-            <tbody id="tableEngagementByMesa">
               <tr><td colspan="4" class="text-center">Carregando…</td></tr>
             </tbody>
           </table>

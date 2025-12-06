@@ -176,101 +176,44 @@ body{
 
 /* ===================================================================
    BLOCO — SEÇÕES DE GRÁFICOS (Chart Section)
-   -------------------------------------------------------------------
-   Define o estilo visual de cada "caixa" de gráfico ou tabela
-   dentro do dashboard de métricas (como "Sessões por Período",
-   "Tempo Médio", "Engajamento por Mesa" etc.).
    =================================================================== */
 .chart-section {
-  /* Cor de fundo da caixa (usa a variável do tema escuro/claro) */
   background: var(--color-bg-secondary);
-
-  /* Borda fina e sutil que separa visualmente cada seção */
   border: 1px solid var(--color-border);
-
-  /* Cantos arredondados para suavizar o design */
   border-radius: 12px;
-
-  /* Sombra discreta para dar leve destaque e profundidade */
   box-shadow: var(--shadow-sm);
-
-  /* Garante que os elementos internos se posicionem corretamente */
   position: relative;
-
-  /* Oculta qualquer conteúdo que ultrapasse os limites do card */
   overflow: hidden;
-
-  /* ---------------------------------------------------------------
-     PADDING (espaçamento interno da caixa):
-     - 0.6rem → distância entre o topo da caixa e o título
-     - var(--spacing-lg) → espaçamento lateral (direita)
-     - var(--spacing-lg) → espaçamento na base (parte inferior)
-     - 0.3rem → espaçamento à esquerda (aproxima o título da parede)
-     --------------------------------------------------------------- */
   padding: 0.2rem var(--spacing-lg) var(--spacing-lg) 0.3rem;
 }
 
-/* ===================================================================
-   Cabeçalho das seções (parte superior de cada gráfico)
-   -------------------------------------------------------------------
-   Agrupa o título e, se houver, botões ou ícones laterais.
-   =================================================================== */
+/* Cabeçalho das seções */
 .chart-header {
-  /* Organiza título e elementos auxiliares (como o botão "?") lado a lado */
   display: flex;
-
-  /* Separa o título de eventuais botões ou menus à direita */
   justify-content: space-between;
-
-  /* Alinha verticalmente os itens ao centro */
   align-items: center;
-
-  /* Espaçamento inferior entre o cabeçalho e o conteúdo (gráfico ou tabela) */
   margin-bottom: var(--spacing-md);
 }
 
-/* ===================================================================
-   Título principal do gráfico
-   -------------------------------------------------------------------
-   Aparece no topo da caixa (ex: "Sessões por Período").
-   =================================================================== */
+/* Título do gráfico */
 .chart-title {
-  /* Tamanho de fonte grande (usa variável do tema para consistência) */
   font-size: var(--font-size-xl);
-
-  /* Peso da fonte mais espesso para destaque */
   font-weight: 700;
-
-  /* Cor do texto principal (compatível com o tema escuro/claro) */
   color: var(--color-text-primary);
-
-  /* Exibe título e ícone "?" lado a lado */
   display: flex;
   align-items: center;
-
-  /* Espaçamento horizontal entre o texto e o ícone "?" */
   gap: 0.5rem;
 }
 
-/* ===================================================================
-   Ajuste específico — "Distribuição por Dispositivo"
-   -------------------------------------------------------------------
-   Garante que o título fique em uma linha e com margens equilibradas
-   (encostado igualmente dos dois lados, sem quebra de linha).
-   =================================================================== */
+/* Ajuste específico — "Distribuição por Dispositivo" */
 .chart-section.dispositivos .section-header {
-  /* Reduz as margens internas laterais para equilibrar os lados */
   padding-left: 0.5rem !important;
   padding-right: 0.5rem !important;
 }
-
-/* Impede que o texto quebre em duas linhas */
 .chart-section.dispositivos .section-title {
   white-space: nowrap;
   line-height: 1.2;
 }
-
-/* Ajuste opcional para telas pequenas (permite quebra se faltar espaço) */
 @media (max-width: 900px) {
   .chart-section.dispositivos .section-title {
     white-space: normal;
@@ -289,7 +232,6 @@ body{
 /* Header do card Mesa/QR específico (deixe por ÚLTIMO) */
 .chart-section.scans-mesa .chart-header{ margin-bottom:.5rem !important; }
 
-/* Opcional: se quiser colar ainda mais a tabela no topo do card “Mesa/QR” */
 .chart-section.scans-mesa .chart-container,
 .chart-section.scans-mesa .chart-container--stacked,
 .chart-section.scans-mesa .chart-container__table{
@@ -301,24 +243,20 @@ body{
    GRID PRINCIPAL DA DASHBOARD
    =================================================================== */
 
-/* (mantive as vars para manter o bloco independente) */
 :root{
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -326,14 +264,12 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
@@ -365,18 +301,14 @@ body{
   border-color:var(--color-accent); color:var(--color-accent); outline:none;
 }
 
-
-/* -------------------------
-   GRADE → 2 colunas
-   ------------------------- */
+/* GRADE → 2 colunas */
 .dashboard-grid{
   display:grid;
-  grid-template-columns:repeat(12, minmax(0, 1fr)); /* mantemos 12 p/ compatibilidade */
-  gap: var(--spacing-2xl);                          /* espaçamento ENTRE blocos */
+  grid-template-columns:repeat(12, minmax(0, 1fr));
+  gap: var(--spacing-2xl);
   margin-bottom:var(--spacing-2xl);
 }
 
-/* Qualquer bloco “normal” ocupa meia largura (6/12) ⇒ 2 colunas por linha */
 .dashboard-grid > .chart-section:not(.col-12),
 .dashboard-grid > .col-8,
 .dashboard-grid > .col-6,
@@ -385,12 +317,10 @@ body{
   grid-column: span 6 / span 6;
 }
 
-/* Blocos largos continuam ocupando a largura total */
 .dashboard-grid > .col-12{
   grid-column: 1 / -1;
 }
 
-/* Cabeçalhos dos cards */
 .chart-header{
   display:flex;
   justify-content:space-between;
@@ -403,7 +333,6 @@ body{
 }
 .chart-subtitle{ font-size:var(--font-size-sm); color:var(--color-text-secondary); }
 
-/* Responsivo: < 1100px vira 1 coluna por linha */
 @media (max-width:1100px){
   .dashboard-grid{
     grid-template-columns: repeat(12, minmax(0,1fr));
@@ -415,34 +344,27 @@ body{
   .dashboard-grid > .col-6,
   .dashboard-grid > .col-4,
   .dashboard-grid > .col-3{
-    grid-column: 1 / -1; /* ocupa a linha toda */
+    grid-column: 1 / -1;
   }
 }
 
 /* ===================================================================
    BLOCO 3: FILTROS
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -450,22 +372,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -484,6 +403,7 @@ body{
   cursor:help; position:relative; z-index:2; transition:border-color .2s ease, color .2s ease;
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
+
 .btn{
   padding:.8rem 1.2rem; border:0; border-radius:10px; cursor:pointer;
   font-size:var(--font-size-sm); font-weight:900; letter-spacing:.6px;
@@ -497,7 +417,6 @@ body{
 .btn-secondary{ background:#e5e7eb; color:#0b1520; border:1px solid #d1d5db; }
 .btn-secondary:hover{ filter:brightness(.95); }
 
-/* Estilos específicos do bloco */
 .filters-section{
   width:100%; background:var(--color-bg-secondary); border:1px solid var(--color-border);
   border-radius:12px; padding:var(--spacing-lg); box-shadow:var(--shadow-sm);
@@ -512,7 +431,6 @@ body{
 .filter-select:hover,.filter-input:hover{ border-color:var(--color-accent); }
 .filter-select:focus,.filter-input:focus{ outline:none; border-color:var(--color-accent); }
 
-/* Flatpickr – tema escuro consistente */
 .flatpickr-calendar{ background:var(--color-surface); border:1px solid var(--color-border); box-shadow:var(--shadow-lg); color:var(--color-text-primary); }
 .flatpickr-day.selected,.flatpickr-day.startRange,.flatpickr-day.endRange{ background:var(--color-accent); border-color:var(--color-accent); color:#06131c; }
 .flatpickr-day:hover{ background:var(--color-bg-tertiary); border-color:var(--color-bg-tertiary); }
@@ -526,31 +444,23 @@ body{
 }
 @media (max-width:480px){ .filters-group{ min-width:100%; } }
 
-
 /* ===================================================================
    BLOCO 4: RESUMO (KPIs)
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -558,22 +468,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -593,12 +500,10 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* Estilos específicos do bloco */
 .kpis-section{
   width:100%; background:var(--color-bg-secondary); border:1px solid var(--color-border);
   border-radius:12px; padding:var(--spacing-lg); box-shadow:var(--shadow-sm);
   margin-top:var(--spacing-xl); 
-  /* LINHA ADICIONADA PARA O ESPAÇAMENTO */
   margin-bottom:var(--spacing-2xl); 
   position:relative; overflow:visible; z-index:0;
 }
@@ -649,31 +554,23 @@ body{
   .kpis-grid .kpi-card{ margin-bottom:var(--spacing-lg); }
 }
 
-
 /* ===================================================================
    BLOCO 6: ESCANEAMENTO TOTAL DE QR CODE [#titulo-scans-geral]
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -681,22 +578,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -716,48 +610,34 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* Estilos específicos do bloco */
-#titulo-scans-geral{
-  /* Estilos para o título específico, se houver */
-}
-.chart-section.scans-geral{
-  /* Estilos para a seção específica, se houver */
-}
+#titulo-scans-geral{}
+.chart-section.scans-geral{}
 .chart-section.scans-geral .chart-title::before{
   content:""; width:4px; height:24px; border-radius:2px;
   background:linear-gradient(90deg,var(--color-accent),var(--color-info));
   margin-right:var(--spacing-sm);
 }
 
-
 /* ===================================================================
    BLOCO 7: ESCANEAMENTO POR MESA/QRCODE [#titulo-scans-mesa]
    =================================================================== */
-/* Repetição mínima das variáveis (mantém independência do bloco) */
 :root{
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
-
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-border:#2b3442;
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-accent:#00d9ff;
-
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
 }
 
-/* Título específico (opcional) */
-#titulo-scans-mesa{
-  /* deixe vazio se não precisar de algo especial aqui */
-}
+#titulo-scans-mesa{}
 
-/* Card da seção — encosta mais o conteúdo no topo do card */
 .chart-section.scans-mesa{
-  /* reduz o padding do topo (mais próximo do header) */
   padding: 0.1rem var(--spacing-lg) var(--spacing-lg) 0.3rem !important;
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
@@ -767,8 +647,6 @@ body{
   overflow: hidden;
 }
 
-
-/* Título do gráfico */
 .chart-section.scans-mesa .chart-title{
   font-weight: 800;
   color: var(--color-text-primary);
@@ -783,12 +661,6 @@ body{
   margin-right:.5rem;
 }
 
-/* ================================
-   PUXAR O CONTEÚDO PARA CIMA
-   — Remove margens do 1º filho
-   — Zera margens/padding da área da tabela
-   — Tabela “cola” no header
-   ================================= */
 .chart-section.scans-mesa > *:first-child{ margin-top: 0 !important; }
 .chart-section.scans-mesa > .chart-content,
 .chart-section.scans-mesa > .chart-body,
@@ -797,7 +669,6 @@ body{
   padding-top: 0 !important;
 }
 
-/* Se você usa esses containers internos, eles já virão colados */
 .chart-section.scans-mesa .chart-container,
 .chart-section.scans-mesa .chart-container--stacked,
 .chart-section.scans-mesa .chart-container__table{
@@ -805,72 +676,52 @@ body{
   padding-top: 0 !important;
 }
 
-/* Tabela (ou grid) sem respiro superior */
 .chart-section.scans-mesa table{
   margin-top: 0 !important;
   border-collapse: separate;
-  border-spacing: 0 .25rem;        /* leve respiro entre linhas, se quiser remova */
+  border-spacing: 0 .25rem;
 }
-
-/* Cabeçalho da tabela mais enxuto */
 .chart-section.scans-mesa thead th{
   font-size: .85rem;
   font-weight: 700;
   color: var(--color-text-secondary);
-  padding: .25rem .4rem .3rem .4rem; /* topo baixo */
+  padding: .25rem .4rem .3rem .4rem;
   white-space: nowrap;
 }
-
-/* Linhas compactas */
 .chart-section.scans-mesa tbody td{
   padding: .35rem .4rem;
   font-size: .95rem;
   color: var(--color-text-primary);
 }
-
-/* Borda “caixa” da tabela (se aplicável) */
 .chart-section.scans-mesa .chart-container__table{
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: transparent;
 }
-
-/* Utilitário opcional: caso ainda fique baixo,
-   aplique a classe .pull-up no container da tabela no HTML */
 .chart-section.scans-mesa .pull-up{ margin-top: -8px !important; }
-
-/* Ícone de ajuda alinhado ao topo do título (se houver) */
 .chart-section.scans-mesa .kpi-help{
   align-self: flex-start;
   position: relative;
-  top: 0; left: 0;         /* sem deslocamento extra neste card */
+  top: 0; left: 0;
 }
-
 
 /* ===================================================================
    BLOCO 8: SESSÕES POR PERÍODO [#titulo-sessoes]
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -878,22 +729,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -913,40 +761,26 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* Estilos específicos do bloco */
-#titulo-sessoes{
-  /* Estilos para o título específico, se houver */
-}
-.chart-section.sessoes{
-  /* Estilos para a seção específica, se houver */
-}
-/* ... Adicionar outros estilos relevantes deste bloco ... */
-
+#titulo-sessoes{}
+.chart-section.sessoes{}
 
 /* ===================================================================
    BLOCO 9: TEMPO MÉDIO (CARDÁPIO) [#titulo-tempo-menu]
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -954,22 +788,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -989,40 +820,26 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* Estilos específicos do bloco */
-#titulo-tempo-menu{
-  /* Estilos para o título específico, se houver */
-}
-.chart-section.tempo-menu{
-  /* Estilos para a seção específica, se houver */
-}
-/* ... Adicionar outros estilos relevantes deste bloco ... */
-
+#titulo-tempo-menu{}
+.chart-section.tempo-menu{}
 
 /* ===================================================================
    BLOCO 10: HORÁRIO DE PICO [#titulo-pico]
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -1030,22 +847,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -1065,41 +879,25 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* Estilos específicos do bloco */
-#titulo-pico{
-  /* Estilos para o título específico, se houver */
-}
-.chart-section.pico{
-  /* Estilos para a seção específica, se houver */
-}
+#titulo-pico{}
+.chart-section.pico{}
 
-/* ===============================
-   Ajuste de alinhamento — Tabela “Horário de Pico”
-   =============================== */
-
-/* Aplica numeração uniforme (para evitar "dança" nos dígitos) */
 .chart-section.pico table th,
 .chart-section.pico table td{
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1, "lnum" 1;
 }
-
-/* Coluna 1 — Data (alinhada à esquerda e com respiro igual aos outros cards) */
 .chart-section.pico table th:nth-child(1),
 .chart-section.pico table td:nth-child(1){
   text-align: left;
   padding-left: 1rem;
   width: 40%;
 }
-
-/* Coluna 2 — Hora (centralizada) */
 .chart-section.pico table th:nth-child(2),
 .chart-section.pico table td:nth-child(2){
   text-align: center;
   width: 30%;
 }
-
-/* Coluna 3 — Scans (alinhada à direita) */
 .chart-section.pico table th:nth-child(3),
 .chart-section.pico table td:nth-child(3){
   text-align: right;
@@ -1110,27 +908,20 @@ body{
 /* ===================================================================
    BLOCO 11: USO DO BOTÃO "INFO" [#titulo-info]
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -1138,22 +929,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -1173,40 +961,26 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* Estilos específicos do bloco */
-#titulo-info{
-  /* Estilos para o título específico, se houver */
-}
-.chart-section.info{
-  /* Estilos para a seção específica, se houver */
-}
-/* ... Adicionar outros estilos relevantes deste bloco ... */
-
+#titulo-info{}
+.chart-section.info{}
 
 /* ===================================================================
    BLOCO 12: TEMPO POR ITEM [#titulo-tempo-item]
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -1214,22 +988,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -1249,40 +1020,26 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* Estilos específicos do bloco */
-#titulo-tempo-item{
-  /* Estilos para o título específico, se houver */
-}
-.chart-section.tempo-item{
-  /* Estilos para a seção específica, se houver */
-}
-/* ... Adicionar outros estilos relevantes deste bloco ... */
-
+#titulo-tempo-item{}
+.chart-section.tempo-item{}
 
 /* ===================================================================
    BLOCO 13: ITENS MAIS VISUALIZADOS [#titulo-itens-mais-vistos]
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -1290,22 +1047,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -1325,40 +1079,26 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* Estilos específicos do bloco */
-#titulo-itens-mais-vistos{
-  /* Estilos para o título específico, se houver */
-}
-.chart-section.itens-mais-vistos{
-  /* Estilos para a seção específica, se houver */
-}
-/* ... Adicionar outros estilos relevantes deste bloco ... */
-
+#titulo-itens-mais-vistos{}
+.chart-section.itens-mais-vistos{}
 
 /* ===================================================================
    BLOCO 14: TEMPO POR CATEGORIA [#titulo-tempo-categoria]
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -1366,22 +1106,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -1401,40 +1138,26 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* Estilos específicos do bloco */
-#titulo-tempo-categoria{
-  /* Estilos para o título específico, se houver */
-}
-.chart-section.tempo-categoria{
-  /* Estilos para a seção específica, se houver */
-}
-/* ... Adicionar outros estilos relevantes deste bloco ... */
-
+#titulo-tempo-categoria{}
+.chart-section.tempo-categoria{}
 
 /* ===================================================================
    BLOCO 15: CATEGORIAS MAIS ACESSADAS [#titulo-categorias-mais]
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -1442,22 +1165,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -1477,40 +1197,26 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* Estilos específicos do bloco */
-#titulo-categorias-mais{
-  /* Estilos para o título específico, se houver */
-}
-.chart-section.categorias-mais{
-  /* Estilos para a seção específica, se houver */
-}
-/* ... Adicionar outros estilos relevantes deste bloco ... */
-
+#titulo-categorias-mais{}
+.chart-section.categorias-mais{}
 
 /* ===================================================================
    BLOCO 16: INFO POR ITEM [#titulo-info-por-item]
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -1518,22 +1224,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -1553,40 +1256,26 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* Estilos específicos do bloco */
-#titulo-info-por-item{
-  /* Estilos para o título específico, se houver */
-}
-.chart-section.info-por-item{
-  /* Estilos para a seção específica, se houver */
-}
-/* ... Adicionar outros estilos relevantes deste bloco ... */
-
+#titulo-info-por-item{}
+.chart-section.info-por-item{}
 
 /* ===================================================================
    BLOCO 17: RECORRÊNCIA DE CLIENTES [#titulo-recorrencia]
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -1594,22 +1283,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -1629,40 +1315,26 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* Estilos específicos do bloco */
-#titulo-recorrencia{
-  /* Estilos para o título específico, se houver */
-}
-.chart-section.recorrencia{
-  /* Estilos para a seção específica, se houver */
-}
-/* ... Adicionar outros estilos relevantes deste bloco ... */
-
+#titulo-recorrencia{}
+.chart-section.recorrencia{}
 
 /* ===================================================================
    BLOCO 18: ENGAJAMENTO POR MESA [#titulo-engajamento-mesa]
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -1670,22 +1342,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -1705,40 +1374,26 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* Estilos específicos do bloco */
-#titulo-engajamento-mesa{
-  /* Estilos para o título específico, se houver */
-}
-.chart-section.engajamento-mesa{
-  /* Estilos para a seção específica, se houver */
-}
-/* ... Adicionar outros estilos relevantes deste bloco ... */
-
+#titulo-engajamento-mesa{}
+.chart-section.engajamento-mesa{}
 
 /* ===================================================================
    BLOCO 19: DISPOSITIVO USADOS [#titulo-dispositivos]
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -1746,22 +1401,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -1781,39 +1433,26 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* Estilos específicos do bloco */
-#titulo-dispositivos{
-  /* Estilos para o título específico, se houver */
-}
-.chart-section.dispositivos{
-  /* Estilos para a seção específica, se houver */
-}
-
+#titulo-dispositivos{}
+.chart-section.dispositivos{}
 
 /* ===================================================================
    BLOCO 20: MODELOS EM AR MAIS EXIBIDOS [#titulo-modelos]
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -1821,22 +1460,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -1856,40 +1492,26 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* Estilos específicos do bloco */
-#titulo-modelos{
-  /* Estilos para o título específico, se houver */
-}
-.chart-section.modelos{
-  /* Estilos para a seção específica, se houver */
-}
-/* ... Adicionar outros estilos relevantes deste bloco ... */
-
+#titulo-modelos{}
+.chart-section.modelos{}
 
 /* ===================================================================
    BLOCO 21: SAÚDE DOS MODELOS [#titulo-model-health]
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -1897,22 +1519,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -1932,40 +1551,26 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* Estilos específicos do bloco */
-#titulo-model-health{
-  /* Estilos para o título específico, se houver */
-}
-.chart-section.model-health{
-  /* Estilos para a seção específica, se houver */
-}
-/* ... Adicionar outros estilos relevantes deste bloco ... */
-
+#titulo-model-health{}
+.chart-section.model-health{}
 
 /* ===================================================================
    BLOCO 22: INSIGHTS [#titulo-insights]
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -1973,22 +1578,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -2008,10 +1610,7 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* Estilos específicos do bloco */
-#titulo-insights{
-  /* Estilos para o título específico, se houver */
-}
+#titulo-insights{}
 .insights-section{
   background:var(--color-bg-secondary); border:1px solid var(--color-border);
   border-radius:12px; padding:var(--spacing-lg); box-shadow:var(--shadow-sm);
@@ -2027,9 +1626,6 @@ body{
 }
 .insight-text{ font-size:var(--font-size-base); color:var(--color-text-primary); }
 
-/* ===============================
-   INSIGHTS — lista, linhas e tooltip
-   =============================== */
 .insights-section { position: relative; }
 
 .insights-list{
@@ -2040,7 +1636,6 @@ body{
   grid-template-columns: 1fr;
   row-gap: .35rem;
 }
-
 .insight-item{
   display: flex;
   align-items: baseline;
@@ -2050,53 +1645,43 @@ body{
   background: rgba(255,255,255,.02);
   border: 1px solid var(--color-border);
 }
-
 .insight-item::before{
   content: "•";
   color: var(--color-accent);
   margin-right: .25rem;
 }
-
 .insight-stamp{
   flex: 0 0 auto;
-  min-width: 160px;            /* “DD/MM/AAAA HH:mm” fica estável */
+  min-width: 160px;
   font-weight: 700;
   color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1, "lnum" 1;
 }
-
 .insight-msg{
   flex: 1 1 auto;
   color: var(--color-text-primary);
-  cursor: help;                /* indica que tem detalhamento */
+  cursor: help;
   text-decoration: none;
 }
 
 /* ===================================================================
-   BLOCO 23: RODAPÉ
+   BLOCO 23: RODAPÉ + TABELAS GLOBAIS
    =================================================================== */
-/* Repetição dos estilos de base para independência */
 :root{
-  /* Cores */
   --color-bg-primary:#0f1419;
   --color-bg-secondary:#151b25;
   --color-bg-tertiary:#1d2432;
   --color-surface:#0f1826;
-
   --color-border:#2b3442;
-
   --color-text-primary:#e2e8f0;
   --color-text-secondary:#a0aec0;
   --color-text-muted:#7b8aa0;
-
   --color-accent:#00d9ff;
   --color-info:#3b82f6;
   --color-success:#10b981;
   --color-warning:#f59e0b;
   --color-danger:#ef4444;
-
-  /* Tipografia / espaçamento */
   --font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   --font-size-2xs:.7rem;
   --font-size-xs:.75rem;
@@ -2104,22 +1689,19 @@ body{
   --font-size-base:1rem;
   --font-size-xl:1.25rem;
   --font-size-2xl:1.5rem;
-
   --spacing-2xs:.2rem;
   --spacing-sm:.5rem;
   --spacing-md:1rem;
   --spacing-lg:1.5rem;
   --spacing-xl:2rem;
   --spacing-2xl:3rem;
-
-  /* Sombra / transição */
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
   --shadow-md:0 6px 22px rgba(0,0,0,.28);
   --shadow-lg:0 14px 32px rgba(0,0,0,.35);
   --transition-base:250ms ease-in-out;
 }
 .ui-help-tooltip{
-  position:absolute; /* CORREÇÃO APLICADA */
+  position:absolute;
   max-width:320px; min-width:220px; padding:.6rem .8rem;
   background:rgba(15,18,25,.96); color:var(--color-text-primary);
   font-size:.85rem; line-height:1.25; border:1px solid var(--color-border);
@@ -2139,22 +1721,15 @@ body{
 }
 .kpi-help:hover,.kpi-help:focus-visible,.kpi-help[aria-expanded="true"]{ border-color:var(--color-accent); color:var(--color-accent); outline:none; }
 
-/* =======================
-   ESPAÇAMENTO GLOBAL
-   (aplica em todos os blocos)
-   ======================= */
-
-/* Respiro entre título, gráfico e tabela */
 .chart-header{ margin-bottom: 0.75rem !important; }
 .chart-container{ margin-bottom: 0.75rem !important; }
 .table-container{ margin-top: 0.75rem !important; }
 
-/* Tabelas mais “respiráveis” */
 .data-table{
   width: 100%;
-  table-layout: fixed;          /* colunas proporcionais e previsíveis */
+  table-layout: fixed;
   border-collapse: separate;
-  border-spacing: 0 .45rem;     /* espaço vertical entre linhas */
+  border-spacing: 0 .45rem;
 }
 .data-table thead th{
   padding: .55rem .9rem .45rem .9rem;
@@ -2165,8 +1740,6 @@ body{
   padding: .55rem .9rem;
   line-height: 1.35;
 }
-
-/* Linhas com leve cartão (opcional, fica bonito no tema) */
 .data-table tbody tr{
   background: rgba(255,255,255,.02);
   border-radius: 8px;
@@ -2174,68 +1747,52 @@ body{
 .data-table tbody tr > *:first-child{ border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
 .data-table tbody tr > *:last-child{  border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
 
-/* =======================
-   LARGURAS POR TABELA
-   (ajuste fino por ID)
-   ======================= */
-
-/* Escaneamento por Mesa/QRCode (4 colunas: Mesa | Período | Último Scan | % do Total) */
 #tableEngagementByMesa th:nth-child(1), #tableEngagementByMesa td:nth-child(1){ width: 36%; }
 #tableEngagementByMesa th:nth-child(2), #tableEngagementByMesa td:nth-child(2){ width: 18%; text-align:center; }
 #tableEngagementByMesa th:nth-child(3), #tableEngagementByMesa td:nth-child(3){ width: 24%; text-align:center; }
 #tableEngagementByMesa th:nth-child(4), #tableEngagementByMesa td:nth-child(4){ width: 22%; text-align:right; }
 
-/* Picos por hora (2 colunas) */
 #tablePeakHours th:nth-child(1), #tablePeakHours td:nth-child(1){ width: 30%; }
 #tablePeakHours th:nth-child(2), #tablePeakHours td:nth-child(2){ width: 70%; text-align:right; }
 
-/* Distribuição por Dispositivo (4 colunas) */
 #tableDeviceDistribution th:nth-child(1), #tableDeviceDistribution td:nth-child(1){ width: 32%; }
 #tableDeviceDistribution th:nth-child(2), #tableDeviceDistribution td:nth-child(2){ width: 22%; text-align:right; }
 #tableDeviceDistribution th:nth-child(3), #tableDeviceDistribution td:nth-child(3){ width: 22%; text-align:right; }
 #tableDeviceDistribution th:nth-child(4), #tableDeviceDistribution td:nth-child(4){ width: 24%; text-align:right; }
 
-/* Recorrência (3 colunas) */
 #tableRecurrence th:nth-child(1), #tableRecurrence td:nth-child(1){ width: 40%; }
 #tableRecurrence th:nth-child(2), #tableRecurrence td:nth-child(2){ width: 30%; text-align:right; }
 #tableRecurrence th:nth-child(3), #tableRecurrence td:nth-child(3){ width: 30%; text-align:right; }
 
-/* Tempo por Categoria (4 colunas) */
 #tableTimeByCategory th:nth-child(1), #tableTimeByCategory td:nth-child(1){ width: 34%; }
 #tableTimeByCategory th:nth-child(2), #tableTimeByCategory td:nth-child(2){ width: 22%; text-align:center; }
 #tableTimeByCategory th:nth-child(3), #tableTimeByCategory td:nth-child(3){ width: 22%; text-align:right; }
 #tableTimeByCategory th:nth-child(4), #tableTimeByCategory td:nth-child(4){ width: 22%; text-align:right; }
 
-/* Popularidade de Categorias (3 colunas) */
 #tableCategoryPopularity th:nth-child(1), #tableCategoryPopularity td:nth-child(1){ width: 46%; }
 #tableCategoryPopularity th:nth-child(2), #tableCategoryPopularity td:nth-child(2){ width: 27%; text-align:right; }
 #tableCategoryPopularity th:nth-child(3), #tableCategoryPopularity td:nth-child(3){ width: 27%; text-align:right; }
 
-/* Top Itens (4 colunas) */
 #tableTopItems th:nth-child(1), #tableTopItems td:nth-child(1){ width: 40%; }
 #tableTopItems th:nth-child(2), #tableTopItems td:nth-child(2){ width: 20%; text-align:right; }
 #tableTopItems th:nth-child(3), #tableTopItems td:nth-child(3){ width: 20%; text-align:center; }
 #tableTopItems th:nth-child(4), #tableTopItems td:nth-child(4){ width: 20%; text-align:right; }
 
-/* Info por Item (4 colunas) */
 #tableInfoPerItem th:nth-child(1), #tableInfoPerItem td:nth-child(1){ width: 44%; }
 #tableInfoPerItem th:nth-child(2), #tableInfoPerItem td:nth-child(2){ width: 18%; text-align:right; }
 #tableInfoPerItem th:nth-child(3), #tableInfoPerItem td:nth-child(3){ width: 18%; text-align:right; }
 #tableInfoPerItem th:nth-child(4), #tableInfoPerItem td:nth-child(4){ width: 20%; text-align:right; }
 
-/* Saúde dos Modelos (Top Models) */
 #tableTopModels th:nth-child(1), #tableTopModels td:nth-child(1){ width: 40%; }
 #tableTopModels th:nth-child(2), #tableTopModels td:nth-child(2){ width: 20%; text-align:right; }
 #tableTopModels th:nth-child(3), #tableTopModels td:nth-child(3){ width: 20%; text-align:center; }
 #tableTopModels th:nth-child(4), #tableTopModels td:nth-child(4){ width: 20%; text-align:right; }
 
-/* Erros de Carregamento (4 colunas) */
 #tableModelErrors th:nth-child(1), #tableModelErrors td:nth-child(1){ width: 36%; }
 #tableModelErrors th:nth-child(2), #tableModelErrors td:nth-child(2){ width: 34%; }
 #tableModelErrors th:nth-child(3), #tableModelErrors td:nth-child(3){ width: 14%; text-align:right; }
 #tableModelErrors th:nth-child(4), #tableModelErrors td:nth-child(4){ width: 16%; text-align:right; }
 
-/* Médias/Medianas (4 colunas) */
 #tableAvgTimeMenu th:nth-child(1), #tableAvgTimeMenu td:nth-child(1){ width: 40%; }
 #tableAvgTimeMenu th:nth-child(2), #tableAvgTimeMenu td:nth-child(2){ width: 20%; text-align:center; }
 #tableAvgTimeMenu th:nth-child(3), #tableAvgTimeMenu td:nth-child(3){ width: 20%; text-align:center; }

@@ -1,32 +1,11 @@
 /* ==========================================================
    MÉTRICAS DASHBOARD — ARCardápio
-   Organização em blocos:
-
-   1) GERAL
-   2) FILTROS
-   3) RESUMO
-   4) ESCANEAMENTO TOTAL DE QR CODE
-   5) ESCANEAMENTO POR MESA / QRCODE
-   6) SESSÕES POR PERÍODO
-   7) TEMPO MÉDIO (CARDÁPIO)
-   8) HORÁRIO DE PICO
-   9) USO DO BOTÃO "INFO"
-   10) TEMPO POR ITEM
-   11) ITENS MAIS VISUALIZADOS
-   12) TEMPO POR CATEGORIA
-   13) CATEGORIAS MAIS ACESSADAS
-   14) BOTÃO INFO (POR ITEM)
-   15) RECORRÊNCIA DE CLIENTES
-   16) ENGAJAMENTO POR MESA
-   17) DISPOSITIVOS USADOS
-   18) MODELOS MAIS EXIBIDOS
-   19) SAÚDE DOS MODELOS
    ========================================================== */
 
 (function () {
 
 /* ==========================================================
-   1) GERAL — CONFIG, DOM, HELPERS, FETCH, CHART, INSIGHTS
+   GERAL — CONFIG, DOM, HELPERS, FETCH, CHART, INSIGHTS
    ========================================================== */
 
 /* --------- BASE / CONFIGURAÇÃO GERAL --------- */
@@ -93,6 +72,15 @@ const elements = {
   kpiModelsLoaded: byId("kpiModelsLoaded"),
   kpiModelsErrors: byId("kpiModelsErrors"),
 
+  // 🔹 NOVO — elementos do bloco LIKE
+  cardLikeTotal: byId("kpiLikeTotal") || byId("kpi-like-total"),
+  cardDislikeTotal: byId("kpiDislikeTotal") || byId("kpi-dislike-total"),
+  chartLikeUsage: byId("chartLikeUsage"),
+  tableLikeUsage:
+    byId("tableLikeUsage") ||
+    byId("tbodyLikeUsage") ||
+    byId("table-like-usage-body"),
+
   // Gráficos
   chartScansTotal: byId("chartScansTotal"),
   chartScansByMesa: byId("chartScansByMesa"),
@@ -100,9 +88,7 @@ const elements = {
   chartAvgTimeMenu: byId("chartAvgTimeMenu"),
   chartPeakHours: byId("chartPeakHours"),
   chartDevices: byId("chartDevices"),
-  chartTopItems: byId("chartTopItems"),
   chartTimeByCategory: byId("chartTimeByCategory"),
-  chartCategoryPopularity: byId("chartCategoryPopularity"),
   chartTimePerItem: byId("chartTimePerItem"),
   chartInfoUsage: byId("chartInfoUsage"),
   chartRecurrence: byId("chartRecurrence"),
@@ -115,9 +101,7 @@ const elements = {
   tbodyMesaQR: byId("tbodyMesaQR"),
   tbodySessoes: byId("tbodySessoes"),
   tableAvgTimeMenu: byId("tableAvgTimeMenu"),
-  tableTopItems: byId("tableTopItems"),
   tbodyTimeByCategory: byId("tbodyTimeByCategory"),
-  tableCategoryPopularity: byId("tableCategoryPopularity"),
   tableTimePerItem: byId("tableTimePerItem"),
   tablePeakHours: byId("tablePeakHours"),
   tableRecurrence: byId("tableRecurrence"),
@@ -139,17 +123,20 @@ const charts = {
   avgTimeMenu: null,
   peakHours: null,
   devices: null,
-  topItems: null,
   timeByCategory: null,
-  categoryPopularity: null,
   timePerItem: null,
   infoUsage: null,
   recurrence: null,
   engagementByMesa: null,
   modelHealth: null,
   infoPerItem: null,
-  topModels: null
+  topModels: null,
+  likeUsage: null, // 🔹 novo slot para o gráfico de likes
 };
+
+// expõe no escopo global para quem usa window.elements/window.charts
+window.elements = elements;
+window.charts = charts;
 
 /* --------- HELPERS GERAIS --------- */
 const $  = (sel, parent = document) => parent.querySelector(sel);
@@ -858,7 +845,7 @@ function startInsightScheduler(data){
 
 
 /* ==========================================================
-   2) FILTROS — TENANT, RANGE DE DATAS, ESTADO
+   FILTROS — TENANT, RANGE DE DATAS, ESTADO
    ========================================================== */
 
 // Resolve o tenant usando o MESMO padrão do backend
@@ -1072,7 +1059,7 @@ function wireFilters() {
 
 
 /* ==========================================================
-   3) RESUMO (KPIs)
+   RESUMO (KPIs)
    ========================================================== */
 function renderKPIs(kpis){
   if(elements.kpiScans) elements.kpiScans.textContent = toBR(kpis.scansTotal);
@@ -1100,7 +1087,7 @@ function renderKPIs(kpis){
 
 
 /* ==========================================================
-   4) ESCANEAMENTO TOTAL DE QR CODE
+   ESCANEAMENTO TOTAL DE QR CODE 
    ========================================================== */
 
 function renderScansTotalChart(data){
@@ -1118,7 +1105,7 @@ function renderScansTotalChart(data){
 
 
 /* ==========================================================
-   5) ESCANEAMENTO POR MESA / QRCODE
+   ESCANEAMENTO POR MESA / QRCODE
    ========================================================== */
 
 // Normaliza rótulo de mesa: "mesa1" → "Mesa 1"
@@ -1135,7 +1122,7 @@ function formatMesaLabel(raw) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function renderTabelaMesaQR(list){
+function renderTabelaMesaQR(list) {
   const tbody = elements.tbodyMesaQR;
   if (!tbody) return;
 
@@ -1146,7 +1133,10 @@ function renderTabelaMesaQR(list){
     return;
   }
 
-  const totalScans = sum(safe.map(i => Number(i.scans ?? i.totalScans ?? 0)));
+  // Total de scans (para calcular % do total)
+  const totalScans = sum(
+    safe.map(i => Number(i.scans ?? i.totalScans ?? 0))
+  );
 
   const rows = safe.map(i => {
     const mesaRaw =
@@ -1157,15 +1147,23 @@ function renderTabelaMesaQR(list){
 
     const mesaLabel = formatMesaLabel(mesaRaw);
 
+    // QUANTIDADE DE SCANS NO PERÍODO (não é tempo)
     const scans = Number(i.scans ?? i.totalScans ?? 0);
-    const avgTimeSec = Number(i.avgTimeSec ?? i.avgTime ?? 0);
-    const lastScan = i.ultimoScan || i.lastScan || i.last || i.lastSeen || null;
-    const pctTotal = totalScans ? pct(scans, totalScans) : "0%";
+
+    // Último horário de scan
+    const lastScan =
+      i.ultimoScan ||
+      i.lastScan ||
+      i.last ||
+      i.lastSeen ||
+      null;
+
+    const pctTotal = totalScans > 0 ? pct(scans, totalScans) : "0%";
 
     return `
       <tr>
         <td>${mesaLabel}</td>
-        <td style="text-align:center">${formatDurationMMSS(avgTimeSec)}</td>
+        <td style="text-align:center">${toBR(scans)}</td>
         <td style="text-align:center">${formatTimeBRSafe(lastScan)}</td>
         <td style="text-align:right">${pctTotal}</td>
       </tr>
@@ -1175,13 +1173,13 @@ function renderTabelaMesaQR(list){
   tbody.innerHTML = rows;
 }
 
-function renderScansByMesaChart(data){
+function renderScansByMesaChart(data) {
   if (!elements.chartScansByMesa) return;
   if (charts.scansByMesa) charts.scansByMesa.destroy();
 
   const top = [...data.porMesa]
-    .sort((a,b)=> (b.scans ?? 0) - (a.scans ?? 0))
-    .slice(0,10);
+    .sort((a, b) => (b.scans ?? 0) - (a.scans ?? 0))
+    .slice(0, 10);
 
   charts.scansByMesa = buildBarHorizontal(
     elements.chartScansByMesa.getContext("2d"),
@@ -1189,15 +1187,150 @@ function renderScansByMesaChart(data){
       const mesaRaw = i.mesa || i.qrLabel || "QR/mesa-desconhecido";
       return formatMesaLabel(mesaRaw);
     }),
-    top.map(i=> i.scans ?? 0),
+    top.map(i => i.scans ?? 0),
     "Scans por Mesa",
     "#00d9ff"
   );
 }
 
+/* ==========================================================
+   ENGAJAMENTO POR MESA
+   ========================================================== */
+
+function renderTabelaEngagementByMesa(list) {
+  const tbody = elements.tableEngagementByMesa;
+  if (!tbody) return;
+
+  const safe = Array.isArray(list) ? list : [];
+
+  if (!safe.length) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+    return;
+  }
+
+  const rows = safe.map((item) => {
+    // Mesmo padrão de label do card "Escaneamento por Mesa/QRCODE"
+    const mesaRaw =
+      item.mesa ||
+      item.qrLabel ||
+      item.label ||
+      "QR/mesa-desconhecido";
+
+    const mesaLabel = typeof formatMesaLabel === "function"
+      ? formatMesaLabel(mesaRaw)
+      : String(mesaRaw);
+
+    // Tempo médio em segundos (fallback seguro)
+    const avgTimeSec = Number(item.avgTimeSec ?? item.avgTime ?? 0) || 0;
+
+    // Total de sessões (aceita vários nomes, mas nunca deixa NaN)
+    const sessions = Number(
+      item.sessions ??
+      item.sessionCount ??
+      item.totalSessions ??
+      item.scans ??
+      item.totalScans ??
+      0
+    ) || 0;
+
+    // Total de interações (cliques, infos, etc.)
+    const totalInteractions = Number(
+      item.totalInteractions ??
+      item.interactions ??
+      item.clicks ??
+      0
+    ) || 0;
+
+    // Cálculo de Interações/Sessão:
+    // 1) se vier pronto em item.interactionsPerSession e for número, usa.
+    // 2) senão, calcula totalInteractions / sessions (com proteção).
+    let interactionsPerSession;
+
+    if (typeof item.interactionsPerSession === "number" &&
+        !Number.isNaN(item.interactionsPerSession)) {
+      interactionsPerSession = item.interactionsPerSession;
+    } else if (sessions > 0) {
+      interactionsPerSession = totalInteractions / sessions;
+    } else {
+      interactionsPerSession = 0;
+    }
+
+    const interactionsPerSessionStr =
+      Number.isFinite(interactionsPerSession) && interactionsPerSession > 0
+        ? interactionsPerSession.toFixed(1).replace(".", ",")
+        : "0";
+
+    return `
+      <tr>
+        <td>${mesaLabel}</td>
+        <td style="text-align:center">${formatDurationMMSS(avgTimeSec)}</td>
+        <td style="text-align:center">${interactionsPerSessionStr}</td>
+        <td style="text-align:right">${toBR(sessions)}</td>
+      </tr>
+    `;
+  }).join("");
+
+  tbody.innerHTML = rows;
+}
+
+function renderEngagementByMesaChart(data) {
+  if (!elements.chartEngagementByMesa) return;
+  if (charts.engagementByMesa) charts.engagementByMesa.destroy();
+
+  const source = Array.isArray(data?.porMesa) ? data.porMesa : [];
+  if (!source.length) return;
+
+  const top = [...source]
+    .sort((a, b) => {
+      const sa = Number(
+        a.sessions ??
+        a.sessionCount ??
+        a.totalSessions ??
+        a.scans ??
+        a.totalScans ??
+        0
+      ) || 0;
+      const sb = Number(
+        b.sessions ??
+        b.sessionCount ??
+        b.totalSessions ??
+        b.scans ??
+        b.totalScans ??
+        0
+      ) || 0;
+      return sb - sa;
+    })
+    .slice(0, 10);
+
+  charts.engagementByMesa = buildBarHorizontal(
+    elements.chartEngagementByMesa.getContext("2d"),
+    top.map((item) => {
+      const mesaRaw =
+        item.mesa ||
+        item.qrLabel ||
+        item.label ||
+        "QR/mesa-desconhecido";
+      return typeof formatMesaLabel === "function"
+        ? formatMesaLabel(mesaRaw)
+        : String(mesaRaw);
+    }),
+    top.map((item) =>
+      Number(
+        item.sessions ??
+        item.sessionCount ??
+        item.totalSessions ??
+        item.scans ??
+        item.totalScans ??
+        0
+      ) || 0
+    ),
+    "Sessões",
+    "#3b82f6"
+  );
+}
 
 /* ==========================================================
-   6) SESSÕES POR PERÍODO
+   SESSÕES POR PERÍODO
    ========================================================== */
 
 function renderTabelaSessoes(labels, sessoes, unicos){
@@ -1226,7 +1359,7 @@ function renderSessoesChart(data){
 }
 
 /* ==========================================================
-   7) TEMPO MÉDIO (CARDÁPIO)
+   TEMPO MÉDIO (CARDÁPIO)
    ========================================================== */
 
 // Helper: formata o valor numérico do eixo Y em S / M / H
@@ -1348,7 +1481,7 @@ function renderAvgTimeMenuChart(data) {
 
 
 /* ==========================================================
-   8) HORÁRIO DE PICO
+   HORÁRIO DE PICO
    ========================================================== */
 
 function renderTabelaPeakHours(list){
@@ -1385,25 +1518,211 @@ function renderPeakHoursChart(data){
 
 
 /* ==========================================================
-   9) USO DO BOTÃO "INFO"
+   USO DO BOTÃO "LIKE"
    ========================================================== */
 
-function renderInfoUsageChart(data){
-  if (!elements.chartInfoUsage) return;
-  if (charts.infoUsage) charts.infoUsage.destroy();
-  charts.infoUsage = buildLineChart(
-    elements.chartInfoUsage.getContext("2d"),
-    data.rangeLabels,
-    data.daily.info,
-    "Aberturas Info (dia)",
-    "#f59e0b",
-    (ctx)=>` ${toBR(ctx.parsed.y)} abertura(s)`
+function renderLikeUsage(data) {
+  try {
+    renderLikeKpis(data);
+    renderTabelaLikeUsage(data);
+    renderLikeUsageChart(data);
+  } catch (err) {
+    console.error("[METRICAS] Erro em renderLikeUsage:", err);
+  }
+}
+
+// ---- KPIs (cards grandes) ----
+function renderLikeKpis(data) {
+  if (!data || !data.kpis) return;
+
+  const likeTotal    = Number(data.kpis.likeTotal    || 0);
+  const dislikeTotal = Number(data.kpis.dislikeTotal || 0);
+
+  const elLike =
+    (window.elements && elements.cardLikeTotal) ||
+    document.getElementById("kpiLikeTotal") ||
+    document.getElementById("kpi-like-total");
+
+  const elDislike =
+    (window.elements && elements.cardDislikeTotal) ||
+    document.getElementById("kpiDislikeTotal") ||
+    document.getElementById("kpi-dislike-total");
+
+  if (elLike)    elLike.textContent    = toBR(likeTotal);
+  if (elDislike) elDislike.textContent = toBR(dislikeTotal);
+}
+
+// ---- helper: % assinada (sempre deixa negativo quando tem mais dislike) ----
+function computeSignedLikePct(item) {
+  const likes    = Number(item.likes    || 0);
+  const dislikes = Number(item.dislikes || 0);
+  const total    = likes + dislikes;
+  if (!total) return 0;
+
+  // score em %: -100% só dislike, +100% só like
+  const score = ((likes - dislikes) / total) * 100;
+  // 1 casa decimal
+  return Math.round(score * 10) / 10;
+}
+
+// ---- Tabela "Item / Like / Deslike / % do Like" ----
+function renderTabelaLikeUsage(data) {
+  const tbody =
+    (window.elements && elements.tableLikeUsage) ||
+    document.getElementById("tableLikeUsage") ||
+    document.getElementById("table-like-usage-body");
+
+  if (!tbody) return;
+
+  const base = (data && Array.isArray(data.topItems)) ? data.topItems : [];
+
+  // só itens que têm pelo menos 1 like ou dislike
+  const list = base.filter(i => (Number(i.likes) || 0) || (Number(i.dislikes) || 0));
+
+  if (!list.length) {
+    tbody.innerHTML =
+      `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+    return;
+  }
+
+  // ---- ORDENAÇÃO: 1) % assinada desc  2) Likes desc  3) interações desc ----
+  const sorted = [...list].sort((a, b) => {
+    const pctA = computeSignedLikePct(a);
+    const pctB = computeSignedLikePct(b);
+
+    if (pctB !== pctA) return pctB - pctA; // maior primeiro
+
+    const likesA = Number(a.likes || 0);
+    const likesB = Number(b.likes || 0);
+    if (likesB !== likesA) return likesB - likesA;
+
+    const totalA = likesA + Number(a.dislikes || 0);
+    const totalB = likesB + Number(b.dislikes || 0);
+    return totalB - totalA;
+  });
+
+  const rows = sorted.map(i => {
+    const likes    = Number(i.likes    || 0);
+    const dislikes = Number(i.dislikes || 0);
+    const total    = likes + dislikes;
+
+    const signedPct = computeSignedLikePct(i);
+
+    // cor baseada na % assinada (global, independente de e-mail)
+    let color = "#9ca3af"; // cinza padrão
+
+    if (total === 0) {
+      color = "#9ca3af";         // sem interação
+    } else if (signedPct > 0) {
+      color = "#22c55e";         // mais like que dislike → verde
+    } else if (signedPct < 0) {
+      color = "#ef4444";         // mais dislike que like → vermelho
+    } else {
+      color = "#9ca3af";         // empate → cinza
+    }
+
+    const pctText = `${signedPct.toFixed(1).replace(".", ",")}%`;
+
+    const rawName =
+      i.item ||
+      i.name ||
+      i.label ||
+      i.title ||
+      i.modelName ||
+      "Item";
+
+    const nomeItem = typeof mapItemName === "function"
+      ? mapItemName(rawName)
+      : String(rawName);
+
+    return `
+      <tr>
+        <td>${nomeItem}</td>
+        <td style="text-align:center">${toBR(likes)}</td>
+        <td style="text-align:center">${toBR(dislikes)}</td>
+        <td style="text-align:right">
+          <span style="color:${color}">${pctText}</span>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  tbody.innerHTML = rows;
+}
+
+// ---- Gráfico diário (linha) de likes ----
+function renderLikeUsageChart(data) {
+  const canvas =
+    (window.elements && elements.chartLikeUsage) ||
+    document.getElementById("chartLikeUsage");
+
+  if (!canvas) return;
+
+  if (window.charts && charts.likeUsage) {
+    charts.likeUsage.destroy();
+  }
+
+  const labels = (data && data.rangeLabels) || [];
+  const likes  = (data && data.daily && data.daily.likes) || [];
+
+  const hasData =
+    Array.isArray(likes) && likes.some(v => Number(v) > 0);
+
+  if (!hasData) {
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    if (window.charts) charts.likeUsage = null;
+    return;
+  }
+
+  if (!window.charts) window.charts = {};
+
+  charts.likeUsage = buildLineChart(
+    canvas.getContext("2d"),
+    labels,
+    likes,
+    "Likes por dia",
+    "#22c55e",
+    (ctx) => ` ${toBR(ctx.parsed.y)} like(s)`
   );
+}
+
+// ADAPTADOR DE DADOS PARA O BLOCO DE LIKE
+function getLikeUsageBlock(data) {
+  if (!data) return null;
+
+  // Se a API já mandar um bloco separado (data.likeUsage), usa ele
+  if (data.likeUsage) return data.likeUsage;
+
+  const topItems = Array.isArray(data.topItems) ? data.topItems : [];
+
+  // Se vier kpis global do backend, usa; senão calcula pelo topItems
+  const likeTotal = (data.kpis && typeof data.kpis.likeTotal === "number")
+    ? data.kpis.likeTotal
+    : topItems.reduce((acc, i) => acc + (Number(i.likes) || 0), 0);
+
+  const dislikeTotal = (data.kpis && typeof data.kpis.dislikeTotal === "number")
+    ? data.kpis.dislikeTotal
+    : topItems.reduce((acc, i) => acc + (Number(i.dislikes) || 0), 0);
+
+  return {
+    kpis: {
+      likeTotal,
+      dislikeTotal,
+    },
+    topItems,
+    daily: {
+      likes: (data.daily && Array.isArray(data.daily.likes))
+        ? data.daily.likes
+        : [],
+    },
+    rangeLabels: data.rangeLabels || [],
+  };
 }
 
 
 /* ==========================================================
-   10) TEMPO POR ITEM
+   TEMPO POR ITEM
    ========================================================== */
 
 // Helper: encurta nome só para o gráfico (tabela continua full)
@@ -1498,59 +1817,101 @@ function renderTimePerItemChart(data) {
 }
 
 /* ==========================================================
-   11) ITENS MAIS VISUALIZADOS
-   ========================================================== */
-
-function renderTabelaTopItems(list){
-  const tbody = elements.tableTopItems;
-  if(!tbody) return;
-  const rows = list.map(i=>`
-    <tr>
-      <td>${mapItemName(i.item)}</td>
-      <td style="text-align:center">${toBR(i.views)}</td>
-      <td style="text-align:center">${formatDurationMMSS(i.avgTimeSec)}</td>
-      <td style="text-align:right">${i.category}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
-}
-
-function renderTopItemsChart(data){
-  if (!elements.chartTopItems) return;
-  if (charts.topItems) charts.topItems.destroy();
-  const top = data.topItems.slice(0,10);
-  charts.topItems = buildBarHorizontal(
-    elements.chartTopItems.getContext("2d"),
-    top.map(i=>i.item),
-    top.map(i=>i.views),
-    "Views",
-    "#00d9ff"
-  );
-}
-
-
-/* ==========================================================
-   12) TEMPO POR CATEGORIA
+   TEMPO POR CATEGORIA
    ========================================================== */
 
 function renderTabelaTimeByCategory(list){
-  const tbody=elements.tbodyTimeByCategory; if(!tbody) return;
-  const rows = list.map(i=>`
-    <tr>
-      <td>${mapCategoryName(i.category)}</td>
-      <td style="text-align:center">${formatDurationMMSS(i.avgTimeSec)}</td>
-      <td style="text-align:center">${toBR(i.sessions)}</td>
-      <td style="text-align:right">${i.pctTotalTime}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+  const tbody = elements.tbodyTimeByCategory;
+  if (!tbody) return;
+
+  const safe = Array.isArray(list) ? list : [];
+
+  if (!safe.length) {
+    tbody.innerHTML =
+      `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+    return;
+  }
+
+  // base para cálculo de % quando pctTotalTime não vier da API
+  const totalBase = safe.reduce((acc, i) => {
+    const totalTime =
+      Number(i.totalTimeSec || 0) ||
+      (Number(i.avgTimeSec || 0) * Number(i.sessions || 0));
+    return acc + (totalTime || 0);
+  }, 0);
+
+  // ORDEM: 1) tempo médio desc  2) sessões desc
+  const sorted = [...safe].sort((a, b) => {
+    const avgA = Number(a.avgTimeSec || 0);
+    const avgB = Number(b.avgTimeSec || 0);
+
+    if (avgB !== avgA) return avgB - avgA;
+
+    const sessA = Number(a.sessions || 0);
+    const sessB = Number(b.sessions || 0);
+    return sessB - sessA;
+  });
+
+  const rows = sorted.map(i => {
+    const categoria = mapCategoryName(i.category);
+
+    const avgTimeSec = Number(i.avgTimeSec || 0);
+    const sessions   = Number(i.sessions   || 0);
+
+    // 1ª opção: usar o que vier pronto
+    let pctStr = (i.pctTotalTime != null && i.pctTotalTime !== "undefined")
+      ? String(i.pctTotalTime)
+      : null;
+
+    // 2ª opção: calcular se não tiver pctTotalTime
+    if (!pctStr) {
+      const totalTime =
+        Number(i.totalTimeSec || 0) ||
+        (avgTimeSec * sessions);
+
+      if (totalBase > 0 && totalTime > 0) {
+        const pctVal = (totalTime / totalBase) * 100;
+        pctStr = `${pctVal.toFixed(1).replace(".", ",")}%`;
+      } else {
+        pctStr = "0%";
+      }
+    }
+
+    return `
+      <tr>
+        <td>${categoria}</td>
+        <td style="text-align:center">${formatDurationMMSS(avgTimeSec)}</td>
+        <td style="text-align:center">${toBR(sessions)}</td>
+        <td style="text-align:right">${pctStr}</td>
+      </tr>
+    `;
+  }).join("");
+
+  tbody.innerHTML = rows;
 }
 
 function renderTimeByCategoryChart(data){
   if (!elements.chartTimeByCategory) return;
   if (charts.timeByCategory) charts.timeByCategory.destroy();
+
+  const list = Array.isArray(data.timeByCategory) ? data.timeByCategory : [];
+
+  // mesma ordem da tabela: tempo médio desc, depois sessões desc
+  const sorted = [...list].sort((a, b) => {
+    const avgA = Number(a.avgTimeSec || 0);
+    const avgB = Number(b.avgTimeSec || 0);
+
+    if (avgB !== avgA) return avgB - avgA;
+
+    const sessA = Number(a.sessions || 0);
+    const sessB = Number(b.sessions || 0);
+    return sessB - sessA;
+  });
+
   charts.timeByCategory = buildBarHorizontal(
     elements.chartTimeByCategory.getContext("2d"),
-    data.timeByCategory.map(i=>i.category),
-    data.timeByCategory.map(i=>i.avgTimeSec),
+    sorted.map(i => mapCategoryName(i.category)),
+    sorted.map(i => Number(i.avgTimeSec || 0)),
     "Tempo médio (s)",
     "#10b981"
   );
@@ -1558,84 +1919,170 @@ function renderTimeByCategoryChart(data){
 
 
 /* ==========================================================
-   13) CATEGORIAS MAIS ACESSADAS
-   ========================================================== */
-
-function renderTabelaTopCategories(list){
-  const tbody=elements.tableCategoryPopularity; if(!tbody) return;
-  const rows = list.map(i=>`
-    <tr>
-      <td>${mapCategoryName(i.category)}</td>
-      <td style="text-align:center">${toBR(i.clicks)}</td>
-      <td style="text-align:center">${formatDurationMMSS(i.avgTimeSec)}</td>
-      <td style="text-align:right">${i.pctTotal}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
-}
-
-function renderCategoryPopularityChart(data){
-  const canvas = elements.chartCategoryPopularity;
-  if (!canvas) return;
-  if (charts.categoryPopularity) charts.categoryPopularity.destroy();
-
-  const src = data?.topCategories || [];
-  const rows = (Array.isArray(src) ? src : []).map((r) => ({
-    categoria: r.category ?? r.categoria ?? r.name ?? r.label ?? '—',
-    cliques:   Number(r.clicks ?? r.cliques ?? r.total ?? 0),
-    tempo:     r.avgTime ?? r.tempoMedio ?? r.time ?? 0,
-    pct:       Number(r.pct ?? r.percent ?? r.percentage ?? r.participacao ?? 0),
-  }));
-
-  if (!rows.length) return;
-
-  const labels = rows.map(r => r.categoria);
-  const values = rows.map(r => r.cliques);
-
-  const idealH = Math.max(220, rows.length * 28);
-  canvas.style.height = `${idealH}px`;
-
-  charts.categoryPopularity = buildBarHorizontal(
-    canvas.getContext('2d'),
-    labels,
-    values,
-    "Cliques",
-    "#00d9ff"
-  );
-}
-
-
-/* ==========================================================
-   14) BOTÃO INFO (POR ITEM)
+   BOTÃO INFO (POR ITEM)
    ========================================================== */
 
 function renderTabelaInfoPerItem(list){
-  const tbody=elements.tableInfoPerItem; if(!tbody) return;
-  const rows = list.map(item=>`
-    <tr>
-      <td>${item.item}</td>
-      <td style="text-align:center">${toBR(item.clicksInfo)}</td>
-      <td style="text-align:center">${formatDurationMMSS(item.avgTimeSec)}</td>
-      <td style="text-align:right">${toBR(item.views)}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
+  const tbody = elements.tableInfoPerItem;
+  if (!tbody) return;
+
+  const safe = Array.isArray(list) ? list : [];
+
+  if (!safe.length) {
+    tbody.innerHTML =
+      `<tr><td colspan="3" class="text-center">Sem dados.</td></tr>`;
+    return;
+  }
+
+  // helper: quantos cliques Info o item teve
+  const getInfoClicks = (item) => {
+    return Number(
+      item.clicksInfo ??
+      item.infoClicks ??
+      item.infoCount ??
+      item.infoOpens ??
+      0
+    ) || 0;
+  };
+
+  // ORDEM: 1) Cliques Info desc  2) Tempo médio (Info) desc
+  const sorted = [...safe].sort((a, b) => {
+    const ca = getInfoClicks(a);
+    const cb = getInfoClicks(b);
+    if (cb !== ca) return cb - ca;
+
+    const ta = Number(a.avgTimeSec || 0);
+    const tb = Number(b.avgTimeSec || 0);
+    return tb - ta;
+  });
+
+  const rows = sorted.map(item => {
+    const rawName =
+      item.item ||
+      item.name ||
+      item.label ||
+      item.title ||
+      item.modelName ||
+      "Item";
+
+    const nomeItem = typeof mapItemName === "function"
+      ? mapItemName(rawName)
+      : String(rawName);
+
+    const clicksInfo = getInfoClicks(item);
+    const avgTimeSec = Number(item.avgTimeSec || 0);
+
+    return `
+      <tr>
+        <td>${nomeItem}</td>
+        <td style="text-align:center">${formatDurationMMSS(avgTimeSec)}</td>
+        <td style="text-align:right">${toBR(clicksInfo)}</td>
+      </tr>
+    `;
+  }).join("");
+
+  tbody.innerHTML = rows;
 }
 
 function renderInfoPerItemChart(data){
   if (!elements.chartInfoPerItem) return;
   if (charts.infoPerItem) charts.infoPerItem.destroy();
-  const top = data.topItems.sort((a,b)=>b.clicksInfo-a.clicksInfo).slice(0,10);
+
+  // Fonte: se existir data.infoPerItem usa ela; senão cai em data.topItems
+  const source =
+    (data && Array.isArray(data.infoPerItem) && data.infoPerItem.length)
+      ? data.infoPerItem
+      : (data && Array.isArray(data.topItems) ? data.topItems : []);
+
+  if (!source.length) return;
+
+  const getInfoClicks = (item) => {
+    return Number(
+      item.clicksInfo ??
+      item.infoClicks ??
+      item.infoCount ??
+      item.infoOpens ??
+      0
+    ) || 0;
+  };
+
+  // mesma ordenação da tabela: cliques desc, depois tempo médio desc
+  const sorted = [...source].sort((a, b) => {
+    const ca = getInfoClicks(a);
+    const cb = getInfoClicks(b);
+    if (cb !== ca) return cb - ca;
+
+    const ta = Number(a.avgTimeSec || 0);
+    const tb = Number(b.avgTimeSec || 0);
+    return tb - ta;
+  });
+
+  const top = sorted.slice(0, 10);
+
   charts.infoPerItem = buildBarHorizontal(
     elements.chartInfoPerItem.getContext("2d"),
-    top.map(i=>i.item),
-    top.map(i=>i.clicksInfo),
+    top.map(i => {
+      const rawName =
+        i.item ||
+        i.name ||
+        i.label ||
+        i.title ||
+        i.modelName ||
+        "Item";
+
+      const nomeItem = typeof mapItemName === "function"
+        ? mapItemName(rawName)
+        : String(rawName);
+
+      return (typeof shortenItemLabel === "function")
+        ? shortenItemLabel(nomeItem, 18)
+        : nomeItem;
+    }),
+    top.map(i => getInfoClicks(i)),
     "Cliques Info",
     "#3b82f6"
   );
 }
 
+/* ==========================================================
+   USO GERAL DO BOTÃO INFO (SÉRIE DIÁRIA)
+   ========================================================== */
+
+function renderInfoUsageChart(data){
+  const canvas = elements.chartInfoUsage;
+  if (!canvas) return;
+
+  if (charts.infoUsage) {
+    charts.infoUsage.destroy();
+    charts.infoUsage = null;
+  }
+
+  const labels = (data && data.rangeLabels) || [];
+  const infoSeries =
+    (data && data.daily && Array.isArray(data.daily.info))
+      ? data.daily.info
+      : [];
+
+  const hasData = infoSeries.some(v => Number(v) > 0);
+  if (!hasData){
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    return;
+  }
+
+  charts.infoUsage = buildLineChart(
+    canvas.getContext("2d"),
+    labels,
+    infoSeries,
+    "Cliques no Info (dia)",
+    "#f97316",
+    (ctx) => ` ${toBR(ctx.parsed.y)} clique(s)`
+  );
+}
+
 
 /* ==========================================================
-   15) RECORRÊNCIA DE CLIENTES
+   RECORRÊNCIA DE CLIENTES
    ========================================================== */
 
 function renderTabelaRecurrence(list) {
@@ -1694,39 +2141,8 @@ function renderRecurrenceChart(data){
   });
 }
 
-
 /* ==========================================================
-   16) ENGAJAMENTO POR MESA
-   ========================================================== */
-
-function renderTabelaEngagementByMesa(list){
-  const tbody=elements.tableEngagementByMesa; if(!tbody) return;
-  const rows = list.map(item=>`
-    <tr>
-      <td>${item.mesa}</td>
-      <td style="text-align:center">${formatDurationMMSS(item.avgTimeSec)}</td>
-      <td style="text-align:center">${item.interactionsPerSession}</td>
-      <td style="text-align:right">${toBR(item.sessions)}</td>
-    </tr>`).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Sem dados.</td></tr>`;
-}
-
-function renderEngagementByMesaChart(data){
-  if (!elements.chartEngagementByMesa) return;
-  if (charts.engagementByMesa) charts.engagementByMesa.destroy();
-  const top = [...data.porMesa].sort((a,b)=>b.sessions-a.sessions).slice(0,10);
-  charts.engagementByMesa = buildBarHorizontal(
-    elements.chartEngagementByMesa.getContext("2d"),
-    top.map(i=>i.mesa),
-    top.map(i=>i.sessions),
-    "Sessões",
-    "#3b82f6"
-  );
-}
-
-
-/* ==========================================================
-   17) DISPOSITIVOS USADOS
+   DISPOSITIVOS USADOS
    ========================================================== */
 
 function renderTabelaDeviceDistribution(list){
@@ -1752,9 +2168,8 @@ function renderDevicesChart(data){
   );
 }
 
-
 /* ==========================================================
-   18) MODELOS MAIS EXIBIDOS
+   MODELOS MAIS EXIBIDOS
    ========================================================== */
 
 function renderTabelaTopModels(list){
@@ -1784,7 +2199,7 @@ function renderTopModelsChart(data){
 
 
 /* ==========================================================
-   19) SAÚDE DOS MODELOS
+   SAÚDE DOS MODELOS
    ========================================================== */
 
 function renderTabelaModelErrors(list){
@@ -1813,9 +2228,8 @@ function renderModelHealthChart(data){
   );
 }
 
-
 /* ==========================================================
-   LOAD & RENDER GERAL
+   INSIGHTS
    ========================================================== */
 
 async function loadAndRender() {
@@ -1838,9 +2252,7 @@ async function loadAndRender() {
   renderTabelaMesaQR(data.porMesa);
   renderTabelaSessoes(data.rangeLabels, data.daily.sessoes, data.daily.unicos);
   renderTabelaTempoMenu(data.tempoMenu);
-  renderTabelaTopItems(data.topItems);
   renderTabelaTimeByCategory(data.timeByCategory);
-  renderTabelaTopCategories(data.topCategories);
   renderTabelaTimePerItem(data.topItems);
   renderTabelaPeakHours(data.picos);
   renderTabelaRecurrence(data.recurrenceData);
@@ -1857,17 +2269,21 @@ async function loadAndRender() {
   renderSessoesChart(data);
   renderAvgTimeMenuChart(data);
   renderPeakHoursChart(data);
-  renderInfoUsageChart(data);
+  renderInfoUsageChart(data);   // ✅ agora existe
   renderTimePerItemChart(data);
-  renderTopItemsChart(data);
   renderTimeByCategoryChart(data);
-  renderCategoryPopularityChart(data);
   renderInfoPerItemChart(data);
   renderRecurrenceChart(data);
   renderEngagementByMesaChart(data);
   renderDevicesChart(data);
   renderTopModelsChart(data);
   renderModelHealthChart(data);
+
+  // USO DO BOTÃO LIKE (KPI + tabela + gráfico)
+  const likeBlock = getLikeUsageBlock(data);
+  if (likeBlock) {
+    renderLikeUsage(likeBlock);
+  }
 
   // Insights
   startInsightScheduler(data);
