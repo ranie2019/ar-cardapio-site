@@ -26,8 +26,9 @@
     (function () {
       const url = new URL(location.href);
 
-      // URL base da API de métricas (HTTP API)
-      const API_BASE = "https://zoci6wmxqa.execute-api.us-east-1.amazonaws.com";
+      // URL base da API de MÉTRICAS (HTTP API, stage $default)
+      // PREFIXO CORRETO: /metricas (em português)
+      const API_METRICAS_BASE = "https://zoci6wmxqa.execute-api.us-east-1.amazonaws.com/metricas";
 
       // Parâmetros vindos do QR / redirect:
       // Exemplo final de URL:
@@ -54,7 +55,8 @@
         null;
 
       window.__AR_METRICA_INIT = {
-        endpoint: API_BASE + "/metricas/ingest",
+        // ROTA CORRETA DA API (POST /metricas/ingest)
+        endpoint: API_METRICAS_BASE + "/ingest",
         tenant: tenant,
         table: table,   // usado como qrLabel/mesa no dashboard
         qrId: qrId,     // ID estável do QR/mesa

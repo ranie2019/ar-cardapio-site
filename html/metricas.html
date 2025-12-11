@@ -9,28 +9,6 @@
   <!-- Estilos principais -->
   <link rel="stylesheet" href="../css/metricas.css" />
 
-  <!-- Ajustes mínimos de estilo locais -->
-  <style>
-    /* Barrinha gradiente no hover do KPI */
-    .kpi-card::before {
-      content: "";
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, var(--color-accent), var(--color-info));
-      opacity: 0;
-      transition: opacity var(--transition-base);
-    }
-    .kpi-card:hover::before { opacity: 1; }
-
-    /* Título das seções preparado para o botão (?) */
-    .section-header .section-title{
-      display: inline-flex;
-      align-items: center;
-      gap: .5rem;
-    }
-  </style>
-
   <!-- Flatpickr (calendários em PT-BR) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -75,12 +53,26 @@
 
         <div class="filters-group">
           <label class="filter-label" for="startDate">Data inicial</label>
-          <input id="startDate" type="text" class="filter-input date-input" placeholder="dd/mm/aaaa" inputmode="numeric" autocomplete="off"/>
+          <input
+            id="startDate"
+            type="text"
+            class="filter-input date-input"
+            placeholder="dd/mm/aaaa"
+            inputmode="numeric"
+            autocomplete="off"
+          />
         </div>
 
         <div class="filters-group">
           <label class="filter-label" for="endDate">Data final</label>
-          <input id="endDate" type="text" class="filter-input date-input" placeholder="dd/mm/aaaa" inputmode="numeric" autocomplete="off"/>
+          <input
+            id="endDate"
+            type="text"
+            class="filter-input date-input"
+            placeholder="dd/mm/aaaa"
+            inputmode="numeric"
+            autocomplete="off"
+          />
         </div>
 
         <!-- Botões -->
@@ -114,7 +106,9 @@
           <div class="kpi-header">
             <h3 class="kpi-title">
               Sessões
-              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Quantidade total de sessões no período.">?</button>
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Quantas vezes o cardápio foi realmente usado como uma visita completa, <br>
+              somando todas as pessoas, nesse período. Cada vez que alguém escaneia o QR e navega pelo cardápio conta 1 sessão; <br>
+              se a pessoa voltar mais tarde ou outra pessoa escanear, conta outra sessão.">?</button>
             </h3>
             <span class="kpi-icon" aria-hidden="true">👥</span>
           </div>
@@ -126,7 +120,9 @@
           <div class="kpi-header">
             <h3 class="kpi-title">
               Usuários Únicos
-              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Dispositivos ou navegadores distintos identificados no período.">?</button>
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Quantas pessoas diferentes usaram o cardápio nesse período. <br>
+              Cada celular ou navegador conta como 1 usuário único, <br>
+              mesmo que a pessoa volte e use o cardápio várias vezes.">?</button>
             </h3>
             <span class="kpi-icon" aria-hidden="true">🧑‍🤝‍🧑</span>
           </div>
@@ -138,7 +134,7 @@
           <div class="kpi-header">
             <h3 class="kpi-title">
               Taxa de Info
-              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Percentual de cliques no botão de Informações em relação aos scans.">?</button>
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="É o Percentual de cliques no botão de Informações em relação aos Escaneamento do QRCode.">?</button>
             </h3>
             <span class="kpi-icon" aria-hidden="true">ℹ️</span>
           </div>
@@ -153,7 +149,7 @@
           <div class="kpi-header">
             <h3 class="kpi-title">
               Tempo Médio por Item
-              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Tempo médio de permanência em cada item visualizado.">?</button>
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Mostra, em média, quanto tempo os clientes ficam olhando cada item do cardápio quando abrem ele.">?</button>
             </h3>
             <span class="kpi-icon">🍕</span>
           </div>
@@ -175,7 +171,7 @@
           <div class="kpi-header">
             <h3 class="kpi-title">
               Cliques no Info
-              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Total de aberturas do painel de informações dos itens.">?</button>
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Número total de cliques dos clientes no botão de Informações dos itens do cardápio.">?</button>
             </h3>
             <span class="kpi-icon">ℹ️</span>
           </div>
@@ -197,7 +193,8 @@
           <div class="kpi-header">
             <h3 class="kpi-title">
               Clientes Ativos
-              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Restaurantes com plano ativo e uso registrado no período.">?</button>
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Mostra quantos clientes diferentes usaram o App desse restaurante no período selecionado, <br>
+              somando clientes novos e clientes que voltaram.">?</button>
             </h3>
             <span class="kpi-icon">🔥</span>
           </div>
@@ -208,7 +205,7 @@
           <div class="kpi-header">
             <h3 class="kpi-title">
               Novos Clientes
-              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Novos restaurantes que começaram a usar o sistema no período.">?</button>
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Novos Clientes que começaram a usar o App no período.">?</button>
             </h3>
             <span class="kpi-icon">🆕</span>
           </div>
@@ -219,7 +216,7 @@
           <div class="kpi-header">
             <h3 class="kpi-title">
               Clientes Recorrentes
-              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Usuários finais que voltaram a acessar o cardápio no período.">?</button>
+              <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Usuários finais que voltaram a acessar o App no período.">?</button>
             </h3>
             <span class="kpi-icon">🔁</span>
           </div>
@@ -265,7 +262,14 @@
         <div class="chart-header is-inline-help">
           <h2 id="titulo-escaneamento-mesa" class="section-title">
             Escaneamento por Mesa/QRCode
-            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Distribuição dos scans por mesa/QR no período; a tabela mostra participação e último scan.">?</button>
+            <button class="kpi-help" 
+              aria-label="O que é isso?" 
+              data-tooltip="Mostra, para cada mesa/QRCode:<br>
+            (Mesa) qual mesa foi escaneada;<br>
+            (Scans no Período) quantas vezes essa mesa foi escaneada no período;<br>
+            (Último Scan) o horário do último escaneamento dessa mesa;<br>
+            (% do Total) quanto essa mesa representa do total de escaneamentos de todas as mesas.">?
+          </button>
           </h2>
         </div>
 
@@ -297,7 +301,13 @@
         <div class="section-header">
           <h2 id="titulo-engajamento-mesa" class="section-title">
             Engajamento por Mesa
-            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Tempo médio e interações por sessão para cada mesa/QR.">?</button>
+            <button class="kpi-help" 
+            aria-label="O que é isso?" 
+            data-tooltip="Mostra, a interação de cada mesa/QRCode:<br>
+            (Mesa/QR) qual mesa ou QR foi usado;<br>
+            (Tempo Médio) quanto tempo, em média, os clientes ficaram usando o cardápio nessa mesa em cada visita;<br>
+            (Média das Interações) quantos toques, em média, os clientes deram no cardápio nessa mesa (trocar item, abrir informações, like etc.) em cada visita;<br>
+            (Sessões) quantas visitas completas ao cardápio aconteceram nessa mesa no período.">?</button>
           </h2>
           <span class="section-subtitle">Tempo e interações</span>
         </div>
@@ -312,7 +322,7 @@
               <tr>
                 <th scope="col">Mesa/QR</th>
                 <th scope="col">Tempo Médio</th>
-                <th scope="col">Interações/Sessão</th>
+                <th scope="col">Média das Interações</th>
                 <th scope="col">Sessões</th>
               </tr>
             </thead>
@@ -328,7 +338,13 @@
         <div class="section-header">
           <h2 id="titulo-sessoes" class="section-title">
             Sessões por Período
-            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Número de sessões ao longo do tempo; útil para medir tendência e engajamento.">?</button>
+            <button class="kpi-help" 
+            aria-label="O que é isso?" 
+            data-tooltip="Mostra, ao longo dos dias escolhidos, como o uso do cardápio sobe ou desce.<br>
+            (Período) o dia dentro do intervalo selecionado;<br>
+            (Sessões) quantas visitas completas ao cardápio aconteceram nesse dia;<br>
+            (Usuários Únicos) quantas pessoas diferentes usaram o cardápio nesse dia (mesmo cliente que entrou várias vezes conta só uma vez);<br>
+            (Sessões/Usuário) em média, quantas vezes cada pessoa usou o cardápio nesse dia.">?</button>
           </h2>
           <span class="section-subtitle">Tendência e engajamento</span>
         </div>
@@ -359,7 +375,13 @@
         <div class="section-header">
           <h2 id="titulo-tempo-menu" class="section-title">
             Tempo Médio (Cardápio)
-            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Duração média das sessões no cardápio (sem AR) durante o período.">?</button>
+            <button class="kpi-help" 
+            aria-label="O que é isso?" 
+            data-tooltip="Mostra quanto tempo, em média, os clientes ficam usando o cardápio digital em cada dia do período.<br>
+            (Período) o dia dentro do intervalo escolhido;<br>
+            (Tempo Médio) tempo médio que os clientes ficam usando o cardápio nesse dia;<br>
+            (Mediana) tempo que representa melhor a maioria dos clientes nesse dia, pois ignora casos muito fora do normal (muito rápidos ou muito longos);<br>
+            (Amostras) quantas sessões reais foram usadas para calcular esses tempos.">?</button>
           </h2>
           <span class="section-subtitle">Duração de permanência</span>
         </div>
@@ -390,7 +412,12 @@
         <div class="section-header">
           <h2 id="titulo-horario-pico" class="section-title">
             Horário de Pico
-            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Faixas horárias mais movimentadas por mês e dia da semana.">?</button>
+            <button class="kpi-help" 
+            aria-label="O que é isso?" 
+            data-tooltip="Mostra, para cada dia, em quais horários o QRCode foi usado e quantos escaneamentos aconteceram em cada horário.<br>
+            (Data) dia em que o cliente usou o cardápio;<br>
+            (Hora) horário em que o QRCode foi escaneado;<br>
+            (Scans) quantas leituras do QRCode aconteceram nesse dia e horário.">?</button>
           </h2>
           <span class="section-subtitle">Uso por hora/dia/mês</span>
         </div>
@@ -410,7 +437,7 @@
               <tr>
                 <th>Data</th>
                 <th>Hora</th>
-                <th>Scans</th>
+                <th>Escaneamento</th>
               </tr>
             </thead>
             <tbody id="tablePeakHours">
@@ -428,8 +455,11 @@
             <button
               class="kpi-help"
               aria-label="O que é isso?"
-              data-tooltip="Resumo de likes e deslikes por item no período selecionado."
-            >?</button>
+              data-tooltip="Mostra a quantidade de likes e deslikes por item no período selecionado.<br>
+              (Item) qual prato ou bebida do cardápio;<br>
+              (Like) quantas curtidas esse item recebeu;<br>
+              (Deslike) quantos não gostaram desse item (cliques em Deslike);<br>
+              (% do Like) porcentagem de likes superior aos deslikes para esse item.">?</button>
           </h2>
           <span class="section-subtitle">Curtidas</span>
         </div>
@@ -489,43 +519,18 @@
         </div>
       </section>
 
-      <!-- Tempo por item -->
-      <section class="chart-section col-4" aria-labelledby="titulo-tempo-item">
-        <div class="section-header">
-          <h2 id="titulo-tempo-item" class="section-title">
-            Tempo por Item
-            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Tempo médio (dwell time) por produto visualizado no cardápio.">?</button>
-          </h2>
-          <span class="section-subtitle">Dwell time por produto</span>
-        </div>
-
-        <div class="chart-container">
-          <canvas id="chartTimePerItem" aria-label="Gráfico de tempo por item"></canvas>
-        </div>
-
-        <div class="table-wrapper" role="region" aria-label="Tabela de tempo por item">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th scope="col">Item</th>
-                <th scope="col">Tempo Médio</th>
-                <th scope="col">Visualizações</th>
-                <th scope="col">% do Total</th>
-              </tr>
-            </thead>
-            <tbody id="tableTimePerItem">
-              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
       <!-- Tempo por Categoria -->
       <section class="chart-section col-6" aria-labelledby="titulo-tempo-categoria">
         <div class="section-header">
           <h2 id="titulo-tempo-categoria" class="section-title">
             Tempo por Categoria
-            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Tempo médio de permanência por categoria (dwell time).">?</button>
+            <button class="kpi-help" 
+            aria-label="O que é isso?" 
+            data-tooltip="Mostra, em cada categoria do cardápio, quanto tempo os clientes ficam olhando, quantas visitas passaram por ali e quanto essa categoria pesa no tempo total de uso do cardápio.<br>
+            (Categoria) tipo de item do cardápio (Carnes, Bebidas, Pizzas etc.);<br>
+            (Tempo Médio) tempo médio que os clientes ficam nessa categoria em cada visita ao cardápio;<br>
+            (Sessões) quantas visitas ao cardápio tiveram pelo menos um item dessa categoria aberto;<br>
+            (% do Tempo) qual parte do tempo total de uso do cardápio foi gasta nessa categoria.">?</button>
           </h2>
           <span class="section-subtitle">Tempo médio de permanência</span>
         </div>
@@ -556,7 +561,12 @@
         <div class="section-header">
           <h2 id="titulo-info-por-item" class="section-title">
             Botao Info
-            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Cliques no botão Info por item e tempo médio de leitura correspondente.">?</button>
+            <button class="kpi-help" 
+            aria-label="O que é isso?" 
+            data-tooltip="Mostra, para cada item do cardápio, quanto os clientes se interessam pelas informações detalhadas: quantas vezes abriram o botão Info e quanto tempo, em média, ficaram lendo esse painel.<br>
+            (Item) qual prato ou bebida do cardápio;<br>
+            (Tempo Médio (Info)) tempo médio que os clientes passam com o painel de informações desse item aberto;<br>
+            (Cliques Info) quantas vezes o botão Info desse item foi clicado no período.">?</button>
           </h2>
           <span class="section-subtitle">Curiosidade e leitura</span>
         </div>
@@ -575,84 +585,63 @@
               </tr>
             </thead>
             <tbody id="tableInfoPerItem">
-              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
+              <tr><td colspan="3" class="text-center">Carregando…</td></tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <!-- Recorrência -->
-      <section class="chart-section col-4" aria-labelledby="titulo-recorrencia">
+      <!-- Tempo por item -->
+      <section class="chart-section col-4" aria-labelledby="titulo-tempo-item">
         <div class="section-header">
-          <h2 id="titulo-recorrencia" class="section-title">
-            Recorrência de Clientes
-            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Comparativo entre clientes novos e retornantes; calcula também a taxa de retorno.">?</button>
+          <h2 id="titulo-tempo-item" class="section-title">
+            Tempo por Item
+            <button class="kpi-help" 
+            aria-label="O que é isso?" 
+            data-tooltip="Mostra, para cada item do cardápio, quanto ele é visto e por quanto tempo, dentro do período escolhido.<br>
+            (Item) qual prato ou bebida do cardápio;<br>
+            (Tempo Médio) tempo médio que os clientes ficam olhando esse item em cada visualização;<br>
+            (Visualizações) quantas vezes esse item foi aberto no período;<br>
+            (% do Total) quanto esse item representa do total de visualizações de todos os itens.">?</button>
           </h2>
-          <span class="section-subtitle">Novos x Retornando</span>
+          <span class="section-subtitle">Tempo de permanência por produto</span>
         </div>
 
-        <div class="kpis-grid">
-          <article class="kpi-card">
-            <div class="kpi-header">
-              <h3 class="kpi-title">
-                Novos
-                <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Clientes (usuários finais) identificados pela primeira vez no período.">?</button>
-              </h3>
-              <span class="kpi-icon">🆕</span>
-            </div>
-            <p id="kpiRecNew" class="kpi-value">--</p>
-          </article>
-          <article class="kpi-card">
-            <div class="kpi-header">
-              <h3 class="kpi-title">
-                Retornando
-                <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Clientes que já haviam acessado antes e voltaram no período.">?</button>
-              </h3>
-              <span class="kpi-icon">🔁</span>
-            </div>
-            <p id="kpiRecReturning" class="kpi-value">--</p>
-          </article>
-          <article class="kpi-card">
-            <div class="kpi-header">
-              <h3 class="kpi-title">
-                % Retorno
-                <button class="kpi-help" aria-label="O que é isso?" data-tooltip="(Retornando / Total de clientes no período) × 100.">?</button>
-              </h3>
-              <span class="kpi-icon">📈</span>
-            </div>
-            <p id="kpiRecRate" class="kpi-value">--</p>
-          </article>
+        <div class="chart-container">
+          <canvas id="chartTimePerItem" aria-label="Gráfico de tempo por item"></canvas>
         </div>
 
-        <div class="chart-container" style="margin-top: var(--spacing-lg);">
-          <canvas id="chartRecurrence" aria-label="Gráfico de recorrência"></canvas>
-        </div>
-
-        <div class="table-wrapper" role="region" aria-label="Tabela de recorrência">
+        <div class="table-wrapper" role="region" aria-label="Tabela de tempo por item">
           <table class="data-table">
             <thead>
               <tr>
-                <th scope="col">Cliente (anônimo)</th>
-                <th scope="col">Scans</th>
-                <th scope="col">Último Scan</th>
-                <th scope="col">Dias desde o último</th>
+                <th scope="col">Item</th>
+                <th scope="col">Tempo Médio</th>
+                <th scope="col">Visualizações</th>
+                <th scope="col">% do Total</th>
               </tr>
             </thead>
-            <tbody id="tableRecurrence">
+            <tbody id="tableTimePerItem">
               <tr><td colspan="4" class="text-center">Carregando…</td></tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <!-- Distribuição por dispositivo -->
+      <!-- Dispositivo Usados -->
       <section class="chart-section col-4" aria-labelledby="titulo-dispositivos">
         <div class="section-header">
           <h2 id="titulo-dispositivos" class="section-title">
             Dispositivo Usados
-            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Percentual de sessões por tipo de dispositivo (celular, tablet, etc.).">?</button>
+            <button class="kpi-help" 
+            aria-label="O que é isso?" 
+            data-tooltip="Mostra, para cada tipo de dispositivo, como os clientes estão usando o cardápio no período escolhido.<br>
+            (Dispositivo) tipo de aparelho usado, como celular, tablet ou computador;<br>
+            (Percentual) quanto esse dispositivo representa do total de sessões;<br>
+            (Sessões) quantas sessões foram feitas usando esse dispositivo;<br>
+            (Tempo Médio) tempo médio que cada sessão dura nesse tipo de dispositivo.">?</button>
           </h2>
-          <span class="section-subtitle">Celular, tablet e outros</span>
+          <span class="section-subtitle">Android, Iphone, Tablet e outros</span>
         </div>
 
         <div class="chart-container">
@@ -677,13 +666,16 @@
       </section>
 
       <!-- Modelos mais exibidos -->
-      <section class="chart-section col-4" aria-labelledby="titulo-modelos">
+      <section class="chart-section col-4 chart-section--top10-full" aria-labelledby="titulo-modelos">
         <div class="section-header">
           <h2 id="titulo-modelos" class="section-title">
             Modelos mais exibidos
-            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Itens com maior número de exibições no modo AR.">?</button>
+            <button class="kpi-help" 
+            aria-label="O que é isso?" 
+            data-tooltip="Mostra, entre todos os itens do cardápio, quais foram mais exibidos em realidade aumentada (modo AR) no período escolhido.<br>
+            Cada barra representa um item, e o tamanho da barra mostra quantas vezes ele foi aberto em AR (Top 10).">?</button>
           </h2>
-          <span class="section-subtitle">Top 5 + visão geral</span>
+          <span class="section-subtitle">Top 10 mais exibidos</span>
         </div>
 
         <div class="chart-container">
@@ -691,73 +683,7 @@
         </div>
 
         <div class="table-wrapper" role="region" aria-label="Tabela top modelos AR">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th scope="col">Item</th>
-                <th scope="col">Exibições</th>
-                <th scope="col">Tempo Médio</th>
-                <th scope="col">Erros</th>
-              </tr>
-            </thead>
-            <tbody id="tableTopModels">
-              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Saúde dos modelos -->
-      <section class="chart-section col-4" aria-labelledby="titulo-model-health">
-        <div class="section-header">
-          <h2 id="titulo-model-health" class="section-title">
-            Saúde dos Modelos
-            <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Relação de modelos carregados com sucesso versus ocorrências de erro.">?</button>
-          </h2>
-          <span class="section-subtitle">Carregados vs Erros</span>
-        </div>
-
-        <div class="kpis-grid">
-          <article class="kpi-card">
-            <div class="kpi-header">
-              <h3 class="kpi-title">
-                Carregados
-                <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Quantidade de modelos 3D carregados com sucesso.">?</button>
-              </h3>
-              <span class="kpi-icon">✅</span>
-            </div>
-            <p id="kpiModelsLoaded" class="kpi-value">--</p>
-          </article>
-          <article class="kpi-card">
-            <div class="kpi-header">
-              <h3 class="kpi-title">
-                Erros
-                <button class="kpi-help" aria-label="O que é isso?" data-tooltip="Quantidade de falhas ao carregar modelos 3D.">?</button>
-              </h3>
-              <span class="kpi-icon">⚠️</span>
-            </div>
-            <p id="kpiModelsErrors" class="kpi-value">--</p>
-          </article>
-        </div>
-
-        <div class="chart-container" style="margin-top: var(--spacing-lg);">
-          <canvas id="chartModelHealth" aria-label="Gráfico de saúde dos modelos"></canvas>
-        </div>
-
-        <div class="table-wrapper" role="region" aria-label="Tabela de erros de modelo">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th scope="col">Item</th>
-                <th scope="col">Erro</th>
-                <th scope="col">Ocorrências</th>
-                <th scope="col">Último</th>
-              </tr>
-            </thead>
-            <tbody id="tableModelErrors">
-              <tr><td colspan="4" class="text-center">Carregando…</td></tr>
-            </tbody>
-          </table>
+          <!-- (no momento não há tabela complementar) -->
         </div>
       </section>
 
@@ -767,13 +693,19 @@
     <section class="insights-section" aria-labelledby="titulo-insights">
       <h2 id="titulo-insights" class="section-title">
         Insights
-        <button class="kpi-help" data-tooltip="Aqui são exibidas observações automáticas geradas a partir dos dados do restaurante.">
-          ?
+        <button class="kpi-help" 
+        data-tooltip="Mostra comentários automáticos sobre o desempenho do restaurante, gerados a partir das métricas do período escolhido.<br>
+        Cada linha traz a data e o horário do insight e um resumo da análise.<br>
+        Ao passar o mouse sobre o texto, aparece o insight completo com explicações e sugestões práticas.
+        ">?
         </button>
       </h2>
 
       <ul id="insightsList" class="insights-list">
-        <li>Carregando…</li>
+        <li class="insight-item">
+          <span class="insight-stamp">--/--/---- --:--</span>
+          <span class="insight-msg">Carregando…</span>
+        </li>
       </ul>
     </section>
 
@@ -787,7 +719,6 @@
   <noscript>Ative o JavaScript para visualizar gráficos e dados.</noscript>
 
   <!-- Script de métricas (dados e gráficos) -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="../java/metricas.js?v=4"></script>
 </body>
 </html>

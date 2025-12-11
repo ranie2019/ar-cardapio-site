@@ -1,5 +1,5 @@
 /* metricaapp.js — ARCardapio (métricas de uso no app do cliente final)
-   v2.0.3
+   v2.0.4
    - Envio em lote via fetch(keepalive)
    - Buffer + persistência offline (localStorage)
    - Sessão, visibilidade, heartbeats (pausa em aba oculta)
@@ -27,10 +27,11 @@
     anonymizeIp: true,
     consentMetrics: true,
     heartbeatMs: 30000,
-    sdkVersion: "2.0.3",
+    sdkVersion: "2.0.4",
 
     // novos campos de contexto
     tenant: null,
+    email: null,      // <--- NOVO
     table: null,
     qrId: null,
     mesa: null,
@@ -80,28 +81,144 @@
   }
   function nowMs() { return performance.now(); }
 
+  // ========= NOVO: DETECÇÃO DETALHADA DE DISPOSITIVO =========
+  function detectDeviceInfo(uaRaw) {
+    const ua = (uaRaw || navigator.userAgent || "").toLowerCase();
+
+    const info = {
+      deviceClass: "Desktop",   // Desktop | Mobile | Tablet
+      deviceOS: "Desconhecido", // Android | iOS | iPadOS | Windows | macOS | Linux | ChromeOS | Desconhecido
+      deviceFamily: "Outros",   // Android | iPhone | iPad | Desktop | etc.
+      deviceName: "Outros"      // rótulo amigável para o dashboard
+    };
+
+    const isAndroid = /android/.test(ua);
+    const isIPhone  = /iphone/.test(ua);
+    const isIPod    = /ipod/.test(ua);
+    const isIPadUA  = /ipad/.test(ua);
+    const isWindows = /windows nt/.test(ua);
+    const isMac     = /macintosh|mac os x/.test(ua);
+    const isChromeOS = /cros/.test(ua);
+    const isLinux   = /linux/.test(ua) && !isAndroid;
+
+    // iPadOS moderno às vezes vem como "Macintosh" + touch
+    const isIPadLikeMac = !isIPadUA && isMac && typeof navigator !== "undefined" &&
+      ("ontouchend" in document);
+
+    const isTabletToken = /tablet/.test(ua);
+    const isMobileToken = /mobile/.test(ua);
+
+    const isIPad = isIPadUA || isIPadLikeMac;
+
+    const isMobile = isAndroid || isIPhone || isIPod || isMobileToken;
+    const isTablet = isIPad || isTabletToken;
+
+    if (isAndroid) {
+      info.deviceOS = "Android";
+      info.deviceFamily = "Android";
+      info.deviceClass = isTablet ? "Tablet" : "Mobile";
+      info.deviceName = isTablet ? "Android Tablet" : "Android";
+      return info;
+    }
+
+    if (isIPhone || isIPod) {
+      info.deviceOS = "iOS";
+      info.deviceFamily = "iPhone";
+      info.deviceClass = "Mobile";
+      info.deviceName = "iPhone";
+      return info;
+    }
+
+    if (isIPad) {
+      info.deviceOS = "iPadOS";
+      info.deviceFamily = "iPad";
+      info.deviceClass = "Tablet";
+      info.deviceName = "iPad";
+      return info;
+    }
+
+    if (isWindows) {
+      info.deviceOS = "Windows";
+      info.deviceFamily = "Desktop";
+      info.deviceClass = "Desktop";
+      info.deviceName = "Windows";
+      return info;
+    }
+
+    if (isMac) {
+      info.deviceOS = "macOS";
+      info.deviceFamily = "Desktop";
+      info.deviceClass = "Desktop";
+      info.deviceName = "Mac";
+      return info;
+    }
+
+    if (isChromeOS) {
+      info.deviceOS = "ChromeOS";
+      info.deviceFamily = "Desktop";
+      info.deviceClass = "Desktop";
+      info.deviceName = "Chrome OS";
+      return info;
+    }
+
+    if (isLinux) {
+      info.deviceOS = "Linux";
+      info.deviceFamily = "Desktop";
+      info.deviceClass = "Desktop";
+      info.deviceName = "Linux";
+      return info;
+    }
+
+    if (isTablet) {
+      info.deviceOS = "Desconhecido";
+      info.deviceFamily = "Tablet";
+      info.deviceClass = "Tablet";
+      info.deviceName = "Tablet";
+      return info;
+    }
+
+    if (isMobile) {
+      info.deviceOS = "Desconhecido";
+      info.deviceFamily = "Mobile";
+      info.deviceClass = "Mobile";
+      info.deviceName = "Mobile";
+      return info;
+    }
+
+    return info;
+  }
+
   function deviceClass(ua = navigator.userAgent || "") {
-    const s = ua.toLowerCase();
-    if (/android|iphone|ipod|ipad|mobile/.test(s)) return "Mobile";
-    if (/tablet/.test(s)) return "Tablet";
-    return "Desktop";
+    // preserva a API antiga, mas agora usando o detector completo
+    return detectDeviceInfo(ua).deviceClass;
   }
 
   function uaInfo() {
+    const det = detectDeviceInfo(navigator.userAgent || "");
+
     if (!config.consentMetrics) {
       // modo “mínimo” (respeita consentimento)
       return {
-        deviceClass: deviceClass(),
+        deviceClass: det.deviceClass,
+        deviceOS: det.deviceOS,
+        deviceName: det.deviceName,
+        deviceFamily: det.deviceFamily,
         language: navigator.language || null,
         viewport: { w: innerWidth || 0, h: innerHeight || 0 }
       };
     }
+
     return {
       sdkVersion: config.sdkVersion,
       userAgent: navigator.userAgent || "",
       platform: navigator.platform || null,
       language: navigator.language || null,
-      deviceClass: deviceClass(navigator.userAgent || ""),
+
+      deviceClass: det.deviceClass,
+      deviceOS: det.deviceOS,
+      deviceName: det.deviceName,
+      deviceFamily: det.deviceFamily,
+
       screen: { w: (screen || {}).width, h: (screen || {}).height },
       viewport: { w: innerWidth || 0, h: innerHeight || 0 },
       net: (navigator && navigator.connection) ? {
@@ -158,17 +275,28 @@
     clearFlushTimer();
     if (!buffer.length) return;
 
+    const email = config.email || null;
+    const tenant = config.tenant || email || null;
+
+    const payloadSession = {
+      ...session,
+      tenant: tenant
+    };
+
     const payload = {
       batchId: rid("batch_"),
-      session,
+      session: payloadSession,
       reason,
       env: config.env,
-      tenant: config.tenant || null,
+      tenant,        // <--- usado pela Lambda como tenantRaw
+      email,         // <--- também disponível no backend
       meta: {
         url: location.href,
         referrer: document.referrer || null,
         timestamp: iso(),
-        sdkVersion: config.sdkVersion
+        sdkVersion: config.sdkVersion,
+        tenant,
+        email
       },
       events: buffer.slice()
     };
@@ -201,12 +329,15 @@
 
   // evento base — AQUI adicionamos mesa/qrLabel
   function ev(name, payload = {}) {
+    const email = config.email || null;
+    const tenant = config.tenant || email || null;
+
     return {
       id: rid("e_"),
       name,
       timestamp: iso(),
       sessionId: session.id,
-      tenant: config.tenant || null,
+      tenant,  // <--- cada evento já carrega o tenant
 
       // contexto por mesa / QR
       table: config.table || null,
@@ -222,7 +353,7 @@
   // ----------- RECORRÊNCIA -----------
   function rcKey() {
     // Recorrência por TENANT (não cruza restaurantes diferentes)
-    const t = (config.tenant || "global").toLowerCase();
+    const t = (config.tenant || config.email || "global").toLowerCase();
     return `arcardapio_rec_${t}`;
   }
 
@@ -619,6 +750,11 @@
     // merge base
     let merged = { ...DEFAULTS, ...(userConfig || {}) };
 
+    // se vier só email, usa como tenant por default
+    if (!merged.tenant && merged.email) {
+      merged.tenant = merged.email;
+    }
+
     // derivar mesa / qrLabel se não vierem explícitos
     const mesaFromConfig = merged.mesa || merged.table || null;
     const qrLabelFromConfig =
@@ -643,7 +779,9 @@
           sdkVersion: config.sdkVersion,
           mesa: config.mesa || null,
           qrLabel: config.qrLabel || null,
-          qrId: config.qrId || null
+          qrId: config.qrId || null,
+          tenant: config.tenant || null,
+          email: config.email || null
         }
       })
     );
