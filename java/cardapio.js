@@ -49,9 +49,9 @@ const objetos3D = {
   // "logo" decide apenas o que aparece ao iniciar (não há botão no app para logo)
   logo: ["Tabua de Carne", "Cubo"],
 
-  bebidas: ["Heineken", "Redbull", "Absolut Vodka", "Jack Daniels", "Champagne", "Vinho Pergola", "Cerveja Imperio", "Champagne Prestige", "Cerveja Corona", "Cerveja Budweiser"],
-  pizzas: ["Presunto de Parma e Rúcula", "Mussarela", "Salami"],
-  carnes: ["Bisteca Suina Grelhada", "Costela Bovina Cozida", "Paleta Cordeiro", "Lombo de Porco"],
+  bebidas: ["Heineken", "Redbull", "Jack Daniels", "Champagne", "Vinho Pergola", "Cerveja Imperio", "Champagne Prestige", "Cerveja Corona", "Cerveja Budweiser"],
+  pizzas: ["Mussarela", "Salami","Calabresa com Queijo"],
+  carnes: ["Bisteca Suina Grelhada", "Costela Bovina Grelhada", "Paleta De Cordeiro", "Lombo de Porco", "Coxa de Frango"],
   lanches: ["Hamburguer", "Cheeseburger", "Hot Dog"],
   sobremesas: ["Sundae", "Cupcake de Chocolate", "Rosquinha de Chocolate", "Late"],
   porcoes: ["Batata Frita", "Nuggets", "Aneis de Cebola"],

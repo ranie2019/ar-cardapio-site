@@ -150,7 +150,7 @@
 /* ====================== */
 
 .model-preview-modal {
-  position: absolute;
+  position: fixed;
   z-index: 999;
   padding: 20px;
   background: rgba(124, 124, 124, 0.95);
@@ -163,7 +163,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  position: absolute;
 }
 
 .a-enter-vr-button {

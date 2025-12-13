@@ -105,8 +105,33 @@ class SistemaCardapioItens extends SistemaCardapioBase {
     }
 
     const ret = elementoOrigem.getBoundingClientRect();
-    this.modelModal.style.left = `${ret.right + 5}px`;
-    this.modelModal.style.top = `${ret.top + 80}px`;
+    
+    const gap = 10;
+    const modalW = 330;   // você mesmo fixa 330px no HTML do modal
+    const modalH = 300;   // altura do preview
+
+    // tenta abrir à direita
+    let left = ret.right + gap;
+
+    // se estourar a direita, abre à esquerda
+    if (left + modalW > window.innerWidth - gap) {
+      left = ret.left - modalW - gap;
+    }
+
+    // trava dentro da tela (nunca sai do viewport)
+    left = Math.max(gap, Math.min(left, window.innerWidth - modalW - gap));
+
+    // top (se estourar embaixo, sobe)
+    let top = ret.top + 80;
+    if (top + modalH > window.innerHeight - gap) {
+      top = window.innerHeight - modalH - gap;
+    }
+    top = Math.max(gap, top);
+
+    this.modelModal.style.left = `${left}px`;
+    this.modelModal.style.top  = `${top}px`;
+    this.modelModal.style.display = "block";
+
     this.modelModal.style.display = "block";
 
     this.modelModal.innerHTML = `

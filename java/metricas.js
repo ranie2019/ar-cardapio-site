@@ -12,41 +12,12 @@
 const USE_MOCK = false; // PRODUÇÃO: só dados reais
 const API_BASE = "https://zoci6wmxqa.execute-api.us-east-1.amazonaws.com/metricas/cliente";
 
-/* --------- MAPEAMENTO DE NOMES --------- */
-const CATEGORY_MAP = {
-  "Categoria 1": "Bebidas",
-  "Categoria 2": "Pizzas",
-  "Categoria 3": "Sobremesas",
-  "Categoria 4": "Carnes",
-  "Categoria 5": "Lanches",
-};
-
-const ITEM_MAP = {
-  "Item 1": "Absolut Vodka",
-  "Item 2": "Mussarela",
-  "Item 3": "Coca-Cola",
-  "Item 4": "Pizza Calabresa",
-  "Item 5": "Tiramisu",
-  "Item 6": "Picanha",
-  "Item 7": "Sanduíche X-Tudo",
-  "Item 8": "Suco de Laranja",
-  "Item 9": "Brigadeiro",
-  "Item 10": "Salada Caesar",
-};
-
-function mapCategoryName(genericName) {
-  return CATEGORY_MAP[genericName] || genericName;
-}
-function mapItemName(genericName) {
-  return ITEM_MAP[genericName] || genericName;
-}
 
 /* --------- ELEMENTOS (DOM) --------- */
 function byId(id) { return document.getElementById(id); }
 
 const elements = {
   // Filtros
-  filterTenant: byId("filterTenant"),
   periodFilter: byId("periodFilter"),
   startDate: byId("startDate"),
   endDate: byId("endDate"),
@@ -99,15 +70,16 @@ const elements = {
   // Tabelas
   tbodyMesaQR: byId("tbodyMesaQR"),
   tbodySessoes: byId("tbodySessoes"),
-  tableAvgTimeMenu: byId("tableAvgTimeMenu"),
+  tableAvgTimeMenu: byId("tbodyAvgTimeMenu") || byId("tableAvgTimeMenu"),
   tbodyTimeByCategory: byId("tbodyTimeByCategory"),
-  tableTimePerItem: byId("tableTimePerItem"),
-  tablePeakHours: byId("tablePeakHours"),
-  tableEngagementByMesa: byId("tableEngagementByMesa"),
-  tableDeviceDistribution: byId("tableDeviceDistribution"),
-  tableTopModels: byId("tableTopModels"),
-  tableModelErrors: byId("tableModelErrors"),
-  tableInfoPerItem: byId("tableInfoPerItem"),
+  tableTimePerItem: byId("tbodyTimePerItem") || byId("tableTimePerItem"),
+  tablePeakHours: byId("tbodyPeakHours") || byId("tablePeakHours"),
+  tableEngagementByMesa: byId("tbodyEngagementByMesa") || byId("tableEngagementByMesa"),
+  tableDeviceDistribution: byId("tbodyDeviceDistribution") || byId("tableDeviceDistribution"),
+  tableTopModels: byId("tbodyTopModels") || byId("tableTopModels"),
+  tableModelErrors: byId("tbodyModelErrors") || byId("tableModelErrors"),
+  tableInfoPerItem: byId("tbodyInfoPerItem") || byId("tableInfoPerItem"),
+
 
   // Insights
   insightsList: byId("insightsList"),
@@ -165,7 +137,7 @@ function formatDurationMMSS(seconds){
   return `${pad2(m)}:${pad2(s)}`;
 }
 function average(arr){ return (!arr?.length)?0:arr.reduce((a,b)=>a+b,0)/arr.length; }
-function sum(arr){ return arr.reduce((a,b)=>a+b,0); }
+function sum(arr){ return (arr || []).reduce((a,b)=>a+(Number(b)||0), 0); }
 function roundUpToMultiple(value,step=10){ return (step<=0)?value:Math.ceil(value/step)*step; }
 function roundToNearest(value,step=10){ return (step<=0)?value:Math.round(value/step)*step; }
 function randomInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
@@ -189,6 +161,29 @@ function generateMockDates(n=14){
   }
   return out;
 }
+
+const CATEGORY_MAP = window.CATEGORY_MAP || {
+  "Categoria 1": "Bebidas",
+  "Categoria 2": "Pizzas",
+  "Categoria 3": "Sobremesas",
+  "Categoria 4": "Carnes",
+  "Categoria 5": "Lanches",
+};
+
+const ITEM_MAP = window.ITEM_MAP || {
+  // "Item 1": "Nome real", ...
+};
+
+function mapCategoryName(raw){
+  const s = String(raw ?? "").trim();
+  return CATEGORY_MAP[s] || s || "Categoria";
+}
+
+function mapItemName(raw){
+  const s = String(raw ?? "").trim();
+  return ITEM_MAP[s] || s || "Item";
+}
+
 
 function buildMockData(tenant,startDate,endDate){
   const days = generateMockDates(14).filter(d=>d>=startDate && d<=endDate);
@@ -382,31 +377,21 @@ async function fetchMetrics({ tenant, startDate, endDate }) {
     return buildMockData(tenant, startDate, endDate);
   }
 
-  const emailTenant =
-    localStorage.getItem("ar.email") ||
-    sessionStorage.getItem("ar.email");
+  // SEMPRE SLUG (consistência total)
+  const emailTenant = localStorage.getItem("ar.email") || sessionStorage.getItem("ar.email");
+  const tenantRaw   = (emailTenant || tenant || AppState.tenant || "").trim();
+  const tenantForApi = tenantKey(tenantRaw);
 
-  const tenantRaw  = (emailTenant || tenant || "").trim();
-  const tenantSlug = tenantKey(tenantRaw);
-  const tenantForApi = tenantRaw;
-
-  console.log(
-    "[METRICAS] tenant para API raw =", tenantRaw,
-    "slug =", tenantSlug,
-    "enviado =", tenantForApi
-  );
+  console.log("[METRICAS] tenant raw =", tenantRaw, "enviado =", tenantForApi);
 
   try {
     const params = new URLSearchParams();
     if (tenantForApi) params.append("tenant", tenantForApi);
-    if (startDate instanceof Date) {
-      params.append("startDate", formatDateBR(startDate));
-    }
-    if (endDate instanceof Date) {
-      params.append("endDate", formatDateBR(endDate));
-    }
+    if (startDate instanceof Date) params.append("startDate", formatDateBR(startDate));
+    if (endDate   instanceof Date) params.append("endDate",   formatDateBR(endDate));
 
     const urlFinal = `${API_BASE}?${params.toString()}`;
+
     const res = await fetch(urlFinal, {
       method: "GET",
       mode: "cors",
@@ -784,14 +769,6 @@ function applyFilters() {
   let startStr = elements.startDate?.value?.trim();
   let endStr   = elements.endDate?.value?.trim();
 
-  if (!AppState.tenant) {
-    const rawTenant =
-      elements.filterTenant?.value?.trim() ||
-      resolveTenantInitial() ||
-      "";
-    AppState.tenant = tenantKey(rawTenant);
-  }
-
   if (!startStr || !endStr) {
     setDefaultTodayRange();
   } else {
@@ -866,14 +843,6 @@ function wireFilters() {
   elements.btnApplyFilters?.addEventListener("click", applyFilters);
   elements.clearRange?.addEventListener("click", clearRange);
   elements.periodFilter?.addEventListener("change", handlePeriodChange);
-
-  if (elements.filterTenant) {
-    elements.filterTenant.addEventListener("change", () => {
-      const raw = elements.filterTenant.value?.trim() || AppState.tenant;
-      AppState.tenant = tenantKey(raw);
-      loadAndRender();
-    });
-  }
 }
 
 /* ==========================================================
@@ -1112,6 +1081,36 @@ function formatMesaLabel(raw) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+// Helper: pega scans de qualquer formato que a API mandar
+function getMesaScans(i) {
+  return Number(i?.scans ?? i?.totalScans ?? i?.scanCount ?? 0) || 0;
+}
+
+// Helper: pega label de mesa
+function getMesaRawLabel(i) {
+  return (
+    i?.mesa ||
+    i?.qrLabel ||
+    i?.label ||
+    i?.mesaId ||
+    i?.table ||
+    "QR/mesa-desconhecido"
+  );
+}
+
+// Helper: pega último scan
+function getMesaLastScan(i) {
+  return (
+    i?.ultimoScan ||
+    i?.lastScan ||
+    i?.last ||
+    i?.lastSeen ||
+    i?.lastSeenAt ||
+    i?.updatedAt ||
+    null
+  );
+}
+
 function renderTabelaMesaQR(list) {
   const tbody = elements.tbodyMesaQR;
   if (!tbody) return;
@@ -1124,30 +1123,12 @@ function renderTabelaMesaQR(list) {
   }
 
   // Total de scans (para calcular % do total)
-  const totalScans = sum(
-    safe.map(i => Number(i.scans ?? i.totalScans ?? 0))
-  );
+  const totalScans = sum(safe.map(getMesaScans));
 
   const rows = safe.map(i => {
-    const mesaRaw =
-      i.mesa ||
-      i.qrLabel ||
-      i.label ||
-      "QR/mesa-desconhecido";
-
-    const mesaLabel = formatMesaLabel(mesaRaw);
-
-    // QUANTIDADE DE SCANS NO PERÍODO (não é tempo)
-    const scans = Number(i.scans ?? i.totalScans ?? 0);
-
-    // Último horário de scan
-    const lastScan =
-      i.ultimoScan ||
-      i.lastScan ||
-      i.last ||
-      i.lastSeen ||
-      null;
-
+    const mesaLabel = formatMesaLabel(getMesaRawLabel(i));
+    const scans = getMesaScans(i);
+    const lastScan = getMesaLastScan(i);
     const pctTotal = totalScans > 0 ? pct(scans, totalScans) : "0%";
 
     return `
@@ -1165,22 +1146,40 @@ function renderTabelaMesaQR(list) {
 
 function renderScansByMesaChart(data) {
   if (!elements.chartScansByMesa) return;
-  if (charts.scansByMesa) charts.scansByMesa.destroy();
 
-  const list = Array.isArray(data.porMesa) ? data.porMesa : [];
-  if (!list.length) return;
+  // destrói gráfico anterior
+  if (charts.scansByMesa) {
+    charts.scansByMesa.destroy();
+    charts.scansByMesa = null;
+  }
+
+  const list = Array.isArray(data?.porMesa) ? data.porMesa : [];
+  if (!list.length) {
+    // limpa canvas se não tem dados
+    const ctx = elements.chartScansByMesa.getContext("2d");
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    return;
+  }
 
   const top = [...list]
-    .sort((a, b) => (b.scans ?? 0) - (a.scans ?? 0))
+    .map(i => ({
+      label: formatMesaLabel(getMesaRawLabel(i)),
+      scans: getMesaScans(i),
+    }))
+    .filter(x => x.scans > 0)               // se quiser mostrar zero, remove essa linha
+    .sort((a, b) => b.scans - a.scans)
     .slice(0, 10);
+
+  if (!top.length) {
+    const ctx = elements.chartScansByMesa.getContext("2d");
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    return;
+  }
 
   charts.scansByMesa = buildBarHorizontal(
     elements.chartScansByMesa.getContext("2d"),
-    top.map(i => {
-      const mesaRaw = i.mesa || i.qrLabel || "QR/mesa-desconhecido";
-      return formatMesaLabel(mesaRaw);
-    }),
-    top.map(i => i.scans ?? 0),
+    top.map(i => i.label),
+    top.map(i => i.scans),
     "Scans por Mesa",
     "#00d9ff"
   );
@@ -2828,7 +2827,7 @@ async function fetchInsightsFromApi() {
     sessionStorage.getItem("ar.email");
 
   const tenantRaw = (emailTenant || AppState.tenant || "").trim();
-  const tenantForApi = tenantRaw;
+  const tenantForApi = tenantKey(tenantRaw);
 
   // monta URL com base no API_BASE atual
   let base = "";
@@ -2927,17 +2926,22 @@ async function loadInsightsWithGPT() {
    LOAD & RENDER INTEGRADO AO DASHBOARD
    ========================================================== */
 
+function safeRender(name, fn){
+  try { fn(); }
+  catch(e){ console.error(`[METRICAS] Quebrou em ${name}:`, e); }
+}
+
 async function loadAndRender() {
-  // garante datas
-  if (!AppState.startDate || !AppState.endDate) {
-    setDefaultTodayRange();
+  if (!AppState.startDate || !AppState.endDate) setDefaultTodayRange();
+
+  try {
+    await ensureChartJs();
+  } catch (e) {
+    console.error("[METRICAS] Falha ao carregar Chart.js:", e);
   }
 
-  // garante Chart.js com defaults
-  await ensureChartJs();
+  let data = buildEmptyData();
 
-  // ------------------ BUSCA DAS MÉTRICAS ------------------
-  let data;
   try {
     data = await fetchMetrics({
       tenant:    AppState.tenant,
@@ -2950,62 +2954,59 @@ async function loadAndRender() {
   }
 
   console.log("[METRICAS] data bruto da API:", data);
-  console.log("[DEBUG porMesa]", data.porMesa);
+  console.log("[DEBUG porMesa]", data?.porMesa);
 
-  // guarda em memória global se precisar em outros lugares
   AppState.metricsData = data;
 
-  // ------------------ RESUMO (KPIs) ------------------
-  renderKPIs(data.kpis || {});
+  // KPIs
+  safeRender("renderKPIs", () => renderKPIs(data.kpis || {}));
 
-  // ------------------ TABELAS ------------------
-  renderTabelaMesaQR(data.porMesa || []);
-  renderTabelaSessoes(
+  // Tabelas
+  safeRender("renderTabelaMesaQR", () => renderTabelaMesaQR(data.porMesa || []));
+  safeRender("renderTabelaSessoes", () => renderTabelaSessoes(
     data.rangeLabels || [],
     (data.daily && data.daily.sessoes) || [],
     (data.daily && data.daily.unicos) || []
-  );
-  renderTabelaTempoMenu(data.tempoMenu || []);
-  renderTabelaTimeByCategory(data.timeByCategory || []);
-  renderTabelaTimePerItem(data.topItems || []);
-  renderTabelaPeakHours(data.picos || []);
-  renderTabelaEngagementByMesa(data.porMesa || []);
-  renderTabelaDeviceDistribution(data.devices || []);
-  renderTabelaTopModels(data.topModels || []);
-  renderTabelaModelErrors(data.modelErrors || []);
-  renderTabelaInfoPerItem(
-    (data.infoPerItem && Array.isArray(data.infoPerItem) && data.infoPerItem.length)
-      ? data.infoPerItem
-      : (data.topItems || [])
-  );
+  ));
+  safeRender("renderTabelaTempoMenu", () => renderTabelaTempoMenu(data.tempoMenu || []));
+  safeRender("renderTabelaTimeByCategory", () => renderTabelaTimeByCategory(data.timeByCategory || []));
+  safeRender("renderTabelaTimePerItem", () => renderTabelaTimePerItem(data.topItems || []));
+  safeRender("renderTabelaPeakHours", () => renderTabelaPeakHours(data.picos || []));
+  safeRender("renderTabelaEngagementByMesa", () => renderTabelaEngagementByMesa(data.porMesa || []));
+  safeRender("renderTabelaDeviceDistribution", () => renderTabelaDeviceDistribution(data.devices || []));
+  safeRender("renderTabelaTopModels", () => renderTabelaTopModels(data)); // <- IMPORTANTE
+  safeRender("renderTabelaModelErrors", () => renderTabelaModelErrors(data.modelErrors || []));
+  safeRender("renderTabelaInfoPerItem", () => renderTabelaInfoPerItem(
+    (Array.isArray(data.infoPerItem) && data.infoPerItem.length) ? data.infoPerItem : (data.topItems || [])
+  ));
 
-  // ------------------ LIKE / INFO ------------------
-  const likeBlock = getLikeUsageBlock(data);
-  renderLikeUsage(likeBlock);
+  // Like
+  safeRender("renderLikeUsage", () => {
+    const likeBlock = getLikeUsageBlock(data);
+    renderLikeUsage(likeBlock);
+  });
 
-  // ------------------ GRÁFICOS ------------------
-  renderScansTotalChart(data);
-  renderScansByMesaChart(data);
-  renderSessoesChart(data);
-  renderAvgTimeMenuChart(data);
-  renderPeakHoursChart(data);
-  renderDevicesChart(data);
-  renderTimeByCategoryChart(data);
-  renderTimePerItemChart(data);
-  renderInfoPerItemChart(data);
-  renderInfoUsageChart(data);
-  renderTopModelsChart(data);
-  renderModelHealthChart(data);
-  renderEngagementByMesaChart(data);
+  // Gráficos
+  safeRender("renderScansTotalChart", () => renderScansTotalChart(data));
+  safeRender("renderScansByMesaChart", () => renderScansByMesaChart(data));
+  safeRender("renderSessoesChart", () => renderSessoesChart(data));
+  safeRender("renderAvgTimeMenuChart", () => renderAvgTimeMenuChart(data));
+  safeRender("renderPeakHoursChart", () => renderPeakHoursChart(data));
+  safeRender("renderDevicesChart", () => renderDevicesChart(data));
+  safeRender("renderTimeByCategoryChart", () => renderTimeByCategoryChart(data));
+  safeRender("renderTimePerItemChart", () => renderTimePerItemChart(data));
+  safeRender("renderInfoPerItemChart", () => renderInfoPerItemChart(data));
+  safeRender("renderInfoUsageChart", () => renderInfoUsageChart(data));
+  safeRender("renderTopModelsChart", () => renderTopModelsChart(data));
+  safeRender("renderModelHealthChart", () => renderModelHealthChart(data));
+  safeRender("renderEngagementByMesaChart", () => renderEngagementByMesaChart(data));
 
-  // ------------------ INSIGHTS (sempre via API → GPT) ------------------
+  // Insights
   try {
     const insightsData = await fetchInsightsFromApi();
-    console.log("[INSIGHTS] payload recebido no loadAndRender:", insightsData);
-    startInsightScheduler(insightsData); // só exibe o que veio do backend
+    startInsightScheduler(insightsData);
   } catch (err) {
-    console.error("[METRICAS] Erro ao processar insights:", err);
-    // se der erro ou vier vazio → mostra "Sem insights"
+    console.error("[INSIGHTS] Erro ao carregar:", err);
     startInsightScheduler({ insights: [] });
   }
 }
@@ -3018,11 +3019,6 @@ document.addEventListener("DOMContentLoaded", ()=>{
   // normaliza tenant
   if (AppState.tenant) {
     AppState.tenant = tenantKey(AppState.tenant);
-  }
-
-  if (!AppState.tenant) {
-    const raw = elements.filterTenant?.value?.trim() || "";
-    AppState.tenant = raw ? tenantKey(raw) : "";
   }
 
   initFlatpickrIfAny();
