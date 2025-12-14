@@ -1,4 +1,4 @@
-<!-- HOME.HTML (atualizado, sem CSS) -->
+<!-- HOME.HTML (com QR Code + logo no centro, sem duplicar eventos) -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="../css/home.css">
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
 </head>
+
 <body>
   <!-- VÍDEO DE FUNDO -->
   <video autoplay muted loop id="bg-video" style="position:fixed;right:0;bottom:0;min-width:100%;min-height:100%;z-index:-1;">
@@ -72,6 +73,7 @@
     <div class="conteudo-modal">
       <span class="fechar-modal" id="fecharModal">&times;</span>
       <h3>QR Code</h3>
+
       <div class="controles-qrcode">
         <label for="qtdQr">Quantidade:</label>
         <input type="number" id="qtdQr" value="1" min="1" />
@@ -79,13 +81,13 @@
         <button id="aumentarQr">+</button>
         <button id="imprimirQr">Imprimir</button>
       </div>
+
       <div id="qrcodeContainer"></div>
     </div>
   </div>
 
-  <!-- BIBLIOTECAS -->
+  <!-- BIBLIOTECA QR -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="../java/gerarQrLogo.js"></script>
 
   <!-- SCRIPTS DO PROJETO (carregam em ordem) -->
   <script src="../java/cardapio.js"></script>
@@ -93,7 +95,7 @@
   <script src="../java/home2.js"></script>
   <script src="../java/home3.js"></script>
 
-  <!-- CONTROLE DE MODAIS, DROPDOWNS E PERFIL -->
+  <!-- CONTROLE DE MODAIS, DROPDOWNS E PERFIL (SEM duplicar QR Code aqui) -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       // ---------- util ----------
@@ -116,13 +118,10 @@
         if (btnSalvar) btnSalvar.addEventListener("click", () => modalConfig.classList.remove("active"));
       }
 
-      // Modal QR
+      // Modal QR: aqui só fecha no X (ABRIR/GERAR fica 100% no home3.js)
       const modalQr = document.getElementById("modalQrCode");
       const btnFecharQr = modalQr?.querySelector("#fecharModal");
       if (btnFecharQr) btnFecharQr.addEventListener("click", () => modalQr.classList.add("hidden"));
-      document.getElementById('btnGerarQR')?.addEventListener('click', () => {
-        modalQr?.classList.remove('hidden');
-      });
 
       // BroadcastChannel (opcional)
       if ("BroadcastChannel" in window) {
@@ -136,7 +135,7 @@
         };
       }
 
-      // Instância principal (home1.js)
+      // Instância principal (home1.js) - se você usa isso em algum lugar
       if (window.SistemaCardapioBase && !window.sistemaCardapio) {
         try { window.sistemaCardapio = new window.SistemaCardapioBase(); }
         catch (e) { console.warn('Falha ao instanciar SistemaCardapioBase:', e); }

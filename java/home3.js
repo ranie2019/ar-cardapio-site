@@ -2,13 +2,52 @@
 // home3.js - Sincronização, QR Code e Sistema Principal
 // ==============================
 
+/* ==============================
+   QR LOGO (FORA DA CLASS)
+   ============================== */
+const LOGO_URL = "https://site-arcardapio.s3.us-east-1.amazonaws.com/imagens/logoqr.png";
+
+function aplicarLogoNoCentro(qrDiv) {
+  if (!qrDiv) return;
+
+  // evita duplicar logo ao regenerar
+  const old = qrDiv.querySelector(".qr-logo");
+  if (old) old.remove();
+
+  // garante que o container do QR é "ancora" pro absolute
+  qrDiv.style.position = "relative";
+
+  const img = document.createElement("img");
+  img.className = "qr-logo";
+  img.src = LOGO_URL;
+  img.alt = "Logo";
+  img.decoding = "async";
+  img.loading = "eager";
+  img.referrerPolicy = "no-referrer";
+
+  // estilo inline pra funcionar mesmo sem mexer no CSS
+  img.style.position = "absolute";
+  img.style.left = "50%";
+  img.style.top = "50%";
+  img.style.transform = "translate(-50%, -50%)";
+  img.style.width = "44px";     // ajuste aqui (40~60 costuma ficar bom)
+  img.style.height = "44px";
+  img.style.borderRadius = "10px";
+  img.style.background = "#fff";
+  img.style.padding = "6px";
+  img.style.boxSizing = "border-box";
+  img.style.zIndex = "5";
+
+  qrDiv.appendChild(img);
+}
+
+/* ==============================
+   SISTEMA
+   ============================== */
 class SistemaCardapio extends SistemaCardapioItens {
   constructor() {
     super();
-    
-    // ------------------------------
-    // Configurações específicas do sistema completo
-    // ------------------------------
+
     this.setupQrCode();
     this.configurarSincronizacao();
     this.carregarConfiguracoesIniciais();
@@ -22,7 +61,7 @@ class SistemaCardapio extends SistemaCardapioItens {
       const { nome, visivel } = evento.data;
       const elemento = document.querySelector(`[data-nome="${this.nomeParaSlug(nome)}"]`);
       if (!elemento) return;
-      elemento.style.display = visivel ? '' : 'none';
+      elemento.style.display = visivel ? "" : "none";
     };
   }
 
@@ -31,37 +70,37 @@ class SistemaCardapio extends SistemaCardapioItens {
   // ==============================
   async salvarConfiguracaoNoS3() {
     // 1. Categorias
-    const botoesCategoria = document.querySelectorAll('#dropdownCardapio button[data-categoria]');
+    const botoesCategoria = document.querySelectorAll("#dropdownCardapio button[data-categoria]");
     const configuracoesCategoria = {};
-    botoesCategoria.forEach(botao => {
-      const categoria = botao.getAttribute('data-categoria');
-      configuracoesCategoria[categoria] = !botao.classList.contains('desativado');
+    botoesCategoria.forEach((botao) => {
+      const categoria = botao.getAttribute("data-categoria");
+      configuracoesCategoria[categoria] = !botao.classList.contains("desativado");
     });
 
     try {
       const r = await fetch(this.ARQUIVO_CONFIG_CATEGORIAS, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
-          'x-amz-acl': 'bucket-owner-full-control' // mesmo padrão do home2.js
+          "Content-Type": "application/json",
+          "x-amz-acl": "bucket-owner-full-control",
         },
-        body: JSON.stringify(configuracoesCategoria)
+        body: JSON.stringify(configuracoesCategoria),
       });
       if (!r.ok) {
-        const t = await r.text().catch(() => '');
+        const t = await r.text().catch(() => "");
         throw new Error(`Falha ao salvar categorias (${r.status}) ${t}`);
       }
     } catch (erro) {
-      console.error('Erro ao salvar configurações de categoria:', erro);
-      alert('Falha ao salvar categorias: ' + erro.message);
+      console.error("Erro ao salvar configurações de categoria:", erro);
+      alert("Falha ao salvar categorias: " + erro.message);
     }
 
     // 2. Itens desativados
     const itensDesativados = {};
-    Object.keys(objetos3D).forEach(categoria => {
-      objetos3D[categoria].forEach(nomeItem => {
+    Object.keys(objetos3D).forEach((categoria) => {
+      objetos3D[categoria].forEach((nomeItem) => {
         const chaveLocal = this.gerarChaveItem(categoria, nomeItem);
-        if (localStorage.getItem(chaveLocal) === 'true') {
+        if (localStorage.getItem(chaveLocal) === "true") {
           if (!itensDesativados[categoria]) itensDesativados[categoria] = [];
           itensDesativados[categoria].push(this.nomeParaSlug(nomeItem));
         }
@@ -70,20 +109,20 @@ class SistemaCardapio extends SistemaCardapioItens {
 
     try {
       const r2 = await fetch(this.ARQUIVO_CONFIG_ITENS, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
-          'x-amz-acl': 'bucket-owner-full-control' // mesmo padrão do home2.js
+          "Content-Type": "application/json",
+          "x-amz-acl": "bucket-owner-full-control",
         },
-        body: JSON.stringify(itensDesativados)
+        body: JSON.stringify(itensDesativados),
       });
       if (!r2.ok) {
-        const t2 = await r2.text().catch(() => '');
+        const t2 = await r2.text().catch(() => "");
         throw new Error(`Falha ao salvar itens (${r2.status}) ${t2}`);
       }
     } catch (erro) {
-      console.error('Erro ao salvar itens desativados:', erro);
-      alert('Falha ao salvar itens desativados: ' + erro.message);
+      console.error("Erro ao salvar itens desativados:", erro);
+      alert("Falha ao salvar itens desativados: " + erro.message);
     }
   }
 
@@ -91,141 +130,126 @@ class SistemaCardapio extends SistemaCardapioItens {
   // 8. CARREGAMENTO INICIAL
   // ==============================
   async carregarConfiguracoesIniciais() {
-    // SEMPRE garantir que todos os botões das categorias estejam visíveis primeiro
     this.garantirBotoesCategoriasVisiveis();
-    
+
     try {
-      // Tentar carregar configurações específicas do restaurante (se existirem)
       await this.carregarConfiguracoesSalvas();
     } catch (erro) {
-      console.error('Erro ao carregar configurações iniciais:', erro);
-      // Mesmo com erro, os botões já estão visíveis
+      console.error("Erro ao carregar configurações iniciais:", erro);
     }
   }
 
-  // Garantir que todos os botões das categorias estejam sempre visíveis
   garantirBotoesCategoriasVisiveis() {
-    const botoesCategoria = document.querySelectorAll('#dropdownCardapio .btn-categoria');
-    
-    // Se não há botões, criar os botões padrão
+    const botoesCategoria = document.querySelectorAll("#dropdownCardapio .btn-categoria");
+
     if (botoesCategoria.length === 0) {
       this.criarBotoesCategoriaPadrao();
       return;
     }
 
-    // Garantir que todos os botões estejam visíveis (remover estado desativado por padrão)
-    botoesCategoria.forEach(botao => {
-      const categoria = botao.getAttribute('data-categoria');
+    botoesCategoria.forEach((botao) => {
+      const categoria = botao.getAttribute("data-categoria");
       if (categoria) {
-        botao.style.display = '';
-        botao.classList.remove('hidden');
+        botao.style.display = "";
+        botao.classList.remove("hidden");
       }
     });
   }
 
-  // Criar botões de categoria padrão se não existirem
   criarBotoesCategoriaPadrao() {
-    const dropdown = document.getElementById('dropdownCardapio');
+    const dropdown = document.getElementById("dropdownCardapio");
     if (!dropdown) return;
 
-    const categoriasPadrao = ['logo','bebidas', 'carnes', 'pizzas', 'lanches', 'sobremesas', 'porcoes'];
+    const categoriasPadrao = ["logo", "bebidas", "carnes", "pizzas", "lanches", "sobremesas", "porcoes"];
     const nomesCategorias = {
-      'logo': 'Logo',
-      'bebidas': 'Bebidas',
-      'carnes': 'Carnes', 
-      'pizzas': 'Pizzas',
-      'lanches': 'Lanches',
-      'sobremesas': 'Sobremesas',
-      'porcoes': 'Porções'
+      logo: "Logo",
+      bebidas: "Bebidas",
+      carnes: "Carnes",
+      pizzas: "Pizzas",
+      lanches: "Lanches",
+      sobremesas: "Sobremesas",
+      porcoes: "Porções",
     };
 
-    categoriasPadrao.forEach(categoria => {
-      const botao = document.createElement('button');
-      botao.className = 'btn-categoria';
-      botao.setAttribute('data-categoria', categoria);
+    categoriasPadrao.forEach((categoria) => {
+      const botao = document.createElement("button");
+      botao.className = "btn-categoria";
+      botao.setAttribute("data-categoria", categoria);
       botao.textContent = nomesCategorias[categoria] || categoria;
       dropdown.appendChild(botao);
     });
   }
 
-  // Carregar configurações salvas (se existirem)
   async carregarConfiguracoesSalvas() {
     try {
-      // Categorias
       const respostaCategorias = await fetch(`${this.ARQUIVO_CONFIG_CATEGORIAS}?v=${Date.now()}`);
       if (respostaCategorias.ok) {
         const categorias = await respostaCategorias.json();
         Object.entries(categorias).forEach(([categoria, visivel]) => {
           const botao = document.querySelector(`#dropdownCardapio button[data-categoria="${categoria}"]`);
           if (botao && !visivel) {
-            botao.classList.add('desativado');
-            localStorage.setItem(`btnEstado_${categoria}`, 'true');
+            botao.classList.add("desativado");
+            localStorage.setItem(`btnEstado_${categoria}`, "true");
           }
         });
       }
 
-      // Itens desativados
       const respostaItens = await fetch(`${this.ARQUIVO_CONFIG_ITENS}?v=${Date.now()}`);
       if (respostaItens.ok) {
         const itensDesativados = await respostaItens.json();
         Object.entries(itensDesativados).forEach(([categoria, itens]) => {
-          itens.forEach(nomeItemSlug => {
-            const nomeNormalizado = nomeItemSlug.replace(/_/g, ' ').toLowerCase();
+          itens.forEach((nomeItemSlug) => {
+            const nomeNormalizado = nomeItemSlug.replace(/_/g, " ").toLowerCase();
             const chave = this.gerarChaveItem(categoria, nomeNormalizado);
-            localStorage.setItem(chave, 'true');
+            localStorage.setItem(chave, "true");
           });
         });
       }
     } catch (erro) {
-      console.log('Configurações não encontradas - usando padrões:', erro.message);
-      // Não é um erro crítico - conta nova simplesmente não tem configurações ainda
+      console.log("Configurações não encontradas - usando padrões:", erro.message);
     }
   }
 
   // ==============================
-  // 9. GERADOR DE QR CODE (Usando /qr/resolve)
+  // 9. GERADOR DE QR CODE (Usando /qr/resolve) + LOGO NO CENTRO
   // ==============================
   setupQrCode() {
-    const modalQR = document.getElementById('modalQrCode');
-    const containerQR = document.getElementById('qrcodeContainer');
-    const botaoFechar = modalQR?.querySelector('.fechar-modal');
-    const inputQuantidade = document.getElementById('qtdQr');
-    const botaoMais = document.getElementById('aumentarQr');
-    const botaoMenos = document.getElementById('diminuirQr');
-    const botaoImprimir = document.getElementById('imprimirQr');
-    const botaoGerarQR = document.getElementById('btnGerarQR');
+    const modalQR = document.getElementById("modalQrCode");
+    const containerQR = document.getElementById("qrcodeContainer");
+    const botaoFechar = modalQR?.querySelector(".fechar-modal");
+    const inputQuantidade = document.getElementById("qtdQr");
+    const botaoMais = document.getElementById("aumentarQr");
+    const botaoMenos = document.getElementById("diminuirQr");
+    const botaoImprimir = document.getElementById("imprimirQr");
+    const botaoGerarQR = document.getElementById("btnGerarQR");
 
-    if (!modalQR || !containerQR || !botaoFechar || !inputQuantidade || !botaoMais || !botaoMenos || !botaoImprimir || !botaoGerarQR) {
-      console.error('Elementos do QR Code não encontrados.');
+    if (!modalQR || !containerQR || !inputQuantidade || !botaoMais || !botaoMenos || !botaoImprimir || !botaoGerarQR) {
+      console.error("Elementos do QR Code não encontrados.");
       return;
     }
 
-    // >>> URL do API Gateway que aciona a Lambda qrResolve
-    // Ajuste aqui se o seu endpoint for diferente
     const API_QR_RESOLVE = "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/qr/resolve";
 
-    // Email do cliente (validado pela Lambda). É o mesmo salvo no login.
-    const email = (localStorage.getItem('ar.email') || '').trim().toLowerCase();
-
     const gerarQRCodes = (quantidade) => {
+      const email = (localStorage.getItem("ar.email") || "").trim().toLowerCase();
       if (!email) {
-        alert('Não foi possível identificar o e-mail do cliente (ar.email). Faça login novamente para gerar os QR Codes.');
+        alert("Não foi possível identificar o e-mail do cliente (ar.email). Faça login novamente.");
         return;
       }
 
-      containerQR.innerHTML = '';
+      containerQR.innerHTML = "";
       const frag = document.createDocumentFragment();
 
       for (let i = 1; i <= quantidade; i++) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'qrcode-wrapper';
+        const wrapper = document.createElement("div");
+        wrapper.className = "qrcode-wrapper";
 
-        const divQR = document.createElement('div');
-        divQR.className = 'qrcode';
+        const divQR = document.createElement("div");
+        divQR.className = "qrcode";
         divQR.id = `qr-${i}`;
 
-        const label = document.createElement('div');
-        label.className = 'mesa-label';
+        const label = document.createElement("div");
+        label.className = "mesa-label";
         label.textContent = `Mesa ${i}`;
 
         wrapper.appendChild(divQR);
@@ -235,19 +259,27 @@ class SistemaCardapio extends SistemaCardapioItens {
 
       containerQR.appendChild(frag);
 
-      // Cada QR aponta para /qr/resolve?u=<email>&i=mesaX
       for (let i = 1; i <= quantidade; i++) {
         const mesaId = `mesa${i}`;
         const url = `${API_QR_RESOLVE}?u=${encodeURIComponent(email)}&i=${encodeURIComponent(mesaId)}&t=${Date.now()}`;
 
-        new QRCode(document.getElementById(`qr-${i}`), {
+        const qrDiv = document.getElementById(`qr-${i}`);
+        if (!qrDiv) continue;
+
+        // limpa caso regenere
+        qrDiv.innerHTML = "";
+
+        new QRCode(qrDiv, {
           text: url,
           width: 200,
           height: 200,
           colorDark: "#000000",
           colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.H
+          correctLevel: QRCode.CorrectLevel.H,
         });
+
+        // aplica logo por cima
+        aplicarLogoNoCentro(qrDiv);
       }
     };
 
@@ -259,60 +291,54 @@ class SistemaCardapio extends SistemaCardapioItens {
       gerarQRCodes(quantidade);
     };
 
-    botaoGerarQR.addEventListener('click', () => {
+    botaoGerarQR.addEventListener("click", () => {
       atualizarQRCodes();
-      modalQR.classList.add('ativo');
+      modalQR.classList.add("ativo");
     });
 
-    inputQuantidade.addEventListener('input', atualizarQRCodes);
+    inputQuantidade.addEventListener("input", atualizarQRCodes);
 
-    botaoMais.addEventListener('click', () => {
+    botaoMais.addEventListener("click", () => {
       inputQuantidade.value = (parseInt(inputQuantidade.value, 10) || 1) + 1;
-      inputQuantidade.dispatchEvent(new Event('input'));
+      inputQuantidade.dispatchEvent(new Event("input"));
     });
 
-    botaoMenos.addEventListener('click', () => {
+    botaoMenos.addEventListener("click", () => {
       inputQuantidade.value = Math.max(1, (parseInt(inputQuantidade.value, 10) || 1) - 1);
-      inputQuantidade.dispatchEvent(new Event('input'));
+      inputQuantidade.dispatchEvent(new Event("input"));
     });
 
-    botaoFechar?.addEventListener('click', () => {
-      modalQR.classList.remove('ativo');
-      containerQR.innerHTML = '';
+    botaoFechar?.addEventListener("click", () => {
+      modalQR.classList.remove("ativo");
+      containerQR.innerHTML = "";
     });
 
-    // Fecha ao clicar fora do conteúdo
-    modalQR.addEventListener('click', (evento) => {
+    modalQR.addEventListener("click", (evento) => {
       if (evento.target === modalQR) {
-        modalQR.classList.remove('ativo');
-        containerQR.innerHTML = '';
+        modalQR.classList.remove("ativo");
+        containerQR.innerHTML = "";
       }
     });
 
-    // Impressão
-    botaoImprimir.addEventListener('click', () => {
+    botaoImprimir.addEventListener("click", () => {
       if (!containerQR.innerHTML.trim()) {
-        alert('Gere os QR Codes antes de imprimir.');
+        alert("Gere os QR Codes antes de imprimir.");
         return;
       }
 
-      const janelaImpressao = window.open('', '_blank');
+      const janelaImpressao = window.open("", "_blank");
       janelaImpressao.document.write(`
         <!DOCTYPE html>
         <html>
           <head>
             <title>Imprimir QR Codes</title>
             <style>
-              body { 
-                margin: 0;
-                padding: 20px;
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-                gap: 20px;
-              }
-              .qrcode-wrapper { text-align: center; page-break-inside: avoid; }
-              .mesa-label { font-weight: bold; margin-top: 8px; font-size: 16px; }
-              @page { size: auto; margin: 10mm; }
+              body { margin:0; padding:20px; display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:20px; }
+              .qrcode-wrapper { text-align:center; page-break-inside:avoid; }
+              .mesa-label { font-weight:bold; margin-top:8px; font-size:16px; }
+              .qrcode { position:relative; width:200px; height:200px; margin:0 auto; }
+              .qr-logo { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:44px; height:44px; border-radius:10px; background:#fff; padding:6px; box-sizing:border-box; z-index:5; }
+              @page { size:auto; margin:10mm; }
             </style>
           </head>
           <body>${containerQR.innerHTML}</body>
@@ -330,15 +356,15 @@ class SistemaCardapio extends SistemaCardapioItens {
 }
 
 // Inicializa o sistema quando o DOM estiver pronto
-document.addEventListener('DOMContentLoaded', () => {
-  // PREVENÇÃO DO MENU DE CONTEXTO (botão direito) DENTRO DA ÁREA 3D
-  const sceneElement = document.querySelector('a-scene')
-    || document.getElementById('suaJanela3D')
-    || document.getElementById('scene3D')
-    || document.querySelector('.scene-3d');
+document.addEventListener("DOMContentLoaded", () => {
+  const sceneElement =
+    document.querySelector("a-scene") ||
+    document.getElementById("suaJanela3D") ||
+    document.getElementById("scene3D") ||
+    document.querySelector(".scene-3d");
 
   if (sceneElement) {
-    sceneElement.addEventListener('contextmenu', (event) => {
+    sceneElement.addEventListener("contextmenu", (event) => {
       event.preventDefault();
     });
   }

@@ -1063,3 +1063,36 @@ footer {
       gap: 10px;
       justify-content: center;
     }
+
+/* QR com logo no centro (sem canvas) */
+.qrcode{
+  position: relative;
+  width: 200px;
+  height: 200px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* o qrcodejs insere canvas ou img dentro */
+.qrcode canvas,
+.qrcode > img{
+  width: 200px;
+  height: 200px;
+}
+
+/* logo no centro */
+.qrcode .qr-logo{
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 52px;          /* 200px QR => 52px logo é seguro */
+  height: 52px;
+  padding: 6px;         /* “moldura” branca pra não misturar com o QR */
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  pointer-events: none; /* não atrapalha clique/print */
+}
