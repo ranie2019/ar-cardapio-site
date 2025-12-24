@@ -3,106 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cadastro do Cliente - Mensal</title>
-  <link rel="stylesheet" href="../css/cadastro.css" />
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background-color: white;
-      font-family: Arial, sans-serif;
-      color: black;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+  <title>Cadastro do Cliente</title>
 
-    .container {
-      width: 100%;
-      max-width: 800px;
-      padding: 40px;
-    }
-
-    h2 {
-      margin-bottom: 30px;
-      text-align: center;
-    }
-
-    form {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      width: 100%;
-    }
-
-    .row {
-      display: flex;
-      gap: 30px;
-      width: 100%;
-      margin-bottom: 15px;
-    }
-
-    .input-container {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-    }
-
-    label {
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-
-    input {
-      padding: 10px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      background-color: #d6d6d6;
-    }
-
-    button {
-      padding: 12px 20px;
-      font-size: 16px;
-      background-color: red;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      margin-top: 20px;
-      align-self: center;
-      transition: background-color 0.3s ease;
-    }
-
-    button:disabled {
-      background-color: #aaa;
-      cursor: not-allowed;
-    }
-  </style>
+  <link rel="stylesheet" href="../css/cadastro.css?v=20251223-2" />
 </head>
+
 <body>
   <div class="container">
     <h2>Cadastro do Cliente</h2>
+    <p class="subtitle">
+      Esses dados facilitam a liberação do acesso e evitam erros no pagamento por cartão.
+    </p>
 
+    <!-- ✅ Tirei o novalidate pra obrigar os campos required no browser -->
     <form id="formCadastro">
       <!-- Nome da Empresa -->
       <div class="row">
         <div class="input-container" style="flex: 1;">
           <label for="empresa">Nome da Empresa</label>
-          <input type="text" id="empresa" name="empresa" required />
+          <input type="text" id="empresa" name="empresa" placeholder="Ex: Pizzaria do João" required />
         </div>
       </div>
 
-      <!-- E-mail e Telefone -->
+      <!-- Email + Telefone -->
       <div class="row">
         <div class="input-container">
           <label for="email">E-mail</label>
-          <input type="email" id="email" name="email" required />
+          <input type="email" id="email" name="email" autocomplete="email" placeholder="voce@exemplo.com" required />
         </div>
+
         <div class="input-container">
-          <label for="telefone">Telefone</label>
-          <input type="tel" id="telefone" name="telefone" required />
+          <label for="telefone">Telefone (WhatsApp)</label>
+          <input type="tel" id="telefone" name="telefone" autocomplete="tel" placeholder="(00) 00000-0000" required />
         </div>
       </div>
 
@@ -110,31 +42,91 @@
       <div class="row">
         <div class="input-container" style="flex: 1;">
           <label for="cnpj">CNPJ da Empresa</label>
-          <input type="text" id="cnpj" name="cnpj" required />
+          <input type="text" id="cnpj" name="cnpj" inputmode="numeric" placeholder="00.000.000/0000-00" required />
+          <div class="hint">Somente números (ou com máscara).</div>
         </div>
       </div>
+
+      <div class="divider"></div>
+
+      <!-- Endereço de cobrança -->
+      <p class="section-title">Endereço de cobrança (para pagamento no cartão)</p>
+
+      <div class="row">
+        <div class="input-container">
+          <label for="cep">CEP</label>
+          <input type="text" id="cep" name="cep" inputmode="numeric" maxlength="9" placeholder="00000-000" required />
+        </div>
+
+        <div class="input-container">
+          <label for="numero">Número</label>
+          <input type="text" id="numero" name="numero" placeholder="123" required />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="input-container" style="flex: 1;">
+          <label for="logradouro">Logradouro</label>
+          <input type="text" id="logradouro" name="logradouro" placeholder="Rua / Av / Travessa..." required />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="input-container">
+          <label for="bairro">Bairro</label>
+          <input type="text" id="bairro" name="bairro" placeholder="Bairro" required />
+        </div>
+
+        <div class="input-container">
+          <label for="cidade">Cidade</label>
+          <input type="text" id="cidade" name="cidade" placeholder="Cidade" required />
+        </div>
+
+        <div class="input-container">
+          <label for="uf">UF</label>
+          <input type="text" id="uf" name="uf" maxlength="2" placeholder="UF" required />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="input-container" style="flex: 1;">
+          <label for="complemento">Complemento (opcional)</label>
+          <input type="text" id="complemento" name="complemento" placeholder="Apto / Sala / Bloco..." />
+        </div>
+      </div>
+
+      <div class="checks">
+        <label>
+          <input type="checkbox" id="confirmBilling" />
+          Confirmo que o endereço acima é o endereço de cobrança do titular do cartão.
+        </label>
+      </div>
+
+      <div class="divider"></div>
 
       <!-- Senha -->
       <div class="row">
         <div class="input-container" style="flex: 1;">
           <label for="senha">Senha</label>
-          <input type="password" id="senha" name="senha" required />
+          <input type="password" id="senha" name="senha" autocomplete="new-password" placeholder="Mínimo 8 caracteres" required />
+          <div class="hint">Use no mínimo 8 caracteres.</div>
         </div>
       </div>
 
-      <!-- Confirmar Senha -->
       <div class="row">
         <div class="input-container" style="flex: 1;">
           <label for="confirmarSenha">Confirmar Senha</label>
-          <input type="password" id="confirmarSenha" name="confirmarSenha" required />
+          <input type="password" id="confirmarSenha" name="confirmarSenha" autocomplete="new-password" required />
         </div>
       </div>
 
-      <!-- Botão -->
+      <!-- ✅ ID que seu cadastro.js procura -->
+      <div id="mensagemErro" class="err" role="alert" aria-live="polite"></div>
+
       <button type="submit" id="botaoCadastro" disabled>Cadastrar</button>
     </form>
   </div>
 
-  <script src="../java/cadastro.js"></script>
+  <script src="../java/cadastro.js?v=20251223-2"></script>
 </body>
 </html>

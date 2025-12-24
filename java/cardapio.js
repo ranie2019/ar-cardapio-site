@@ -47,7 +47,7 @@ const desativadosMap = {};
 // ------------------- Catálogo local (nomes → arquivos .glb) -------------------
 const objetos3D = {
   // "logo" decide apenas o que aparece ao iniciar (não há botão no app para logo)
-  logo: ["Tabua de Carne", "Cubo"],
+  logo: ["Espetinho do Gil Filho", "Tabua de Carne", "Cubo"],
 
   bebidas: ["Heineken", "Redbull", "Jack Daniels", "Champagne", "Vinho Pergola", "Cerveja Imperio", "Champagne Prestige", "Cerveja Corona", "Cerveja Budweiser"],
   pizzas: ["Mussarela", "Salami","Calabresa com Queijo"],

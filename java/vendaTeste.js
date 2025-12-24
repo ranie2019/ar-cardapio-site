@@ -1,72 +1,107 @@
 /* ============================================================
-   vendaTeste_asaas.js — Plano Teste (7 dias) com Asaas
-   - Pix via createPaymentIntent (Asaas)
-   - Cartão: via createCardPayment (Asaas) com parcelamento funcional
-   - Exibe Subtotal / Descontos / Taxas / Total em tempo real
-   - Máscara do vencimento MM/AA
+   vendaTeste.js — Asaas Pix + Cartão (BOTÃO NO CARTÃO)
+   - Valor SEMPRE vem do HTML (#amountCents)
+   - Pix: gera QR, polling status, popup sucesso e redireciona
+   - Cartão: só paga ao clicar no botão.
+   - MODAL: sem botão, travado enquanto processa, auto-close no sucesso/erro
    ============================================================ */
 
-const API_CREATE_PAYMENT_INTENT =
-  "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/createPaymentIntent"; // Endpoint para criar intenção de pagamento (Pix )
-const API_CREATE_CARD_PAYMENT =
-  "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/createCardPayment"; // Endpoint para criar pagamento com cartão
-const API_VALIDATE_EMAIL =
-  "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/dev/cliente"; // Endpoint para validar e-mail do cliente
+/* =========================
+   ENDPOINTS
+   ========================= */
+const API_BASE  = "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com";
+const API_STAGE = ""; // $default (sem /dev). Se sua API for /dev, troque para "/dev"
 
-const PURCHASE_AMOUNT = 10.0; // Valor base da compra
-const PURCHASE_CURRENCY = "BRL"; // Moeda da compra
-const ASAAS_PIX_AMOUNT_BRL = 10.0; // Valor do Pix em BRL
+const API_CREATE_PAYMENT_INTENT = `${API_BASE}${API_STAGE}/createPaymentIntent`;
+const API_CHECK_PAYMENT_STATUS  = `${API_BASE}${API_STAGE}/checkPaymentStatusAsaas`;
+const API_CREATE_CARD_PAYMENT   = `${API_BASE}${API_STAGE}/createCardPayment`;
+const API_VALIDATE_EMAIL        = `${API_BASE}${API_STAGE}/cliente`;
 
-let currentPaymentMethod = "card"; // Define o método de pagamento inicial como cartão
+// ✅ se teu site estiver no root do S3/CloudFront, use "/html/login.html"
+const LOGIN_URL = "../html/login.html";
 
-// Referências aos elementos do formulário
-const formElement = document.getElementById("payment-form" );
-const inputEmail = document.getElementById("email");
-const inputName = document.getElementById("name");
-const inputDesc = document.getElementById("description");
+/* =========================
+   ESTADO
+   ========================= */
+let currentPaymentMethod = "pix";
+let currentPaymentId = null;
+let pollTimer = null;
+let isSubmittingCard = false;
+
+// evita redirecionar 2x
+let isRedirecting = false;
+
+// Pix anti-duplicação
+let pixLastKey = "";
+let pixInFlight = false;
+let pixAbortController = null;
+let pixCopyPasteCurrent = "";
+let pixEncodedImageCurrent = "";
+
+/* =========================
+   DOM
+   ========================= */
+const formElement      = document.getElementById("payment-form");
+const inputEmail       = document.getElementById("email");
+const inputName        = document.getElementById("name");
+const inputCpfCnpj     = document.getElementById("cpfCnpj");
+const inputDesc        = document.getElementById("description");
 const inputAmountCents = document.getElementById("amountCents");
-const inputPlanoSlug = document.getElementById("planoSlug");
+const inputPlanoSlug   = document.getElementById("planoSlug");
 
-const errorBox = document.getElementById("error"); // Caixa para exibir erros
-const emailValidationBox = document.getElementById("email-validation"); // Caixa para exibir validação de e-mail
-const buttonSubmit = document.getElementById("submitBtn"); // Botão de submissão
+const errorBox            = document.getElementById("error");
+const emailValidationBox  = document.getElementById("email-validation");
+const cpfValidationBox    = document.getElementById("cpf-validation");
 
-const tabsButtons = document.querySelectorAll(".pay-tabs .tab"); // Botões das abas de pagamento
-const panels = document.querySelectorAll(".pay-panel"); // Painéis de conteúdo das abas
+const buttonSubmit = document.getElementById("submitBtn");
 
-/* UI do Pix */
-const pixArea = document.getElementById("pix-area");
-const pixQrImage = document.getElementById("pix-qr");
-const pixStatusText = document.getElementById("pix-status");
-const buttonCopyPix = document.getElementById("btnCopy");
-const qrPlaceholder = document.getElementById("qr-placeholder");
+const tabsButtons = document.querySelectorAll(".pay-tabs .tab");
+// ✅ FIX: querySelectorAndAll não existe
+const panels      = document.querySelectorAll(".pay-panel");
 
-/* Coluna esquerda (valores de resumo) */
-const dispSubtotal = document.getElementById("display-subtotal");
+// Pix UI
+const pixArea        = document.getElementById("pix-area");
+const pixQrImage     = document.getElementById("pix-qr");
+const pixStatusText  = document.getElementById("pix-status");
+const buttonCopyPix  = document.getElementById("btnCopy");
+const qrPlaceholder  = document.getElementById("qr-placeholder");
+
+// Resumo
+const dispSubtotal  = document.getElementById("display-subtotal");
 const dispDescontos = document.getElementById("display-descontos");
-const dispTaxas = document.getElementById("display-taxas");
-const dispTotal = document.getElementById("display-total");
-const feesNote = document.getElementById("fees-note");
+const dispTaxas     = document.getElementById("display-taxas");
+const dispTotal     = document.getElementById("display-total");
+const feesNote      = document.getElementById("fees-note");
 
-/* Campos do cartão e parcelas */
-const ccNumberEl = document.getElementById("cc-number"); // Campo número do cartão
-const ccExpEl = document.getElementById("cc-exp"); // Campo vencimento do cartão
-const ccCvcEl = document.getElementById("cc-cvc"); // Campo CVC do cartão
-const ccNameEl = document.getElementById("cc-name"); // Campo nome do titular
-const uiInstallments = document.getElementById("installments"); // Select de parcelas
-const installmentHint = document.getElementById("installment-hint"); // Dica de parcelamento
+// Cartão
+const ccNumberEl       = document.getElementById("cc-number");
+const ccExpEl          = document.getElementById("cc-exp");
+const ccCvcEl          = document.getElementById("cc-cvc");
+const ccNameEl         = document.getElementById("cc-name");
+const uiInstallments   = document.getElementById("installments");
+const installmentHint  = document.getElementById("installment-hint");
 
-// Função para formatar valores em BRL
-const fmtBRL = (n) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+// Modal
+const modal    = document.getElementById("pay-modal");
+const modalBox = modal?.querySelector(".modal-box");
+const titleEl  = document.getElementById("pay-modal-title");
+const msgEl    = document.getElementById("pay-modal-msg");
+const okBtn    = document.getElementById("pay-modal-ok"); // se existir no HTML antigo, vamos esconder
 
-// Exibe mensagens de erro
+/* =========================
+   HELPERS
+   ========================= */
+const fmtBRL = (n) =>
+  Number(n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+const round2 = (x) => Math.round((Number(x) + Number.EPSILON) * 100) / 100;
+
 function showError(msg) {
   if (!errorBox) return;
   errorBox.textContent = msg || "";
   errorBox.style.display = msg ? "block" : "none";
 }
 
-// Exibe mensagens de validação de e-mail
 function showEmailValidation(msg, ok = false) {
   if (!emailValidationBox) return;
   emailValidationBox.textContent = msg || "";
@@ -74,131 +109,78 @@ function showEmailValidation(msg, ok = false) {
   emailValidationBox.style.color = ok ? "#10b981" : "#ff7070";
 }
 
-// Define o texto e estado do botão de submissão
-function setSubmit(t, dis = false) {
+function showCpfValidation(msg, ok = false) {
+  if (!cpfValidationBox) return;
+  cpfValidationBox.textContent = msg || "";
+  cpfValidationBox.style.display = msg ? "block" : "none";
+  cpfValidationBox.style.color = ok ? "#10b981" : "#ff7070";
+}
+
+function setPayButton(label, disabled) {
   if (!buttonSubmit) return;
-  buttonSubmit.textContent = t;
-  buttonSubmit.disabled = !!dis;
+  buttonSubmit.textContent = label;
+  buttonSubmit.disabled = !!disabled;
+  buttonSubmit.style.display = currentPaymentMethod === "card" ? "block" : "none";
 }
 
-/* =============== Máscara MM/AA do vencimento =============== */
-function maskExpInput(e) {
-  let v = e.target.value.replace(/\D/g, ""); // Remove não-dígitos
-  if (v.length > 4) v = v.slice(0, 4); // Limita a 4 dígitos
-  // Formata como MM/AA
-  if (v.length >= 3) {
-    const mm = v.slice(0, 2);
-    const aa = v.slice(2);
-    e.target.value = `${mm}/${aa}`;
-  } else if (v.length >= 1) {
-    e.target.value = v;
-  } else {
-    e.target.value = "";
-  }
-}
-
-// Valida o mês ao perder o foco
-function validateMonthOnBlur(e) {
-  const parts = (e.target.value || "").split("/");
-  if (parts.length === 2) {
-    let mm = parseInt(parts[0], 10);
-    if (!mm || mm < 1 || mm > 12) {
-      // Corrige para 01 se o mês for inválido
-      e.target.value = `01/${parts[1] ?? ""}`.slice(0, 5);
-    }
-  }
-}
-
-/* =============== Máscara do número do cartão =============== */
-function maskCardNumber(e) {
-  let v = e.target.value.replace(/\D/g, ""); // Remove não-dígitos
-  if (v.length > 16) v = v.slice(0, 16); // Limita a 16 dígitos
-  
-  // Adiciona espaços a cada 4 dígitos para formatação visual
-  v = v.replace(/(\d{4})(?=\d)/g, '$1 ');
-  e.target.value = v;
-}
-
-/* =============== Validações de cartão =============== */
-// Valida o número do cartão (apenas comprimento)
-function validateCardNumber(number) {
-  const cleaned = number.replace(/\D/g, "");
-  return cleaned.length >= 13 && cleaned.length <= 19; // Números de cartão geralmente têm entre 13 e 19 dígitos
-}
-
-// Valida a data de vencimento (MM/AA)
-function validateExpiryDate(expiry) {
-  const parts = expiry.split("/");
-  if (parts.length !== 2) return false;
-  
-  const month = parseInt(parts[0], 10);
-  const year = parseInt("20" + parts[1], 10); // Assume que o ano é no século 21
-  
-  if (month < 1 || month > 12) return false;
-  
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-  
-  // Verifica se a data de vencimento é no futuro
-  if (year < currentYear || (year === currentYear && month < currentMonth)) {
-    return false;
-  }
-  
-  return true;
-}
-
-// Valida o CVC (código de segurança)
-function validateCVC(cvc) {
-  const cleaned = cvc.replace(/\D/g, "");
-  return cleaned.length >= 3 && cleaned.length <= 4; // CVCs têm 3 ou 4 dígitos
-}
-
-// Adiciona event listeners para as máscaras e validações
-ccExpEl?.addEventListener("input", maskExpInput);
-ccExpEl?.addEventListener("blur", validateMonthOnBlur);
-ccNumberEl?.addEventListener("input", maskCardNumber);
-
-/* ===================== Helpers e Pix ===================== */
-// Mostra o placeholder do QR Code Pix
-function showPixPlaceholder(message) {
-  if (message && qrPlaceholder) qrPlaceholder.textContent = message;
-  qrPlaceholder?.classList.remove("hidden");
-  pixArea?.classList.add("hidden");
-  if (pixQrImage) {
-    pixQrImage.removeAttribute("src");
-    pixQrImage.alt = "QR Pix";
-  }
-  if (pixStatusText) pixStatusText.textContent = "";
-}
-
-// Exibe o QR Code Pix e o código copia-e-cola
-function showPixQr(base64, copyPaste) {
-  qrPlaceholder?.classList.add("hidden");
-  pixArea?.classList.remove("hidden");
-  if (pixQrImage) {
-    pixQrImage.src = "data:image/png;base64," + base64;
-    pixQrImage.alt = "QR Pix";
-  }
-  if (pixStatusText) {
-    pixStatusText.textContent = "Abra o app do seu banco, leia o QR ou use o código copia-e-cola.";
-  }
-  buttonCopyPix?.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(copyPaste);
-      if (pixStatusText) pixStatusText.textContent = "Código Pix copiado!";
-    } catch {
-      if (pixStatusText) pixStatusText.textContent = "Não foi possível copiar automaticamente.";
-    }
-  }, { once: true });
-}
-
-// Valida o formato de e-mail
 function isValidEmail(v) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").toLowerCase());
 }
 
-// Valida o e-mail no DynamoDB via API
+function onlyDigits(v) {
+  return String(v || "").replace(/\D/g, "");
+}
+
+function isValidCpfCnpj(v) {
+  const d = onlyDigits(v);
+  return d.length === 11 || d.length === 14;
+}
+
+function getAmountBrlFromInputs() {
+  const centsRaw = String(inputAmountCents?.value || "").trim();
+  const cents = Number(centsRaw.replace(/[^\d]/g, ""));
+  if (!Number.isFinite(cents) || cents <= 0) return 0;
+  return round2(cents / 100);
+}
+
+function getPlanFromInputs() {
+  const amount = getAmountBrlFromInputs();
+  const description = (inputDesc?.value || "").trim() || "Pagamento";
+  const plano = (inputPlanoSlug?.value || "").trim() || null; // "teste"|"plus"|"pro"|"ultra"
+  return { amount, description, plano };
+}
+
+function getPixKey() {
+  const email = (inputEmail?.value || "").trim().toLowerCase();
+  const name = (inputName?.value || "").trim();
+  const cpfCnpj = onlyDigits(inputCpfCnpj?.value || "");
+  const { amount, description, plano } = getPlanFromInputs();
+  return JSON.stringify({ email, name, cpfCnpj, amount, description, plano });
+}
+
+async function fetchJsonOrThrow(url, options = {}) {
+  try {
+    const resp = await fetch(url, options);
+    const raw = await resp.text();
+    let data = null;
+    if (raw) {
+      try { data = JSON.parse(raw); }
+      catch { data = { raw }; }
+    }
+    if (!resp.ok) {
+      const msg = data?.message || data?.error || data?.raw || `HTTP ${resp.status}`;
+      throw new Error(msg);
+    }
+    return data;
+  } catch (e) {
+    const isNetwork =
+      e instanceof TypeError ||
+      /Failed to fetch|NetworkError/i.test(String(e?.message || ""));
+    if (isNetwork) throw new Error(`Falha de rede/CORS ao chamar: ${url}`);
+    throw e;
+  }
+}
+
 async function validateEmailInDynamoDB(rawEmail) {
   const email = (rawEmail || "").trim().toLowerCase();
   if (!email) return false;
@@ -214,91 +196,371 @@ async function validateEmailInDynamoDB(rawEmail) {
   }
 }
 
-// Deriva o slug do plano a partir da descrição
-function planSlugFromDescription(desc) {
-  const d = String(desc || "").toLowerCase();
-  if (d.includes("ultra")) return "plano_ultra_5_anos";
-  if (d.includes("pro")) return "plano_pro_1_ano";
-  if (d.includes("plus")) return "plano_plus_30_dias";
-  if (d.includes("teste")) return "teste_7_dias";
-  return "teste_7_dias";
-}
+/* =========================
+   MODAL (AUTO / SEM BOTÃO / TRAVADO)
+   ========================= */
+let modalTimer = null;
+let modalLocked = false;
 
-// Obtém o valor da compra em BRL a partir dos inputs
-function getAmountBrlFromInputs() {
-  const cents = inputAmountCents?.value;
-  if (cents) {
-    const n = Number(String(cents).replace(/[^0-9\-\.]/g, ""));
-    if (!Number.isNaN(n)) return n / 100.0;
+if (okBtn) okBtn.style.display = "none";
+
+function hideModal(force = false) {
+  if (!modal) return;
+
+  if (modalTimer) {
+    clearTimeout(modalTimer);
+    modalTimer = null;
   }
-  return ASAAS_PIX_AMOUNT_BRL || PURCHASE_AMOUNT || 10.0;
+
+  if (modalLocked && !force) return;
+
+  modalLocked = false;
+  modal.classList.add("hidden");
 }
 
-/* ================== Tabela de taxas (Asaas) ================== */
-// Definição das faixas de taxas do Asaas para parcelamento
+function showModal({ title = "", message = "", type = "info", locked = false, autoCloseMs = 0 } = {}) {
+  if (!modal || !modalBox) return;
+
+  if (modalTimer) {
+    clearTimeout(modalTimer);
+    modalTimer = null;
+  }
+
+  modalLocked = !!locked;
+
+  if (titleEl) titleEl.textContent = title || "";
+  if (msgEl) msgEl.textContent = message || "";
+
+  modalBox.className = `modal-box ${type}`;
+  modal.classList.remove("hidden");
+
+  if (okBtn) okBtn.style.display = "none";
+
+  if (autoCloseMs && autoCloseMs > 0) {
+    modalTimer = setTimeout(() => hideModal(true), autoCloseMs);
+  }
+}
+
+modal?.addEventListener("click", (e) => {
+  if (e.target === modal) hideModal(false);
+});
+
+function redirectToLoginAfter(ms = 5000) {
+  if (isRedirecting) return;
+  isRedirecting = true;
+
+  showModal({
+    title: "Finalizando",
+    message: "Você será redirecionado para o login…",
+    type: "success",
+    locked: true,
+    autoCloseMs: ms
+  });
+
+  setTimeout(() => {
+    window.location.href = LOGIN_URL;
+  }, ms);
+}
+
+/* =========================
+   POLLING
+   ========================= */
+function stopPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = null;
+}
+
+function normalizeStatus(s) {
+  return String(s || "").trim().toUpperCase();
+}
+
+function isPaidStatus(st) {
+  return ["PAID", "RECEIVED", "CONFIRMED", "SETTLED"].includes(normalizeStatus(st));
+}
+
+function isFailedStatus(st) {
+  return ["CANCELLED", "CANCELED", "REFUNDED", "CHARGEBACK", "FAILED", "EXPIRED"].includes(
+    normalizeStatus(st)
+  );
+}
+
+function startPolling(paymentId) {
+  stopPolling();
+
+  pollTimer = setInterval(async () => {
+    try {
+      const url = `${API_CHECK_PAYMENT_STATUS}?paymentId=${encodeURIComponent(paymentId)}`;
+      const r = await fetch(url, { method: "GET", headers: { Accept: "application/json" } });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || data?.ok === false) return;
+
+      const st = normalizeStatus(data?.normalizedStatus || data?.status);
+
+      // ✅ SUCESSO: não depende de done:true
+      if (isPaidStatus(st)) {
+        stopPolling();
+
+        // 1) Pagamento concluído
+        showModal({
+          title: "Pagamento concluído!",
+          message: "Pagamento confirmado.",
+          type: "success",
+          locked: true
+        });
+
+        // 2) depois mostra redirecionamento por 5s
+        setTimeout(() => redirectToLoginAfter(5000), 1200);
+        return;
+      }
+
+      // ✅ ERRO: também NÃO depende de done:true (mais confiável)
+      if (isFailedStatus(st)) {
+        stopPolling();
+        showModal({
+          title: "Pagamento não concluído",
+          message: "Transação não autorizada / cancelada. Tente novamente.",
+          type: "error",
+          locked: false,
+          autoCloseMs: 5000
+        });
+        return;
+      }
+
+      // opcional: se quiser atualizar mensagem em status pendente, faz aqui
+      // ex: PENDING -> "Aguardando confirmação…"
+    } catch {
+      // silencioso
+    }
+  }, 3000);
+}
+
+/* =========================
+   TAXAS (CARTÃO)
+   ========================= */
 const ASAAS_TIERS = [
-  { min: 1, max: 1, mdr: 0.0299, fixed: 0.49, label: "1x: 2,99% + R$ 0,49" },
-  { min: 2, max: 6, mdr: 0.0349, fixed: 0.49, label: "2 a 6x: 3,49% + R$ 0,49" },
-  { min: 7, max: 12, mdr: 0.0399, fixed: 0.49, label: "7 a 12x: 3,99% + R$ 0,49" },
+  { min: 2, max: 6,  mdr: 0.0349, fixed: 0.49 },
+  { min: 7, max: 12, mdr: 0.0399, fixed: 0.49 },
 ];
 
-// Arredonda um número para duas casas decimais
-const round2 = (x) => Math.round((x + Number.EPSILON) * 100) / 100;
-// Retorna a faixa de taxa para um dado número de parcelas
-const tierForInstallments = (n) => ASAAS_TIERS.find(t => n >= t.min && n <= t.max) || ASAAS_TIERS.at(-1);
+const tierForInstallments = (n) =>
+  ASAAS_TIERS.find((t) => n >= t.min && n <= t.max) || ASAAS_TIERS[ASAAS_TIERS.length - 1];
 
-// Calcula o valor total bruto (com taxas) para um subtotal e número de parcelas
 function grossUpTotal(subtotal, n) {
+  const base = round2(subtotal);
+  if (n === 1) return { tier: null, total: round2(base), per: round2(base), fees: 0 };
+
   const t = tierForInstallments(n);
-  const T = (subtotal + t.fixed) / (1 - t.mdr);
-  return {
-    tier: t,
-    total: round2(T),
-    per: round2(T / n),
-    fees: round2(T - subtotal)
-  };
+  const T = (base + t.fixed) / (1 - t.mdr);
+  const total = round2(T);
+  return { tier: t, total, per: round2(total / n), fees: round2(total - base) };
 }
 
-/* Atualiza coluna esquerda e o hint embaixo do select */
-// Atualiza a interface com os valores de subtotal, descontos, taxas e total
-function updateTotalsUI(n) {
-  const base = getAmountBrlFromInputs();
-  const descontos = 0;
-  const subtotal = round2(base - descontos);
-  const { tier, total, per, fees } = grossUpTotal(subtotal, n);
+function getSelectedInstallments() {
+  const n = parseInt(uiInstallments?.value || "1", 10);
+  return Number.isFinite(n) && n >= 1 ? Math.min(n, 12) : 1;
+}
 
-  if (dispSubtotal) dispSubtotal.textContent = fmtBRL(subtotal);
+function updateInstallmentsOptions(subtotal) {
+  if (!uiInstallments) return;
+  Array.from(uiInstallments.options).forEach((opt) => {
+    const n = parseInt(opt.value || "1", 10) || 1;
+    if (n === 1) opt.textContent = `1x ${fmtBRL(subtotal)} (SEM JUROS)`;
+    else opt.textContent = `${n}x de ${fmtBRL(grossUpTotal(subtotal, n).per)}`;
+  });
+}
+
+function getDisplayedTotal() {
+  const subtotal = round2(getAmountBrlFromInputs());
+  if (currentPaymentMethod === "pix") return subtotal;
+  return grossUpTotal(subtotal, getSelectedInstallments()).total;
+}
+
+function validateCardNumber(number) {
+  const cleaned = String(number || "").replace(/\D/g, "");
+  return cleaned.length >= 13 && cleaned.length <= 19;
+}
+
+function validateExpiryDate(expiry) {
+  const parts = String(expiry || "").split("/");
+  if (parts.length !== 2) return false;
+  const month = parseInt(parts[0], 10);
+  const yy = parseInt(parts[1], 10);
+  if (!month || month < 1 || month > 12) return false;
+  if (!Number.isFinite(yy) || yy < 0 || yy > 99) return false;
+
+  const year = 2000 + yy;
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  return !(year < currentYear || (year === currentYear && month < currentMonth));
+}
+
+function validateCVC(cvc) {
+  const cleaned = String(cvc || "").replace(/\D/g, "");
+  return cleaned.length >= 3 && cleaned.length <= 4;
+}
+
+function maskExpInput(e) {
+  let v = String(e.target.value || "").replace(/\D/g, "");
+  if (v.length > 4) v = v.slice(0, 4);
+  e.target.value = v.length >= 3 ? `${v.slice(0, 2)}/${v.slice(2)}` : v;
+}
+
+function validateMonthOnBlur(el) {
+  const parts = String(el.value || "").split("/");
+  if (parts.length !== 2) return;
+  let mm = parseInt(parts[0], 10);
+  const yy = parts[1] || "";
+  if (!mm || mm < 1 || mm > 12) mm = 1;
+  el.value = `${String(mm).padStart(2, "0")}/${yy}`.slice(0, 5);
+}
+
+function maskCardNumber(e) {
+  let v = String(e.target.value || "").replace(/\D/g, "");
+  if (v.length > 19) v = v.slice(0, 19);
+  e.target.value = v.replace(/(\d{4})(?=\d)/g, "$1 ");
+}
+
+function validateCardFields() {
+  const errors = [];
+  const cardNumber = ccNumberEl?.value?.replace(/\D/g, "") || "";
+  const expiry = ccExpEl?.value || "";
+  const cvc = ccCvcEl?.value || "";
+  const holderName = ccNameEl?.value?.trim() || "";
+
+  if (!validateCardNumber(cardNumber)) errors.push("Número do cartão inválido");
+  if (!validateExpiryDate(expiry)) errors.push("Vencimento inválido (MM/AA)");
+  if (!validateCVC(cvc)) errors.push("CVC inválido");
+  if (!holderName) errors.push("Nome do titular é obrigatório");
+
+  return errors;
+}
+
+function isCardReadyForSubmit() {
+  if (currentPaymentMethod !== "card") return false;
+
+  const email = (inputEmail?.value || "").trim().toLowerCase();
+  const name  = (inputName?.value || "").trim();
+  const cpfDigits = onlyDigits(inputCpfCnpj?.value || "");
+
+  if (!email || !name) return false;
+  if (!isValidEmail(email)) return false;
+  if (!(cpfDigits.length === 11 || cpfDigits.length === 14)) return false;
+
+  return validateCardFields().length === 0;
+}
+
+function updateTotalsUI() {
+  const descontos = 0;
+  const subtotal = round2(getAmountBrlFromInputs() - descontos);
+
+  updateInstallmentsOptions(subtotal);
+
+  if (dispSubtotal)  dispSubtotal.textContent = fmtBRL(subtotal);
   if (dispDescontos) dispDescontos.textContent = fmtBRL(descontos);
-  if (dispTaxas) dispTaxas.textContent = fmtBRL(fees);
-  if (dispTotal) dispTotal.textContent = fmtBRL(total);
+
+  if (currentPaymentMethod === "pix") {
+    if (dispTaxas) dispTaxas.textContent = fmtBRL(0);
+    if (dispTotal) dispTotal.textContent = fmtBRL(subtotal);
+    if (feesNote) feesNote.textContent = "";
+    if (installmentHint) installmentHint.textContent = "";
+    setPayButton(`Pagar ${fmtBRL(subtotal)}`, true);
+    return;
+  }
+
+  const n = getSelectedInstallments();
+  const { total, per, fees } = grossUpTotal(subtotal, n);
+
+  if (dispTaxas) dispTaxas.textContent = fmtBRL(n === 1 ? 0 : fees);
+  if (dispTotal) dispTotal.textContent = fmtBRL(n === 1 ? subtotal : total);
 
   if (installmentHint) {
-    installmentHint.textContent =
-      n === 1
-        ? `Tarifas consideradas: ${tier.label}. Total à vista: ${fmtBRL(total)}.`
-        : `Tarifas consideradas: ${tier.label}. ${n}x de ${fmtBRL(per)} (total ${fmtBRL(total)}).`;
+    installmentHint.textContent = n === 1 ? "" : `${n}x de ${fmtBRL(per)} (total ${fmtBRL(total)}).`;
   }
-  if (feesNote) {
-    feesNote.textContent = `As taxas são repassadas conforme parcelamento escolhido. ${tier.label}.`;
-  }
-  return { total, per };
+
+  const btnTotal = getDisplayedTotal();
+  const canTry = isCardReadyForSubmit();
+  setPayButton(isSubmittingCard ? "Processando…" : `Pagar ${fmtBRL(btnTotal)}`, !canTry || isSubmittingCard);
 }
 
-/* ========================== Validações de campos ========================== */
-// Verifica campos de e-mail e nome e, se for Pix, gera o QR Code
+/* =========================
+   PIX
+   ========================= */
+function resetPixStateUI() {
+  currentPaymentId = null;
+  pixCopyPasteCurrent = "";
+  pixEncodedImageCurrent = "";
+  if (pixQrImage) pixQrImage.removeAttribute("src");
+  if (pixStatusText) pixStatusText.textContent = "";
+}
+
+function showPixPlaceholder(message) {
+  if (message && qrPlaceholder) qrPlaceholder.textContent = message;
+  qrPlaceholder?.classList.remove("hidden");
+  pixArea?.classList.add("hidden");
+  resetPixStateUI();
+}
+
+function showPixQr(base64, copyPaste) {
+  qrPlaceholder?.classList.add("hidden");
+  pixArea?.classList.remove("hidden");
+
+  pixEncodedImageCurrent = base64 || "";
+  pixCopyPasteCurrent = copyPaste || "";
+
+  if (pixQrImage) pixQrImage.src = "data:image/png;base64," + base64;
+  if (pixStatusText) pixStatusText.textContent = "Aguardando pagamento…";
+}
+
+buttonCopyPix?.addEventListener("click", async () => {
+  if (!pixCopyPasteCurrent) return;
+  try {
+    await navigator.clipboard.writeText(pixCopyPasteCurrent);
+    if (pixStatusText) pixStatusText.textContent = "Código Pix copiado!";
+    setTimeout(() => {
+      if (pixStatusText) pixStatusText.textContent = "Aguardando pagamento…";
+    }, 1200);
+  } catch {
+    if (pixStatusText) pixStatusText.textContent = "Não foi possível copiar automaticamente.";
+  }
+});
+
 async function checkFieldsAndMaybeGeneratePix() {
+  if (currentPaymentMethod !== "pix") return false;
+
   const email = (inputEmail?.value || "").trim().toLowerCase();
-  const name = (inputName?.value || "").trim();
+  const name  = (inputName?.value || "").trim();
+
   showError("");
   showEmailValidation("");
+  showCpfValidation("");
 
-  if (!email || !name) {
-    showPixPlaceholder("Preencha e-mail e nome para gerar o QR Code.");
+  const { amount } = getPlanFromInputs();
+
+  if (!amount || amount < 0.01) {
+    showPixPlaceholder("Defina um valor válido no HTML (amountCents).");
     return false;
   }
+
+  if (!email || !name) {
+    showPixPlaceholder("Preencha e-mail, nome e CPF/CNPJ para gerar o QR Code.");
+    return false;
+  }
+
   if (!isValidEmail(email)) {
     showEmailValidation("Por favor, insira um e-mail válido");
     showPixPlaceholder("E-mail inválido");
+    return false;
+  }
+
+  const cpfDigits = onlyDigits(inputCpfCnpj?.value || "");
+  if (!cpfDigits) {
+    showPixPlaceholder("Preencha e-mail, nome e CPF/CNPJ para gerar o QR Code.");
+    return false;
+  }
+  if (!isValidCpfCnpj(cpfDigits)) {
+    showCpfValidation("CPF/CNPJ inválido (11 ou 14 dígitos).");
+    showPixPlaceholder("CPF/CNPJ obrigatório (11 ou 14 dígitos).");
     return false;
   }
 
@@ -311,293 +573,306 @@ async function checkFieldsAndMaybeGeneratePix() {
   }
   showEmailValidation("E-mail validado.", true);
 
-  if (currentPaymentMethod === "pix") {
-    await bootPaymentFor("pix");
-  }
+  await bootPaymentForPix();
   return true;
 }
 
-/* ========================== Pix ========================== */
-// Inicia o processo de pagamento (Pix ou Cartão)
-async function bootPaymentFor(method) {
+async function bootPaymentForPix() {
+  if (currentPaymentMethod !== "pix") return;
+
+  const key = getPixKey();
+
+  if (key === pixLastKey && currentPaymentId && pixEncodedImageCurrent && pixCopyPasteCurrent) {
+    showPixQr(pixEncodedImageCurrent, pixCopyPasteCurrent);
+    return;
+  }
+
+  stopPolling();
+  resetPixStateUI();
+
+  if (pixAbortController) {
+    try { pixAbortController.abort(); } catch {}
+  }
+  pixAbortController = new AbortController();
+
+  if (pixInFlight) return;
+  pixInFlight = true;
+
   try {
     showError("");
-    setSubmit("Carregando…", true);
 
-    if (method === "card") {
-      setSubmit("Pagar e assinar", false);
-      return; // A lógica do cartão é tratada em onFormSubmit
-    }
+    const email = (inputEmail?.value || "").trim().toLowerCase();
+    const name  = (inputName?.value || "").trim();
+    const cpfCnpj = (inputCpfCnpj?.value || "").trim();
 
-    const amountBrl = getAmountBrlFromInputs();
-    showPixPlaceholder(`Gerando cobrança Pix (R$ ${amountBrl.toFixed(2)})…`);
-
-    const desc = (inputDesc?.value || "Plano Teste (7 Dias)").trim();
-    let slug = (inputPlanoSlug?.value && String(inputPlanoSlug.value).trim()) || planSlugFromDescription(desc);
-    if (!slug.startsWith("plano_") && slug !== "teste_7_dias") slug = "teste_7_dias";
-    slug = "teste_7_dias";
+    const { amount, description, plano } = getPlanFromInputs();
+    showPixPlaceholder(`Gerando cobrança Pix (${fmtBRL(amount)})…`);
 
     const payload = {
       provider: "asaas",
       type: "pix",
-      amount_brl: Number(amountBrl),
-      email: (inputEmail?.value || "").trim(),
-      name: (inputName?.value || "").trim(),
-      description: desc,
-      plano: slug
+      plan: plano,
+      amount_brl: amount,
+      email,
+      name,
+      cpfCnpj,
+      description
     };
 
-    const response = await fetch(API_CREATE_PAYMENT_INTENT, {
+    const data = await fetchJsonOrThrow(API_CREATE_PAYMENT_INTENT, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(payload),
+      signal: pixAbortController.signal
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || data?.ok === false) {
-      const msg = data?.message || data?.error || data?.details || `Falha ao iniciar Pix (${response.status})`;
-      throw new Error(msg);
-    }
 
-    const qrBase64 =
-      data.qr_code_base64 || data.encodedImage ||
-      data?.original?.encodedImage || data?.pixQrCode?.encodedImage ||
-      data?.pix?.encodedImage || data?.point_of_interaction?.transaction_data?.qr_code_base64;
-
-    const copyPaste =
-      data.qr_code_payload || data.qr_code || data.payload ||
-      data?.original?.payload || data?.pixQrCode?.payload ||
-      data?.pix?.payload || data?.point_of_interaction?.transaction_data?.qr_code;
+    const qrBase64  = data?.encodedImage || data?.original?.encodedImage;
+    const copyPaste = data?.payload || data?.original?.payload;
 
     if (!qrBase64 || !copyPaste) throw new Error("Não foi possível gerar o QR Pix no momento.");
+
+    currentPaymentId = data?.paymentId || data?.id || null;
+    pixLastKey = key;
+
     showPixQr(qrBase64, copyPaste);
-    setSubmit("Aguardando pagamento…", false);
+
+    if (currentPaymentId) startPolling(currentPaymentId);
   } catch (err) {
+    if (err?.name === "AbortError") return;
     console.error(err);
-    showError(err.message || "Não foi possível iniciar o pagamento.");
-    setSubmit("Pagar e assinar", false);
+    showError(err?.message || "Não foi possível iniciar o Pix.");
+    showPixPlaceholder("Falha ao gerar Pix. Tente novamente.");
+  } finally {
+    pixInFlight = false;
   }
 }
 
-/* ========================== Cartão (Asaas) ========================== */
-// Obtém o número de parcelas selecionado
-function getSelectedInstallments() {
-  const n = parseInt(uiInstallments?.value || "1", 10);
-  return Number.isFinite(n) && n >= 1 ? Math.min(n, 12) : 1;
-}
-
-// Obtém o valor total do cartão para um número de parcelas
-function getCardAmountFor(n) {
-  const base = getAmountBrlFromInputs();
-  return grossUpTotal(base, n).total;
-}
-
-// Valida todos os campos do formulário de cartão de crédito
-function validateCardFields() {
-  const errors = [];
-  
-  const cardNumber = ccNumberEl?.value?.replace(/\D/g, "") || "";
-  const expiry = ccExpEl?.value || "";
-  const cvc = ccCvcEl?.value || "";
-  const name = ccNameEl?.value?.trim() || "";
-
-  if (!validateCardNumber(cardNumber)) {
-    errors.push("Número do cartão inválido");
-  }
-  
-  if (!validateExpiryDate(expiry)) {
-    errors.push("Data de vencimento inválida");
-  }
-  
-  if (!validateCVC(cvc)) {
-    errors.push("Código de segurança inválido");
-  }
-  
-  if (!name) {
-    errors.push("Nome do titular é obrigatório");
-  }
-
-  return errors;
-}
-
-// Processa o pagamento com cartão de crédito via API Lambda do Asaas
+/* =========================
+   CARTÃO
+   ========================= */
 async function processCardPayment() {
   const email = (inputEmail?.value || "").trim().toLowerCase();
-  const name = (inputName?.value || "").trim();
-  
-  // Valida e-mail e nome
-  if (!email || !name) {
-    throw new Error("E-mail e nome são obrigatórios");
-  }
-  
-  if (!isValidEmail(email)) {
-    throw new Error("E-mail inválido");
-  }
+  const name  = (inputName?.value || "").trim();
+  const cpfCnpj = onlyDigits(inputCpfCnpj?.value || "");
 
-  // Valida e-mail no sistema (DynamoDB)
-  const isValidEmailInSystem = await validateEmailInDynamoDB(email);
-  if (!isValidEmailInSystem) {
-    throw new Error("E-mail não encontrado no sistema");
-  }
+  if (!email || !name) throw new Error("E-mail e nome são obrigatórios");
+  if (!isValidEmail(email)) throw new Error("E-mail inválido");
+  if (!cpfCnpj) throw new Error("CPF/CNPJ é obrigatório");
+  if (!isValidCpfCnpj(cpfCnpj)) throw new Error("CPF/CNPJ inválido");
 
-  // Valida campos específicos do cartão
-  const cardErrors = validateCardFields();
-  if (cardErrors.length > 0) {
-    throw new Error(cardErrors.join(", "));
-  }
+  showEmailValidation("Validando e-mail...", true);
+  const ok = await validateEmailInDynamoDB(email);
+  if (!ok) throw new Error("E-mail não encontrado no sistema");
+  showEmailValidation("E-mail validado.", true);
+
+  const errs = validateCardFields();
+  if (errs.length) throw new Error(errs.join(", "));
 
   const installments = getSelectedInstallments();
-  const totalAmount = getCardAmountFor(installments);
-  
+  const { amount, description, plano } = getPlanFromInputs();
+  const totalCard = grossUpTotal(amount, installments).total;
+
   const cardNumber = ccNumberEl.value.replace(/\D/g, "");
-  const expiry = ccExpEl.value.split("/");
-  const cvc = ccCvcEl.value;
+  const [expMonthRaw, expYearRaw] = String(ccExpEl.value || "").split("/");
+  const expMonth = String(expMonthRaw || "").padStart(2, "0");
+  const expYear  = String(expYearRaw || "").padStart(2, "0"); // YY
+  const cvc      = String(ccCvcEl.value || "").replace(/\D/g, "");
   const holderName = ccNameEl.value.trim();
 
-  // Prepara o payload para a API createCardPayment
-  const payload = {
-    customerData: {
-      name: name,
-      email: email,
-      mobilePhone: "", // Adicionar se houver campo no formulário
-      cpfCnpj: "", // Adicionar se houver campo no formulário
-    },
-    value: totalAmount,
-    description: inputDesc?.value || "Plano Teste (7 Dias)",
-    externalReference: `teste_7_dias_${Date.now()}`, // Referência externa única
-    installmentCount: installments,
-    creditCard: {
-      holderName: holderName,
-      number: cardNumber,
-      expiryMonth: expiry[0],
-      expiryYear: expiry[1],
-      ccv: cvc
-    },
-    creditCardHolderInfo: {
-      name: holderName,
-      email: email,
-      cpfCnpj: "", // Adicionar se houver campo no formulário
-      postalCode: "", // Adicionar se houver campo no formulário
-      addressNumber: "", // Adicionar se houver campo no formulário
-      phone: "" // Adicionar se houver campo no formulário
-    }
+  const holderInfo = {
+    name: holderName,
+    email,
+    cpfCnpj,
+    address: "Rua Teste",
+    addressNumber: "123",
+    postalCode: "58000000",
+    phone: "83999999999",
+    mobilePhone: "83999999999",
   };
 
-  // Envia a requisição para a API Lambda
-  const response = await fetch(API_CREATE_CARD_PAYMENT, {
+  const payload = {
+    type: "CARD",
+    plan: plano,
+    value: totalCard,
+    description,
+    installmentCount: installments,
+    customerData: { name, email, cpfCnpj },
+    creditCard: {
+      holderName,
+      number: cardNumber,
+      expiryMonth: expMonth,
+      expiryYear: expYear,
+      ccv: cvc,
+    },
+    creditCardHolderInfo: holderInfo
+  };
+
+  const result = await fetchJsonOrThrow(API_CREATE_CARD_PAYMENT, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify(payload),
   });
 
-  const result = await response.json();
-  
-  // Trata a resposta da API
-  if (!response.ok || !result.ok) {
-    const errorMsg = result?.message || result?.error || result?.asaas?.errors?.[0]?.description || "Erro ao processar pagamento";
-    throw new Error(errorMsg);
+  if (!result?.ok) {
+    const msg =
+      result?.message ||
+      result?.error ||
+      result?.asaas?.errors?.[0]?.description ||
+      "Erro ao processar pagamento";
+    throw new Error(msg);
   }
 
   return result;
 }
 
-/* ========================== Eventos do formulário ========================== */
-// Lida com a submissão do formulário
-async function onFormSubmit(e) {
+async function onPayButtonClick(e) {
   e.preventDefault();
-  
-  if (currentPaymentMethod === "pix") return; // Se for Pix, a lógica é diferente
-  
+
+  if (currentPaymentMethod !== "card") return;
+  if (isSubmittingCard) return;
+
   showError("");
-  setSubmit("Processando…", true);
-  
+  showCpfValidation("");
+  isRedirecting = false;
+
+  const cpfDigits = onlyDigits(inputCpfCnpj?.value || "");
+  if (!cpfDigits || !isValidCpfCnpj(cpfDigits)) {
+    showCpfValidation("Digite 11 (CPF) ou 14 (CNPJ) dígitos.");
+    showError("CPF/CNPJ inválido");
+    updateTotalsUI();
+    return;
+  }
+
+  const errs = validateCardFields();
+  if (errs.length) {
+    showError(errs.join(", "));
+    updateTotalsUI();
+    return;
+  }
+
   try {
-    const result = await processCardPayment();
-    
-    // Exibe modal de sucesso após o pagamento
-    showPaymentModal("Pagamento Aprovado!", 
-      `Seu pagamento foi processado com sucesso! ID: ${result.payment?.id}`, 
-      "success");
-    
-    setSubmit("Pagamento aprovado!", true); // Desabilita o botão após sucesso
+    isSubmittingCard = true;
+    updateTotalsUI();
+
+    showModal({
+      title: "Pagamento em andamento",
+      message: "Processando pagamento… aguarde.",
+      type: "info",
+      locked: true
+    });
+
+    const r = await processCardPayment();
+
+    const pid =
+      r?.paymentId ||
+      r?.asaasPaymentId ||
+      r?.payment?.id ||
+      r?.original?.id ||
+      r?.id ||
+      null;
+
+    // ✅ GARANTE QUE O POLLING VAI NUM pay_...
+    if (!pid || !String(pid).startsWith("pay_")) {
+      throw new Error("A API do cartão não retornou paymentId (pay_...). Ajuste a Lambda para devolver paymentId.");
+    }
+
+    currentPaymentId = pid;
+
+    showModal({
+      title: "Pagamento em andamento",
+      message: "Aguardando confirmação…",
+      type: "info",
+      locked: true
+    });
+
+    startPolling(currentPaymentId);
   } catch (err) {
     console.error(err);
-    showError(err.message || "Não foi possível concluir o pagamento.");
-    setSubmit("Pagar e assinar", false);
+    showError(err?.message || "Não foi possível concluir o pagamento no cartão.");
+    showModal({
+      title: "Erro no cartão",
+      message: err?.message || "Falha no pagamento.",
+      type: "error",
+      locked: false,
+      autoCloseMs: 5000
+    });
+  } finally {
+    isSubmittingCard = false;
+    updateTotalsUI();
   }
 }
 
-// Exibe um modal de feedback (sucesso/erro)
-function showPaymentModal(title, message, type = "success") {
-  const modal = document.getElementById("pay-modal");
-  const modalBox = modal?.querySelector(".modal-box");
-  const titleEl = document.getElementById("pay-modal-title");
-  const msgEl = document.getElementById("pay-modal-msg");
-  const okBtn = document.getElementById("pay-modal-ok");
+/* =========================
+   TABS + INIT
+   ========================= */
+function switchMethodTo(method) {
+  currentPaymentMethod = method;
+  stopPolling();
+  currentPaymentId = null;
+  isRedirecting = false;
 
-  if (!modal || !modalBox) return;
+  showError("");
+  showCpfValidation("");
 
-  if (titleEl) titleEl.textContent = title;
-  if (msgEl) msgEl.textContent = message;
-  
-  modalBox.className = `modal-box ${type}`;
-  modal.classList.remove("hidden");
+  updateTotalsUI();
 
-  okBtn?.addEventListener("click", () => {
-    modal.classList.add("hidden");
-  }, { once: true });
+  if (currentPaymentMethod === "pix") {
+    if (pixStatusText) pixStatusText.textContent = "";
+    showPixPlaceholder("Preencha e-mail, nome e CPF/CNPJ para gerar o QR Code.");
+  } else {
+    resetPixStateUI();
+  }
 }
 
-/* ========================== Tabs / Eventos / Boot ========================== */
-// Adiciona event listeners para os botões das abas de pagamento
 tabsButtons.forEach((tabButton) => {
   tabButton.addEventListener("click", async () => {
     tabsButtons.forEach((b) => b.classList.remove("active"));
     tabButton.classList.add("active");
+
     panels.forEach((p) => p.classList.remove("show"));
     const target = document.querySelector(tabButton.dataset.target);
     target?.classList.add("show");
 
-    currentPaymentMethod = tabButton.dataset.target === "#pixPanel" ? "pix" : "card";
-    if (currentPaymentMethod === "pix") {
-      const ok = await checkFieldsAndMaybeGeneratePix();
-      if (!ok) showPixPlaceholder("Preencha e-mail e nome para gerar o QR Code.");
-    } else {
-      setSubmit("Pagar e assinar", false);
-    }
+    const method = tabButton.dataset.target === "#pixPanel" ? "pix" : "card";
+    switchMethodTo(method);
+
+    if (method === "pix") await checkFieldsAndMaybeGeneratePix();
   });
 });
 
-// Event listeners para o formulário e campos
-formElement?.addEventListener("submit", onFormSubmit);
-inputEmail?.addEventListener("blur", checkFieldsAndMaybeGeneratePix); // Valida e-mail ao perder o foco
-inputName?.addEventListener("blur", checkFieldsAndMaybeGeneratePix); // Valida nome ao perder o foco
-inputEmail?.addEventListener("input", () => showEmailValidation("")); // Limpa validação de e-mail ao digitar
-
-// Atualiza os totais na UI quando o número de parcelas é alterado
-uiInstallments?.addEventListener("change", () => {
-  const n = getSelectedInstallments();
-  updateTotalsUI(n);
-});
-
-// Função de inicialização
 (function init() {
-  try {
-    if (inputDesc) inputDesc.value = "Plano Teste (7 Dias)";
-    if (inputPlanoSlug) inputPlanoSlug.value = "teste_7_dias";
-    if (inputAmountCents && !inputAmountCents.value) inputAmountCents.value = "1000";
-  } catch {}
+  currentPaymentMethod =
+    document.querySelector(".pay-tabs .tab.active")?.dataset.target === "#pixPanel"
+      ? "pix"
+      : "card";
 
-  // Inicializa os valores de total (para 1x parcela) e define a aba de cartão como padrão
-  updateTotalsUI(1);
-  
-  // Ativa a aba de cartão por padrão na inicialização
-  const cardTab = document.querySelector('[data-target="#cardPanel"]');
-  const cardPanel = document.getElementById("cardPanel");
-  if (cardTab && cardPanel) {
-    tabsButtons.forEach((b) => b.classList.remove("active"));
-    panels.forEach((p) => p.classList.remove("show"));
-    cardTab.classList.add("active");
-    cardPanel.classList.add("show");
-    currentPaymentMethod = "card";
+  buttonSubmit?.addEventListener("click", onPayButtonClick);
+  formElement?.addEventListener("submit", (e) => e.preventDefault());
+
+  ccExpEl?.addEventListener("input", maskExpInput);
+  ccExpEl?.addEventListener("blur", () => validateMonthOnBlur(ccExpEl));
+  ccNumberEl?.addEventListener("input", maskCardNumber);
+
+  [
+    inputEmail, inputName, inputCpfCnpj,
+    ccNumberEl, ccExpEl, ccCvcEl, ccNameEl
+  ].forEach((el) => el?.addEventListener("input", updateTotalsUI));
+
+  uiInstallments?.addEventListener("change", updateTotalsUI);
+
+  inputEmail?.addEventListener("blur", () => {
+    if (currentPaymentMethod === "pix") checkFieldsAndMaybeGeneratePix();
+  });
+  inputName?.addEventListener("blur", () => {
+    if (currentPaymentMethod === "pix") checkFieldsAndMaybeGeneratePix();
+  });
+  inputCpfCnpj?.addEventListener("blur", () => {
+    if (currentPaymentMethod === "pix") checkFieldsAndMaybeGeneratePix();
+  });
+
+  updateTotalsUI();
+
+  if (currentPaymentMethod === "pix") {
+    showPixPlaceholder("Preencha e-mail, nome e CPF/CNPJ para gerar o QR Code.");
   }
 })();

@@ -22,6 +22,7 @@ const nomeRestaurante = obterNomeRestaurante();
 const models = {
   logo: [
     { path: `${modelBaseURL}/logo/tabua_de_carne.glb`, price: 0.00, info: null },
+    { path: `${modelBaseURL}/logo/espetinho_do_gil_filho.glb`,  price: 0.00, info: null },
     { path: `${modelBaseURL}/logo/cubo.glb`,           price: 0.00, info: null }
   ],
   bebidas: [
@@ -55,7 +56,10 @@ const models = {
     { path: `${modelBaseURL}/carnes/coxa_de_frango.glb`,            price: 35.99, info: `${modelBaseURL}/informacao/${nomeRestaurante}/coxa_de_frango.json` },
   ],
   lanches: [],
-  porcoes: []
+  porcoes: [],
+  diversos: [
+    { path: `${modelBaseURL}/diversos/chefe.glb`, price: 0.00, info: null },
+  ]
 };
 
 // ==================== CONFIGURAÇÕES CENTRALIZADAS ====================
@@ -91,7 +95,8 @@ const CATEGORIAS_LABELS = {
   sobremesas: 'Sobremesas',
   carnes:     'Carnes',
   lanches:    'Lanches',
-  porcoes:    'Porções'
+  porcoes:    'Porções',
+  Diversos:    'Diversos'
 };
 
 function etiquetarBotoesCategoria() {

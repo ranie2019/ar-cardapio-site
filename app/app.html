@@ -4,17 +4,19 @@
   <meta charset="utf-8" />
   <title>Visualizador 3D com Botões</title>
 
-  <!-- Lógica para cache-buster dinâmico -->
+  <!-- Cache-buster dinâmico (seguro) -->
   <script>
     const urlParams = new URLSearchParams(window.location.search);
-    // Prioriza o parâmetro 't' (timestamp) vindo do QR Code, senão usa um valor fixo (v=1.4)
-    const cacheBuster = urlParams.get('t') ? `?t=${urlParams.get('t')}` : `?v=1.4`;
+    const tRaw = urlParams.get("t");
+    const tSafe = tRaw ? encodeURIComponent(tRaw) : null;
+    // Prioriza o parâmetro 't' vindo do QR Code, senão usa um valor fixo
+    const cacheBuster = tSafe ? `?t=${tSafe}` : `?v=1.4`;
   </script>
 
-  <!-- CSS externo com cache-buster dinâmico -->
+  <!-- CSS externo com cache-buster -->
   <link rel="stylesheet" id="app-css" />
   <script>
-    document.getElementById('app-css').href = `../app/app.css${cacheBuster}`;
+    document.getElementById("app-css").href = `../app/app.css${cacheBuster}`;
   </script>
 
   <!-- Bibliotecas A-Frame e AR.js -->
@@ -26,13 +28,12 @@
     (function () {
       const url = new URL(location.href);
 
-      // URL base da API de MÉTRICAS (HTTP API, stage $default)
-      // PREFIXO CORRETO: /metricas (em português)
+      // URL base da API de MÉTRICAS (HTTP API, stage /metricas)
       const API_METRICAS_BASE = "https://zoci6wmxqa.execute-api.us-east-1.amazonaws.com/metricas";
 
       // Parâmetros vindos do QR / redirect:
-      // Exemplo final de URL:
-      // app.html?u=ranie.black29%40gmail.com&i=mesa1&v=123&restaurante=ranie-black29-gmail-com&t=1764...
+      // Exemplo final:
+      // app.html?u=ranie.black29%40gmail.com&i=mesa1&v=123&restaurante=ranie-black29-gmail-com&t=...
       const tenant =
         url.searchParams.get("restaurante") ||
         url.searchParams.get("tenant") ||
@@ -40,22 +41,23 @@
         url.searchParams.get("u") ||
         null;
 
-      // Identificador lógico da mesa/QR (nome amigável ou código)
       const table =
         url.searchParams.get("mesa") ||
         url.searchParams.get("table") ||
         url.searchParams.get("i") ||
         null;
 
-      // ID único do QR (se não vier explícito, cai no mesmo valor da "table")
       const qrId =
         url.searchParams.get("qrId") ||
         url.searchParams.get("qr") ||
         table ||
         null;
 
+      // Evita misturar buffer de métricas entre restaurantes/tenants no mesmo device
+      const persistKey = `arcardapio_metrics_v3_${tenant || "unknown"}`;
+
       window.__AR_METRICA_INIT = {
-        // ROTA CORRETA DA API (POST /metricas/ingest)
+        // POST /metricas/ingest
         endpoint: API_METRICAS_BASE + "/ingest",
         tenant: tenant,
         table: table,   // usado como qrLabel/mesa no dashboard
@@ -63,11 +65,14 @@
         env: "prod",
         flushIntervalMs: 10000,
         maxBufferSize: 30,
-        persistKey: "arcardapio_metrics_v3",
+        persistKey: persistKey,
         sampleRate: 1.0,
         consentMetrics: true,
         heartbeatMs: 30000
       };
+
+      // Debug rápido (remova se quiser)
+      // console.log("[AR_METRICA_INIT]", window.__AR_METRICA_INIT);
     })();
   </script>
 </head>
@@ -111,7 +116,7 @@
     "
   ></div>
 
-  <!-- Like / Deslike (mesma lógica de posição dos botões <> ) -->
+  <!-- Like / Dislike -->
   <button id="btnDislike" class="btn-like btn-like-left" aria-label="Não gostei">
     <img src="../imagens/negativo.png" alt="Não gostei">
   </button>
@@ -128,8 +133,8 @@
     <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z" /></svg>
   </button>
 
-  <!-- Botão Info -->
-  <button id="infoBtn" class="btn" onclick="toggleInfo()" style="display: none;">ℹ️ Info</button>
+  <!-- Botão Info (SEM onclick: evita duplo disparo) -->
+  <button id="infoBtn" class="btn" style="display: none;">ℹ️ Info</button>
 
   <!-- Painel de informações -->
   <div
@@ -154,7 +159,8 @@
     "
   >
     <button
-      onclick="document.getElementById('infoPanel').style.display='none'"
+      id="infoCloseBtn"
+      type="button"
       style="
         position: absolute;
         top: 8px;
@@ -164,7 +170,9 @@
         font-size: 1.2em;
         cursor: pointer;
       "
+      aria-label="Fechar"
     >✖</button>
+
     <div id="infoContent">Carregando...</div>
   </div>
 
@@ -185,32 +193,28 @@
     <a-camera position="0 1.5 3"></a-camera>
   </a-scene>
 
-  <!-- Scripts do projeto com cache-buster dinâmico -->
+  <!-- Scripts do projeto (carrega metricaapp.js ANTES do app.js para evitar race) -->
   <script>
     document.write(`<script src="../app/models.js${cacheBuster}"><\/script>`);
-    document.write(`<script src="../app/app.js${cacheBuster}"><\/script>`);
     document.write(`<script src="../app/metricaapp.js${cacheBuster}"><\/script>`);
+    document.write(`<script src="../app/app.js${cacheBuster}"><\/script>`);
   </script>
 
   <!-- INTEGRAÇÃO DE MÉTRICAS + INFO / CATEGORIA -->
   <script>
-    // Deixa o SDK inicializar sozinho (metricaapp.js já faz isso usando __AR_METRICA_INIT)
-    // Aqui só ligamos o autoBind depois do load.
-    window.addEventListener("load", function () {
-      if (window.MetricaApp) {
-        try { MetricaApp.autoBind(); } catch (e) { console.error(e); }
-      }
-    });
-
-    // Controle do painel Info (compatível com o SDK)
+    // ✅ Info toggle controlado em UM lugar só (sem duplicar click)
     (function () {
       const panel = document.getElementById("infoPanel");
       const btn = document.getElementById("infoBtn");
+      const closeBtn = document.getElementById("infoCloseBtn");
+
+      function isVisible() {
+        return panel && panel.style.display !== "none" && panel.style.display !== "";
+      }
 
       window.toggleInfo = function () {
         if (!panel) return;
-        const visible = panel.style.display !== "none" && panel.style.display !== "";
-        if (visible) {
+        if (isVisible()) {
           panel.style.display = "none";
           panel.classList.remove("open", "show");
         } else {
@@ -219,10 +223,23 @@
         }
       };
 
-      if (btn) btn.addEventListener("click", toggleInfo, { passive: true });
+      // Listener único no botão
+      if (btn) btn.addEventListener("click", window.toggleInfo, { passive: true });
+
+      // Fechar também passa pelo toggle (mantém métricas consistentes)
+      if (closeBtn) closeBtn.addEventListener("click", function () {
+        if (isVisible()) window.toggleInfo();
+      }, { passive: true });
     })();
 
-    // Integração com mudança de modelo (para medir tempo de visualização por item)
+    // ✅ Depois que tudo carregar, inicializa autoBind
+    window.addEventListener("load", function () {
+      if (window.MetricaApp) {
+        try { window.MetricaApp.autoBind(); } catch (e) { console.error(e); }
+      }
+    });
+
+    // ✅ Integração com mudança de modelo (tempo de visualização por item)
     (function () {
       const originalChangeModel = window.changeModel;
       window.changeModel = function (dir) {
@@ -230,7 +247,7 @@
           const next = originalChangeModel(dir) || {};
           if (window.MetricaApp && (next.id || next.name)) {
             try {
-              MetricaApp.setCurrentItem({
+              window.MetricaApp.setCurrentItem({
                 id: next.id ?? null,
                 name:
                   next.name ??
@@ -247,7 +264,7 @@
       };
     })();
 
-    // Integração com seleção de categoria
+    // ✅ Integração com seleção de categoria
     (function () {
       const originalSelectCategory = window.selectCategory;
       window.selectCategory = function (cat) {
@@ -255,14 +272,13 @@
           originalSelectCategory(cat);
         }
         if (window.MetricaApp) {
-          try { MetricaApp.trackEvent("category_select", { category: cat }); }
+          try { window.MetricaApp.trackEvent("category_select", { category: cat }); }
           catch (e) { console.error(e); }
         }
       };
     })();
 
-    // OBS: like / dislike agora são controlados pelo app.js (setupLikeButtons + trackLikeEvent)
-    // Não precisamos mais adicionar listeners aqui.
+    // OBS: like/dislike continuam sendo controlados pelo app.js
   </script>
 </body>
 </html>

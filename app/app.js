@@ -1,35 +1,56 @@
+/* ============================================================
+   app.js (ATUALIZADO)
+   ============================================================ */
+"use strict";
+
 // ==================== VARIÁVEIS GLOBAIS ====================
-let currentCategory = 'logo';
+let currentCategory = "logo";
 let currentIndex = 0;
-const modelCache = {};
-let currentModelPath = '';
+const modelCache = {}; // cache por URL final (inclui bust)
+let currentModelPath = "";
 let infoVisible = false;
 
 // Usa o "v" do QR para cache-busting consistente entre dispositivos
 const __qs = new URLSearchParams(location.search);
-const __ver = __qs.get('v') || Date.now().toString();
+const __ver = __qs.get("v") || Date.now().toString();
 const __bust = `?v=${encodeURIComponent(__ver)}`;
 
 // ========= Checagem de assinatura (antes de iniciar o app) =========
 const API_BASE = "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com"; // stage $default
 const ENDPOINT_STATUS = `${API_BASE}/assinatura/status`;
-const PAGE_EXPIRADO = "https://site-arcardapio.s3.us-east-1.amazonaws.com/planoExpirado.html"; // ajuste se mudar
+const PAGE_EXPIRADO = "https://site-arcardapio.s3.us-east-1.amazonaws.com/planoExpirado.html";
 
+// -------------------- Helpers --------------------
 function qs(name, def = "") {
   const v = new URL(location.href).searchParams.get(name);
   return v == null ? def : v;
 }
 
+function addBust(url) {
+  if (!url) return url;
+  // se já tem query, adiciona &v=... ; senão ?v=...
+  return url.includes("?") ? `${url}&v=${encodeURIComponent(__ver)}` : `${url}${__bust}`;
+}
+
+// Normaliza "Porções", "porcoes", "PORÇÕES" -> "porcoes"
+function normKey(str) {
+  return String(str)
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove acentos
+    .replace(/[\s\-]+/g, "_"); // espaços/hífen -> underscore
+}
+
 async function ensureActivePlan() {
-  const u = qs("u", "").trim();   // e-mail vindo do QR
-  if (!u) return;                 // se quiser bloquear sem 'u', redirecione aqui para PAGE_EXPIRADO
+  const u = qs("u", "").trim(); // e-mail vindo do QR
+  if (!u) return;
 
   try {
     const resp = await fetch(`${ENDPOINT_STATUS}?u=${encodeURIComponent(u)}`, {
       method: "GET",
       headers: { "Cache-Control": "no-cache" }
     });
-    const data = await resp.json();
+
+    const data = await resp.json().catch(() => ({}));
 
     if (!data.ok || !data.ativo) {
       const dest = new URL(PAGE_EXPIRADO);
@@ -40,8 +61,7 @@ async function ensureActivePlan() {
     }
   } catch (e) {
     console.warn("Falha ao checar assinatura:", e);
-    // Em erro de rede você decide:
-    // const dest = new URL(PAGE_EXPIRADO); dest.searchParams.set("u", u); location.replace(dest);
+    // Você decide se bloqueia em falha de rede.
   }
 }
 
@@ -50,35 +70,33 @@ async function aplicarConfiguracaoDoRestaurante() {
   const urlParams = new URLSearchParams(window.location.search);
   const nomeRestaurante = urlParams.get("restaurante") || "restaurante-padrao";
 
-  // Candidatos (ordem de prioridade) — tentamos o primeiro que responder OK
   const CATS_CANDIDATES = [
-    `https://ar-cardapio-models.s3.amazonaws.com/informacao/${nomeRestaurante}/config.json${__bust}`,
-    `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}.json${__bust}`,
+    addBust(`https://ar-cardapio-models.s3.amazonaws.com/informacao/${nomeRestaurante}/config.json`),
+    addBust(`https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}.json`),
   ];
   const ITENS_CANDIDATES = [
-    `https://ar-cardapio-models.s3.amazonaws.com/informacao/${nomeRestaurante}/itens.json${__bust}`,
-    `https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}-itens.json${__bust}`,
+    addBust(`https://ar-cardapio-models.s3.amazonaws.com/informacao/${nomeRestaurante}/itens.json`),
+    addBust(`https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}-itens.json`),
   ];
 
-  // helper: pega o primeiro JSON disponível
   const fetchFirstJson = async (urls) => {
     for (const u of urls) {
       try {
-        const r = await fetch(u, { cache: 'no-store' });
+        const r = await fetch(u, { cache: "no-store" });
         if (r.ok) return await r.json();
-      } catch (_) { /* tenta o próximo */ }
+      } catch (_) {}
     }
     return null;
   };
 
   try {
-    // 1) Categorias (mostrar/esconder botões do menu)
+    // 1) Categorias (mostrar/esconder botões)
     const configCategorias = await fetchFirstJson(CATS_CANDIDATES);
     if (configCategorias) {
-      const container = document.getElementById('categoryButtons');
-      const btns = container ? container.querySelectorAll('.category-btn') : [];
+      const container = document.getElementById("categoryButtons");
+      const btns = container ? container.querySelectorAll(".category-btn") : [];
       btns.forEach(btn => {
-        const m = btn.getAttribute('onclick')?.match(/'([^']+)'/);
+        const m = btn.getAttribute("onclick")?.match(/'([^']+)'/);
         if (!m) return;
         const key = normKey(m[1]);
 
@@ -89,7 +107,7 @@ async function aplicarConfiguracaoDoRestaurante() {
             break;
           }
         }
-        btn.style.display = visivel ? 'block' : 'none';
+        btn.style.display = visivel ? "block" : "none";
       });
     }
 
@@ -102,35 +120,33 @@ async function aplicarConfiguracaoDoRestaurante() {
         if (!models[catKey]) continue;
 
         models[catKey].forEach(model => {
-          const modelName = model.path.split('/').pop().replace('.glb', '');
-          const estaDesativado = lista.some(n => normKey(n) === normKey(modelName));
+          const modelName = normKey(model.path.split("/").pop().replace(".glb", ""));
+          const estaDesativado = lista.some(n => normKey(n) === modelName);
           if (estaDesativado) model.visible = false;
         });
       }
     }
   } catch (err) {
-    console.warn('⚠️ Falha ao aplicar configuração do restaurante:', err);
+    console.warn("⚠️ Falha ao aplicar configuração do restaurante:", err);
   }
 }
 
 // ==================== SINCRONIZAÇÃO EM TEMPO REAL ====================
-const canalCardapio = new BroadcastChannel('cardapio_channel');
+const canalCardapio = new BroadcastChannel("cardapio_channel");
 
 canalCardapio.onmessage = (event) => {
-  const { nome, visivel } = event.data;
-  const nomeFormatado = nome.toLowerCase().replace(/\s+/g, '_');
+  const { nome, visivel } = event.data || {};
+  const alvo = normKey(nome || "");
 
-  // Atualiza o estado nos modelos
   for (const categoria in models) {
     const itemIndex = models[categoria].findIndex(model => {
-      const modelName = model.path.split('/').pop().replace('.glb', '');
-      return modelName === nomeFormatado;
+      const modelName = normKey(model.path.split("/").pop().replace(".glb", ""));
+      return modelName === alvo;
     });
 
     if (itemIndex !== -1) {
-      models[categoria][itemIndex].visible = visivel;
+      models[categoria][itemIndex].visible = Boolean(visivel);
 
-      // Se o item atual ficou invisível, muda para o próximo
       if (!visivel && currentModelPath === models[categoria][itemIndex].path) {
         changeModel(1);
       }
@@ -141,8 +157,8 @@ canalCardapio.onmessage = (event) => {
 
 // ==================== ATUALIZAÇÕES DE INTERFACE ====================
 function formatProductName(path) {
-  const file = path.split('/').pop().replace('.glb', '');
-  return file.replace(/[_-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  const file = path.split("/").pop().replace(".glb", "");
+  return file.replace(/[_-]/g, " ").replace(/\b\w/g, l => l.toUpperCase());
 }
 
 function updateUI(model) {
@@ -150,18 +166,20 @@ function updateUI(model) {
   const priceEl = document.getElementById("priceDisplay");
   const infoBtn = document.getElementById("infoBtn");
 
-  nameEl.textContent = formatProductName(model.path);
+  if (nameEl) nameEl.textContent = formatProductName(model.path);
 
   const deveMostrarPreco = ["pizzas", "sobremesas", "bebidas", "carnes"].includes(currentCategory);
 
   if (deveMostrarPreco) {
-    const n = typeof model.price === 'number' && !Number.isNaN(model.price) ? model.price : 0;
-    priceEl.textContent = `R$ ${n.toFixed(2)}`;
-    infoBtn.style.display = "block";
-    priceEl.style.display = "block";
+    const n = typeof model.price === "number" && !Number.isNaN(model.price) ? model.price : 0;
+    if (priceEl) {
+      priceEl.textContent = `R$ ${n.toFixed(2)}`;
+      priceEl.style.display = "block";
+    }
+    if (infoBtn) infoBtn.style.display = "block";
   } else {
-    infoBtn.style.display = "none";
-    priceEl.style.display = "none";
+    if (infoBtn) infoBtn.style.display = "none";
+    if (priceEl) priceEl.style.display = "none";
     const panel = document.getElementById("infoPanel");
     if (panel) panel.style.display = "none";
     infoVisible = false;
@@ -177,91 +195,6 @@ function getModelDataByPath(path) {
   return null;
 }
 
-async function loadModel(path) {
-  // Verifica se o modelo indicado está visível
-  const targetModel = getModelDataByPath(path);
-  if (targetModel && targetModel.visible === false) {
-    changeModel(1); // Pula para o próximo modelo se este estiver invisível
-    return;
-  }
-
-  const container = document.querySelector("#modelContainer");
-  const loadingIndicator = document.getElementById("loadingIndicator");
-
-  loadingIndicator.style.display = "block";
-  loadingIndicator.innerText = "Carregando...";
-  container.removeAttribute("gltf-model");
-
-  container.setAttribute("rotation", "0 180 0");
-  container.setAttribute("position", "0 -.6 0");
-  container.setAttribute("scale", "1 1 1");
-
-  currentModelPath = path;
-
-  if (modelCache[path]) {
-    container.setAttribute("gltf-model", modelCache[path]);
-
-    // Atualiza o preço (se houver JSON vinculado)
-    await atualizarPrecoDoModelo(path);
-
-    loadingIndicator.style.display = "none";
-    updateUI({ path, price: getModelPrice(path) });
-
-    // sincroniza o like/deslike deste item
-    syncLikeWithCurrentItem();
-  } else {
-    const xhr = new XMLHttpRequest();
-    xhr.open("GET", path + "?v=" + Date.now(), true);
-    xhr.responseType = "blob";
-
-    xhr.onprogress = (e) => {
-      if (e.lengthComputable) {
-        loadingIndicator.innerText = `${Math.round((e.loaded / e.total) * 100)}%`;
-      }
-    };
-
-    xhr.onload = async () => {
-      const blobURL = URL.createObjectURL(xhr.response);
-      modelCache[path] = blobURL;
-      container.setAttribute("gltf-model", blobURL);
-
-      // Atualiza o preço (se houver JSON vinculado)
-      await atualizarPrecoDoModelo(path);
-
-      loadingIndicator.style.display = "none";
-      updateUI({ path, price: getModelPrice(path) });
-
-      // sincroniza o like/deslike deste item
-      syncLikeWithCurrentItem();
-    };
-
-    xhr.onerror = () => {
-      console.error("Erro ao carregar o modelo:", path);
-      loadingIndicator.innerText = "Erro ao carregar o modelo";
-    };
-
-    xhr.send();
-  }
-}
-
-async function atualizarPrecoDoModelo(path) {
-  const modelData = getModelDataByPath(path);
-  if (!modelData || !modelData.info) return;
-
-  try {
-    const response = await fetch(modelData.info + "?v=" + Date.now());
-    if (!response.ok) throw new Error("Erro ao buscar JSON");
-
-    const data = await response.json();
-
-    if (data.preco !== undefined) {
-      modelData.price = parseFloat(data.preco); // Atualiza o preço com base no JSON do S3
-    }
-  } catch (error) {
-    console.warn("Não foi possível atualizar o preço a partir do JSON:", error);
-  }
-}
-
 function getModelPrice(path) {
   for (const cat in models) {
     for (const model of models[cat]) {
@@ -271,44 +204,149 @@ function getModelPrice(path) {
   return 0;
 }
 
+// Pega o próximo índice visível sem recursão
+function findNextVisibleIndex(cat, startIndex, dir) {
+  if (!models[cat] || !models[cat].length) return startIndex;
+  const total = models[cat].length;
+  let idx = startIndex;
+  for (let i = 0; i < total; i++) {
+    idx = (idx + dir + total) % total;
+    if (models[cat][idx].visible !== false) return idx;
+  }
+  return startIndex; // fallback
+}
+
+async function loadModel(path) {
+  const container = document.querySelector("#modelContainer");
+  const loadingIndicator = document.getElementById("loadingIndicator");
+  if (!container || !loadingIndicator) return;
+
+  // Se o modelo indicado está invisível, pula para o próximo visível
+  const targetModel = getModelDataByPath(path);
+  if (targetModel && targetModel.visible === false) {
+    currentIndex = findNextVisibleIndex(currentCategory, currentIndex, 1);
+    const next = models[currentCategory]?.[currentIndex];
+    if (next) return loadModel(next.path);
+    return;
+  }
+
+  loadingIndicator.style.display = "block";
+  loadingIndicator.innerText = "Carregando...";
+  container.removeAttribute("gltf-model");
+
+  container.setAttribute("rotation", "0 180 0");
+
+  // mantém o Y atual se já existir (pra não resetar quando troca de modelo),
+  // mas garante fallback válido (-0.6) se vier vazio/ruim
+  const rawPos = container.getAttribute("position");
+
+  let px = 0, py = -0.6, pz = 0;
+
+  if (rawPos && typeof rawPos === "object") {
+    // A-Frame normalmente retorna {x,y,z}
+    px = Number.isFinite(rawPos.x) ? rawPos.x : 0;
+    py = Number.isFinite(rawPos.y) ? rawPos.y : -0.6;
+    pz = Number.isFinite(rawPos.z) ? rawPos.z : 0;
+  } else if (typeof rawPos === "string") {
+    // se vier "x y z"
+    const parts = rawPos.trim().split(/\s+/).map(Number);
+    px = Number.isFinite(parts[0]) ? parts[0] : 0;
+    py = Number.isFinite(parts[1]) ? parts[1] : -0.6;
+    pz = Number.isFinite(parts[2]) ? parts[2] : 0;
+  }
+
+  container.setAttribute("position", `${px} ${py} ${pz}`);
+
+  container.setAttribute("scale", "1 1 1");
+
+  currentModelPath = path;
+
+  const modelUrl = addBust(path);
+
+  if (modelCache[modelUrl]) {
+    container.setAttribute("gltf-model", modelCache[modelUrl]);
+
+    await atualizarPrecoDoModelo(path);
+
+    loadingIndicator.style.display = "none";
+    updateUI({ path, price: getModelPrice(path) });
+
+    syncLikeWithCurrentItem();
+    return;
+  }
+
+  const xhr = new XMLHttpRequest();
+  xhr.open("GET", modelUrl, true);
+  xhr.responseType = "blob";
+
+  xhr.onprogress = (e) => {
+    if (e.lengthComputable) {
+      loadingIndicator.innerText = `${Math.round((e.loaded / e.total) * 100)}%`;
+    }
+  };
+
+  xhr.onload = async () => {
+    const blobURL = URL.createObjectURL(xhr.response);
+    modelCache[modelUrl] = blobURL;
+    container.setAttribute("gltf-model", blobURL);
+
+    await atualizarPrecoDoModelo(path);
+
+    loadingIndicator.style.display = "none";
+    updateUI({ path, price: getModelPrice(path) });
+
+    syncLikeWithCurrentItem();
+  };
+
+  xhr.onerror = () => {
+    console.error("Erro ao carregar o modelo:", modelUrl);
+    loadingIndicator.innerText = "Erro ao carregar o modelo";
+  };
+
+  xhr.send();
+}
+
+async function atualizarPrecoDoModelo(path) {
+  const modelData = getModelDataByPath(path);
+  if (!modelData || !modelData.info) return;
+
+  try {
+    const response = await fetch(addBust(modelData.info), { cache: "no-store" });
+    if (!response.ok) throw new Error("Erro ao buscar JSON");
+
+    const data = await response.json();
+
+    if (data.preco !== undefined) {
+      modelData.price = parseFloat(data.preco);
+    }
+  } catch (error) {
+    console.warn("Não foi possível atualizar o preço a partir do JSON:", error);
+  }
+}
+
 // ==================== CONTROLE DE MODELOS ====================
 function changeModel(dir) {
-  let tentativas = 0;
-  const total = models[currentCategory].length;
-  const maxTentativas = total * 2; // prevenção de loop infinito
+  const total = models[currentCategory]?.length || 0;
+  if (!total) return;
 
-  do {
-    currentIndex = (currentIndex + dir + total) % total;
-    tentativas++;
-    if (models[currentCategory][currentIndex].visible !== false || tentativas >= maxTentativas) {
-      break;
-    }
-  } while (true);
+  currentIndex = findNextVisibleIndex(currentCategory, currentIndex, dir);
+  const next = models[currentCategory][currentIndex];
+  if (next) loadModel(next.path);
 
-  loadModel(models[currentCategory][currentIndex].path);
-
-  const infoPanel = document.getElementById('infoPanel');
-  if (infoPanel && infoPanel.style.display === 'block') {
-    infoPanel.style.display = 'none';
+  const infoPanel = document.getElementById("infoPanel");
+  if (infoPanel && infoPanel.style.display === "block") {
+    infoPanel.style.display = "none";
     infoVisible = false;
   }
 }
 
 function selectCategory(category) {
-  if (!models[category]) return;
+  if (!models[category] || !models[category].length) return;
 
   currentCategory = category;
-  currentIndex = 0;
 
-  // Encontra o primeiro item visível na categoria
-  while (currentIndex < models[category].length && models[category][currentIndex].visible === false) {
-    currentIndex++;
-  }
-
-  // Se todos estiverem invisíveis, mostra o primeiro (como fallback)
-  if (currentIndex >= models[category].length) {
-    currentIndex = 0;
-  }
+  const first = findNextVisibleIndex(category, 0, 1);
+  currentIndex = first;
 
   loadModel(models[category][currentIndex].path);
 }
@@ -323,21 +361,19 @@ function firstVisibleIndex(cat) {
 }
 
 function mostrarLogoInicial() {
-  currentCategory = 'logo';
-
-  // Se a Home salvou a escolha do logo: localStorage.setItem('logoSelecionado', '<slug>');
-  const savedSlug = localStorage.getItem('logoSelecionado'); // ex.: "cubo" ou "tabua_de_carne"
+  currentCategory = "logo";
+  const savedSlug = localStorage.getItem("logoSelecionado");
 
   let idx = -1;
   if (savedSlug && Array.isArray(models.logo)) {
     idx = models.logo.findIndex(m => {
-      const slug = m.path.split('/').pop().replace('.glb', '');
+      const slug = m.path.split("/").pop().replace(".glb", "");
       return slug === savedSlug && m.visible !== false;
     });
   }
 
-  if (idx < 0) idx = firstVisibleIndex('logo'); // primeiro logo ativo (pelas configs S3)
-  if (idx < 0) idx = 0;                         // fallback
+  if (idx < 0) idx = firstVisibleIndex("logo");
+  if (idx < 0) idx = 0;
 
   currentIndex = Math.max(0, idx);
 
@@ -347,82 +383,76 @@ function mostrarLogoInicial() {
 }
 
 // ==================== MENU LATERAL (MOBILE) ====================
-document.getElementById("menuBtn").addEventListener("click", () => {
+document.getElementById("menuBtn")?.addEventListener("click", () => {
   const el = document.getElementById("categoryButtons");
-  el.style.display = el.style.display === "flex" ? "none" : "flex";
+  if (!el) return;
+  el.style.display = (el.style.display === "flex") ? "none" : "flex";
 });
 
 // ==================== INICIALIZAÇÃO ====================
 window.addEventListener("DOMContentLoaded", async () => {
-  // 1) checa assinatura (bloqueia se não estiver ativa)
   await ensureActivePlan();
 
-  // 2) inicialização original
+  // garante visible default
   for (const categoria in models) {
     models[categoria].forEach(model => {
-      if (model.visible === undefined) {
-        model.visible = true;
-      }
+      if (model.visible === undefined) model.visible = true;
     });
   }
 
   await aplicarConfiguracaoDoRestaurante();
   verificarEstadoInicial();
 
-  // carrega estado de like salvo
+  // likes
   loadLikeStateFromStorage();
-
-  // inicializa botões de like/deslike
   setupLikeButtons();
 
-  // Carrega o LOGO inicialmente (respeita itens desativados e a escolha salva)
+  // inicia logo
   mostrarLogoInicial();
 });
 
 // ==================== VERIFICAÇÃO POR QR CODE ====================
 function verificarEstadoInicial() {
   const urlParams = new URLSearchParams(window.location.search);
-  const estadoCodificado = urlParams.get('estado');
+  const estadoCodificado = urlParams.get("estado");
 
-  if (estadoCodificado) {
-    try {
-      const estado = JSON.parse(decodeURIComponent(estadoCodificado));
+  if (!estadoCodificado) return;
 
-      // Aplica configurações de categorias
-      if (estado.categorias) {
-        document.querySelectorAll('.category-btn').forEach(btn => {
-          const categoria = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
-          if (estado.categorias[categoria] === false) {
-            btn.style.display = 'none';
-          }
-        });
-      }
+  try {
+    const estado = JSON.parse(decodeURIComponent(estadoCodificado));
 
-      // Aplica configurações de itens (tornar invisíveis)
-      if (estado.itens) {
-        for (const categoria in estado.itens) {
-          if (models[categoria]) {
-            estado.itens[categoria].forEach(itemNome => {
-              const itemIndex = models[categoria].findIndex(model => {
-                const modelName = model.path.split('/').pop().replace('.glb', '');
-                return modelName === itemNome;
-              });
+    // categorias
+    if (estado.categorias) {
+      document.querySelectorAll(".category-btn").forEach(btn => {
+        const categoria = btn.getAttribute("onclick")?.match(/'([^']+)'/)?.[1];
+        if (!categoria) return;
+        if (estado.categorias[categoria] === false) btn.style.display = "none";
+      });
+    }
 
-              if (itemIndex !== -1) {
-                models[categoria][itemIndex].visible = false;
-              }
+    // itens invisíveis
+    if (estado.itens) {
+      for (const categoria in estado.itens) {
+        if (models[categoria]) {
+          estado.itens[categoria].forEach(itemNome => {
+            const alvo = normKey(itemNome);
+            const itemIndex = models[categoria].findIndex(model => {
+              const modelName = normKey(model.path.split("/").pop().replace(".glb", ""));
+              return modelName === alvo;
             });
-          }
+
+            if (itemIndex !== -1) models[categoria][itemIndex].visible = false;
+          });
         }
       }
-    } catch (e) {
-      console.error('Erro ao decodificar estado inicial:', e);
     }
+  } catch (e) {
+    console.error("Erro ao decodificar estado inicial:", e);
   }
 }
 
 // ==================== ROTAÇÃO AUTOMÁTICA ====================
-let rotationInterval = setInterval(() => {
+setInterval(() => {
   const model = document.querySelector("#modelContainer");
   if (!model || !model.getAttribute("gltf-model")) return;
 
@@ -431,11 +461,43 @@ let rotationInterval = setInterval(() => {
   model.setAttribute("rotation", rotation);
 }, 30);
 
-// ==================== ZOOM E ROTAÇÃO COM TOQUE ====================
+// ==================== ZOOM + ROTAÇÃO (1 dedo) + SUBIR/DESCER (2 dedos) ====================
 let initialDistance = null;
 let initialScale = 1;
+
 let startY = null;
 let initialRotationX = 0;
+
+// 2 dedos deslizando = subir/descer
+let initialMidY = null;
+let initialPosY = null;
+
+// Sensibilidade e limites (ajuste se quiser)
+const TWO_FINGER_MOVE_SENS = 0.0025;
+const POS_Y_MIN = -3;
+const POS_Y_MAX = 3;
+
+function __arGetMidY(touches) {
+  return (touches[0].clientY + touches[1].clientY) / 2;
+}
+
+function __arClamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function __arGetPosObj(model) {
+  const pos = model.getAttribute("position");
+  // A-Frame normalmente retorna objeto {x,y,z}, mas se vier string, a gente trata
+  if (typeof pos === "string") {
+    const parts = pos.trim().split(/\s+/).map(Number);
+    return {
+      x: Number.isFinite(parts[0]) ? parts[0] : 0,
+      y: Number.isFinite(parts[1]) ? parts[1] : 0,
+      z: Number.isFinite(parts[2]) ? parts[2] : 0
+    };
+  }
+  return pos || { x: 0, y: 0, z: 0 };
+}
 
 function updateScale(scaleFactor) {
   const model = document.querySelector("#modelContainer");
@@ -445,33 +507,62 @@ function updateScale(scaleFactor) {
   model.setAttribute("scale", `${newScale} ${newScale} ${newScale}`);
 }
 
+function __arSetModelPosY(newY) {
+  const model = document.querySelector("#modelContainer");
+  if (!model) return;
+
+  const pos = __arGetPosObj(model);
+  const y = __arClamp(newY, POS_Y_MIN, POS_Y_MAX);
+  model.setAttribute("position", `${pos.x} ${y} ${pos.z}`);
+}
+
 window.addEventListener("touchstart", (e) => {
   if (e.touches.length === 2) {
+    // Pinça (zoom)
     const dx = e.touches[0].clientX - e.touches[1].clientX;
     const dy = e.touches[0].clientY - e.touches[1].clientY;
     initialDistance = Math.sqrt(dx * dx + dy * dy);
+
     const model = document.querySelector("#modelContainer");
     if (model) {
       const scale = model.getAttribute("scale");
       initialScale = scale ? scale.x : 1;
+
+      // ✅ referência pra mover no Y (2 dedos deslizando juntos)
+      initialMidY = __arGetMidY(e.touches);
+      const pos = __arGetPosObj(model);
+      initialPosY = (typeof pos.y === "number") ? pos.y : 0;
     }
   } else if (e.touches.length === 1) {
+    // 1 dedo (rotação)
     startY = e.touches[0].clientY;
+
     const model = document.querySelector("#modelContainer");
     if (model) {
       const rotation = model.getAttribute("rotation");
       initialRotationX = rotation ? rotation.x : 0;
     }
   }
-});
+}, { passive: true });
 
 window.addEventListener("touchmove", (e) => {
   if (e.touches.length === 2 && initialDistance) {
+    // Zoom (pinça)
     const dx = e.touches[0].clientX - e.touches[1].clientX;
     const dy = e.touches[0].clientY - e.touches[1].clientY;
     const currentDistance = Math.sqrt(dx * dx + dy * dy);
     updateScale(currentDistance / initialDistance);
+
+    // ✅ Subir/descer (2 dedos deslizando juntos)
+    if (initialMidY != null && initialPosY != null) {
+      const midY = __arGetMidY(e.touches);
+      const delta = midY - initialMidY;                 // + desceu, - subiu
+      const newY = initialPosY + (-delta * TWO_FINGER_MOVE_SENS); // dedo pra cima => sobe objeto
+      __arSetModelPosY(newY);
+    }
+
   } else if (e.touches.length === 1 && startY !== null) {
+    // Rotação (1 dedo)
     const deltaY = e.touches[0].clientY - startY;
     const model = document.querySelector("#modelContainer");
     if (model) {
@@ -482,63 +573,70 @@ window.addEventListener("touchmove", (e) => {
       }
     }
   }
-});
+}, { passive: true });
 
-window.addEventListener("touchend", () => {
-  initialDistance = null;
-  startY = null;
-});
-
-// ==================== BOTÃO DE INFORMAÇÕES ====================
-document.getElementById("infoBtn").addEventListener("click", () => {
-  const panel = document.getElementById("infoPanel");
-
-  if (infoVisible) {
-    panel.style.display = "none";
-    infoVisible = false;
-    return;
+window.addEventListener("touchend", (e) => {
+  // saiu de 2 dedos
+  if (!e.touches || e.touches.length < 2) {
+    initialDistance = null;
+    initialMidY = null;
+    initialPosY = null;
   }
+  // saiu de 1 dedo
+  if (!e.touches || e.touches.length === 0) {
+    startY = null;
+  }
+}, { passive: true });
 
-  if (!currentModelPath) return;
+// ==================== INFO (CARREGA CONTEÚDO SEM BRIGAR COM TOGGLE DO HTML) ====================
+document.getElementById("infoBtn")?.addEventListener("click", () => {
+  const panel = document.getElementById("infoPanel");
+  if (!panel) return;
 
-  const filename = currentModelPath.split('/').pop().replace('.glb', '');
-  loadProductInfoJSON(filename, panel);
+  // Deixa qualquer toggle externo acontecer primeiro (se existir no HTML),
+  // e depois só garante conteúdo quando estiver ABERTO.
+  setTimeout(() => {
+    const visibleNow = panel.style.display === "block";
+    infoVisible = visibleNow;
+
+    if (!visibleNow) return;
+    if (!currentModelPath) return;
+
+    const filename = currentModelPath.split("/").pop().replace(".glb", "");
+    loadProductInfoJSON(filename, panel);
+  }, 0);
 });
 
-// ==================== LER JSON DE INFORMAÇÕES ====================
 async function loadProductInfoJSON(filename, panel) {
   try {
     const modelData = getCurrentModelData();
     if (!modelData || !modelData.info) throw new Error("Informações não disponíveis");
 
-    const response = await fetch(modelData.info + "?v=" + Date.now());
+    const response = await fetch(addBust(modelData.info), { cache: "no-store" });
     if (!response.ok) throw new Error("Erro ao carregar informações");
 
     const data = await response.json();
 
-    // Propriedades que NÃO queremos exibir
-    const ocultar = new Set(['preco', 'nome', 'ultimaAtualizacao']);
+    const ocultar = new Set(["preco", "nome", "ultimaAtualizacao"]);
 
-    // Monta linhas apenas com as chaves permitidas
     const linhas = [];
     for (let key in data) {
-      if (ocultar.has(key)) continue;           // pula preco e ultimaAtualizacao
-      const textoChave = key
-        .replace(/_/g, ' ')                      // trocar underscores
-        .replace(/\b\w/g, l => l.toUpperCase()); // capitalizar
+      if (ocultar.has(key)) continue;
+      const textoChave = String(key)
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, l => l.toUpperCase());
       linhas.push(`${textoChave}: ${data[key]}`);
     }
 
-    // Texto final
-    const textoFormatado = linhas.join('\n\n');
     const infoDiv = document.getElementById("infoContent");
-    infoDiv.innerText = textoFormatado;
+    if (infoDiv) infoDiv.innerText = linhas.join("\n\n");
+
     panel.style.display = "block";
     infoVisible = true;
-
   } catch (error) {
     console.error("Erro:", error);
-    document.getElementById("infoContent").innerText = "Informações não disponíveis";
+    const infoDiv = document.getElementById("infoContent");
+    if (infoDiv) infoDiv.innerText = "Informações não disponíveis";
     panel.style.display = "block";
     infoVisible = true;
   }
@@ -553,20 +651,18 @@ function getCurrentModelData() {
   return null;
 }
 
-// ==================== LIKE / DESLIKE (VISUAL + MÉTRICAS) ====================
+// ==================== LIKE / DISLIKE (VISUAL + MÉTRICAS) ====================
 
-// caminhos das imagens
 const LIKE_EMPTY_SRC     = "../imagens/positivo.png";
 const LIKE_FILLED_SRC    = "../imagens/positivo1.png";
 const DISLIKE_EMPTY_SRC  = "../imagens/negativo.png";
 const DISLIKE_FILLED_SRC = "../imagens/negativo1.png";
 
-// storage dos likes por item
-const LIKE_STORAGE_KEY = "arcardapio_like_state_v1";
-// { slugItem: "like" | "dislike" }
-let likeStateByItem = {};
+// ✅ isola por restaurante (evita misturar likes entre clientes/tenants)
+const __tenantKey = qs("restaurante", "unknown");
+const LIKE_STORAGE_KEY = `arcardapio_like_state_v1_${__tenantKey}`;
 
-// estado atual do usuário: null | "like" | "dislike"
+let likeStateByItem = {};
 let likeState = null;
 
 let btnLikeEl = null;
@@ -574,7 +670,6 @@ let btnDislikeEl = null;
 let imgLikeEl = null;
 let imgDislikeEl = null;
 
-// aplica o visual de acordo com o estado (igual YouTube)
 function applyLikeVisual() {
   if (!imgLikeEl || !imgDislikeEl) return;
 
@@ -585,13 +680,11 @@ function applyLikeVisual() {
     imgLikeEl.src = LIKE_EMPTY_SRC;
     imgDislikeEl.src = DISLIKE_FILLED_SRC;
   } else {
-    // nenhum selecionado
     imgLikeEl.src = LIKE_EMPTY_SRC;
     imgDislikeEl.src = DISLIKE_EMPTY_SRC;
   }
 }
 
-// slug do item atual (ex.: "tabua_de_carne")
 function getCurrentItemKey() {
   if (!currentModelPath) return null;
   return currentModelPath.split("/").pop().replace(".glb", "");
@@ -602,9 +695,7 @@ function loadLikeStateFromStorage() {
     const raw = localStorage.getItem(LIKE_STORAGE_KEY);
     if (!raw) return;
     const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object") {
-      likeStateByItem = parsed;
-    }
+    if (parsed && typeof parsed === "object") likeStateByItem = parsed;
   } catch (e) {
     console.warn("[LIKE] erro ao ler localStorage:", e);
   }
@@ -618,49 +709,40 @@ function saveLikeStateToStorage() {
   }
 }
 
-// aplica o estado salvo do item atual no likeState + ícones
 function syncLikeWithCurrentItem() {
-  if (!btnLikeEl || !imgLikeEl) return; // ainda não inicializou os botões
+  if (!btnLikeEl || !imgLikeEl) return;
 
   const key = getCurrentItemKey();
-  if (!key) {
-    likeState = null;
-  } else {
-    likeState = likeStateByItem[key] || null;
-  }
+  likeState = key ? (likeStateByItem[key] || null) : null;
   applyLikeVisual();
 }
 
-// salva o estado (like/dislike/nenhum) do item atual no mapa + storage
 function setLikeForCurrentItem(state) {
   const key = getCurrentItemKey();
   if (!key) return;
 
-  if (state === null) {
-    delete likeStateByItem[key];
-  } else {
-    likeStateByItem[key] = state;
-  }
+  if (state === null) delete likeStateByItem[key];
+  else likeStateByItem[key] = state;
+
   saveLikeStateToStorage();
 }
 
-// envia evento para o sistema de métricas
+// ✅ NÃO envia métrica quando desmarca (senão vira LIKE no seu Lambda)
 function trackLikeEvent(newState, source) {
+  if (!newState) return; // <-- corte aqui
+
   if (!window.MetricaApp || typeof MetricaApp.trackEvent !== "function") return;
 
   const current = getCurrentModelData() || {};
   const itemPath = current.path || currentModelPath || null;
   const itemName = itemPath ? formatProductName(itemPath) : null;
 
-  let value;
-  if (newState === "like") value = "positivo";
-  else if (newState === "dislike") value = "negativo";
-  else value = "nenhum"; // quando o usuário "desmarca"
+  const value = (newState === "like") ? "positivo" : "negativo";
 
   try {
     MetricaApp.trackEvent("like", {
-      value,                 // positivo / negativo / nenhum
-      source,                // "like" ou "dislike" (qual botão foi clicado)
+      value,      // positivo / negativo
+      source,     // "like" ou "dislike"
       category: currentCategory || null,
       itemPath,
       itemName
@@ -670,34 +752,26 @@ function trackLikeEvent(newState, source) {
   }
 }
 
-// inicializa os botões (roda uma vez quando o DOM carrega)
 function setupLikeButtons() {
   btnLikeEl = document.getElementById("btnLike");
   btnDislikeEl = document.getElementById("btnDislike");
-
   if (!btnLikeEl || !btnDislikeEl) return;
 
   imgLikeEl = btnLikeEl.querySelector("img");
   imgDislikeEl = btnDislikeEl.querySelector("img");
-
   if (!imgLikeEl || !imgDislikeEl) return;
 
-  // começa vazio (será substituído pelo estado do item atual quando o modelo carregar)
   likeState = null;
   applyLikeVisual();
 
-  // clique no LIKE
   btnLikeEl.addEventListener("click", () => {
-    // toggle: se já estava like, volta pra nenhum
     likeState = (likeState === "like") ? null : "like";
     setLikeForCurrentItem(likeState);
     applyLikeVisual();
     trackLikeEvent(likeState, "like");
   });
 
-  // clique no DISLIKE
   btnDislikeEl.addEventListener("click", () => {
-    // toggle: se já estava dislike, volta pra nenhum
     likeState = (likeState === "dislike") ? null : "dislike";
     setLikeForCurrentItem(likeState);
     applyLikeVisual();
@@ -705,17 +779,3 @@ function setupLikeButtons() {
   });
 }
 
-// ==================== HELPERS ====================
-// Normaliza "Porções", "porcoes", "PORÇÕES" -> "porcoes"
-function normKey(str) {
-  return String(str)
-    .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
-    .replace(/\s+/g, '_'); // espaços -> underscore
-}
-
-async function fetchJsonNoStore(url) {
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`Falha ao carregar ${url}: ${res.status}`);
-  return res.json();
-}

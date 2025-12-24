@@ -1,139 +1,212 @@
-* {
-  box-sizing: border-box;
+/* cadastro.css (ATUALIZADO)
+   ✅ VOLTOU A BARRA DE ROLAGEM (overflow-y:auto)
+   ✅ Não corta conteúdo quando o formulário fica maior que a tela
+*/
+
+* { box-sizing: border-box; }
+
+body{
+  margin:0;
+  padding:40px 16px;          /* ✅ espaço em cima/baixo */
+  min-height:100vh;           /* ✅ não trava em 100vh */
+  overflow-y:auto;            /* ✅ volta a rolagem */
+  display:flex;
+  align-items:flex-start;     /* ✅ começa no topo */
+  justify-content:center;
+  font-family:'Inter', sans-serif;
+  background:
+    linear-gradient(rgba(0,0,0,.7), rgba(0,0,0,.7)),
+    url('../imagens/bgcadastro.jpeg') no-repeat center center fixed;
+  background-size:cover;
+  color:#fff;
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  height: 100vh;              /* ForÃ§a altura da tela */
-  overflow: hidden;           /* Remove a barra de rolagem */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Inter', sans-serif;
-  background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
-              url('../imagens/bgcadastro.jpeg') no-repeat center center fixed;
-  background-size: cover;
-  color: #fff;
+.container{
+  background-color:rgba(0,0,0,.75);
+  border-radius:16px;
+  padding:40px;
+  width:100%;
+  max-width:900px;
+  box-shadow:0 0 25px rgba(0,255,200,.15);
 }
 
-.container {
-  background-color: rgba(0, 0, 0, 0.75);
-  border-radius: 16px;
-  padding: 40px;
-  width: 100%;
-  max-width: 800px;
-  box-shadow: 0 0 25px rgba(0, 255, 200, 0.15);
+h2{
+  text-align:center;
+  margin:0 0 10px;
+  color:#00ffc8;
+  font-size:2rem;
+  text-shadow:0 0 6px rgba(0,255,200,.5);
 }
 
-h2 {
-  text-align: center;
-  margin-bottom: 30px;
-  color: #00ffc8;
-  font-size: 2rem;
-  text-shadow: 0 0 6px rgba(0, 255, 200, 0.5);
+.subtitle{
+  text-align:center;
+  margin:0 0 26px;
+  color:rgba(255,255,255,.85);
+  font-size:14px;
+  line-height:1.35;
 }
 
-form {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
+form{
+  display:flex;
+  flex-direction:column;
+  width:100%;
 }
 
-.row {
-  display: flex;
-  gap: 30px;
-  width: 100%;
-  margin-bottom: 15px;
-  flex-wrap: wrap;
+.row{
+  display:flex;
+  gap:30px;
+  width:100%;
+  margin-bottom:15px;
+  flex-wrap:wrap;
 }
 
-.input-container {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
+.input-container{
+  display:flex;
+  flex-direction:column;
+  flex:1;
+  min-width:220px;
 }
 
-label {
-  font-weight: bold;
-  margin-bottom: 5px;
-  color: #fff;
+label{
+  font-weight:700;
+  margin-bottom:6px;
+  color:#fff;
 }
 
-input {
-  padding: 10px;
-  font-size: 16px;
-  border: none;
-  border-radius: 8px;
-  background-color: #f1f1f1;
-  color: #000;
+input, select{
+  padding:10px 12px;
+  font-size:16px;
+  border:none;
+  border-radius:8px;
+  background-color:#f1f1f1;
+  color:#000;
 }
 
-/* âœ… ESTILO DO BOTÃƒO CADASTRAR */
-button {
-  padding: 14px 24px;
-  font-size: 18px;
-  font-weight: bold;
-  background-color: #00ffc8;
-  color: #000;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  margin-top: 20px;
-  align-self: center;
-  transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
-  box-shadow: 0 0 10px rgba(0, 255, 200, 0.5),
-              0 0 20px rgba(0, 255, 200, 0.4),
-              0 0 30px rgba(0, 255, 200, 0.3);
-  animation: glowCadBotao 2.5s infinite ease-in-out;
+input::placeholder{ color:rgba(0,0,0,.45); }
+
+input:focus, select:focus{
+  outline:none;
+  box-shadow:0 0 0 2px rgba(0,255,200,.25), 0 0 18px rgba(0,255,200,.12);
 }
 
-button:hover {
-  transform: scale(1.05);
-  background-color: #00e6b4;
-  box-shadow: 0 0 14px rgba(0, 255, 200, 0.8),
-              0 0 28px rgba(0, 255, 200, 0.6),
-              0 0 40px rgba(0, 255, 200, 0.4);
+input:invalid{
+  border:2px solid #ff6b6b;
+  background-color:#fff0f0;
+}
+input:focus:invalid{
+  outline:none;
+  box-shadow:0 0 5px #ff6b6b;
 }
 
-button:disabled {
-  background-color: #aaa;
-  color: #444;
-  box-shadow: none;
-  cursor: not-allowed;
+.hint{
+  margin-top:6px;
+  font-size:12px;
+  color:rgba(255,255,255,.75);
 }
 
-@keyframes glowCadBotao {
-  0% { box-shadow: 0 0 10px rgba(0, 255, 200, 0.3); }
-  50% { box-shadow: 0 0 20px rgba(0, 255, 200, 0.6); }
-  100% { box-shadow: 0 0 10px rgba(0, 255, 200, 0.3); }
+.divider{
+  width:100%;
+  height:1px;
+  background:rgba(255,255,255,.14);
+  margin:18px 0 16px;
 }
 
-input:invalid {
-  border: 2px solid #ff6b6b;
-  background-color: #fff0f0;
+.section-title{
+  margin:0 0 12px;
+  font-size:13px;
+  font-weight:800;
+  color:rgba(255,255,255,.9);
+  letter-spacing:.2px;
 }
 
-input:focus:invalid {
-  outline: none;
-  box-shadow: 0 0 5px #ff6b6b;
+.checks{
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:10px;
+}
+.checks label{
+  font-weight:500;
+  color:rgba(255,255,255,.9);
+  display:flex;
+  gap:10px;
+  align-items:center;
+  cursor:pointer;
+}
+.checks input[type="checkbox"]{
+  width:18px;
+  height:18px;
+  accent-color:#00ffc8;
 }
 
-
-/* Estilos para a notificaÃ§Ã£o customizada */
-#custom-notification {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 15px 25px;
-  border-radius: 8px;
-  color: white;
-  font-size: 16px;
-  font-weight: bold;
-  z-index: 1000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  transition: opacity 0.5s ease-in-out;
-  opacity: 1;
+.err{
+  width:100%;
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:10px;
+  font-size:14px;
+  line-height:1.35;
+  display:none;
+  background:rgba(255,0,0,.10);
+  border:1px solid rgba(255,0,0,.28);
+  color:#ffd0d0;
 }
 
+button{
+  padding:14px 24px;
+  font-size:18px;
+  font-weight:bold;
+  background-color:#00ffc8;
+  color:#000;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  margin-top:20px;
+  align-self:center;
+  transition:transform .3s ease, box-shadow .3s ease, background-color .3s ease;
+  box-shadow:
+    0 0 10px rgba(0,255,200,.5),
+    0 0 20px rgba(0,255,200,.4),
+    0 0 30px rgba(0,255,200,.3);
+  animation:glowCadBotao 2.5s infinite ease-in-out;
+}
+
+button:hover{
+  transform:scale(1.05);
+  background-color:#00e6b4;
+  box-shadow:
+    0 0 14px rgba(0,255,200,.8),
+    0 0 28px rgba(0,255,200,.6),
+    0 0 40px rgba(0,255,200,.4);
+}
+
+button:disabled{
+  background-color:#aaa;
+  color:#444;
+  box-shadow:none;
+  cursor:not-allowed;
+  animation:none;
+}
+
+@keyframes glowCadBotao{
+  0%   { box-shadow:0 0 10px rgba(0,255,200,.30); }
+  50%  { box-shadow:0 0 20px rgba(0,255,200,.60); }
+  100% { box-shadow:0 0 10px rgba(0,255,200,.30); }
+}
+
+#custom-notification{
+  position:fixed;
+  top:20px;
+  left:50%;
+  transform:translateX(-50%);
+  padding:15px 25px;
+  border-radius:10px;
+  color:#fff;
+  font-size:14px;
+  font-weight:700;
+  z-index:10000;
+  box-shadow:0 12px 32px rgba(0,0,0,.35);
+  transition:opacity .18s ease-out, transform .18s ease-out;
+  opacity:1;
+}

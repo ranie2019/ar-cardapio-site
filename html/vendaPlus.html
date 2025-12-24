@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- CSS -->
-  <link rel="stylesheet" href="../css/vendaPlus.css">
+  <link rel="stylesheet" href="../css/vendaPlus.css?v=20251222-3">
 </head>
 <body>
   <div class="container">
@@ -16,20 +16,61 @@
       <!-- COLUNA ESQUERDA (resumo) -->
       <section class="card">
         <h2 class="h2">Plano Plus (30 Dias)</h2>
+
         <div class="price">R$ 200,00</div>
-        <p class="muted">Acesso completo ao ARCardápio por 30 Dias.</p>
+        <p class="muted">Acesso completo ao ARCardápio por 30 dias.</p>
 
         <ul class="bullets">
-          <li><span class="dot"></span><span>Acesso a todos os recursos e modelos 3D</span></li>
-          <li><span class="dot"></span><span>Suporte por e-mail com prioridade</span></li>
-          <li><span class="dot"></span><span>Sem taxa de adesão. Cancele quando quiser</span></li>
+          <li><span class="dot"></span><span>QR por mesa + métricas de acesso e engajamento</span></li>
+          <li><span class="dot"></span><span>Atualize seu cardápio sem reimprimir nada</span></li>
+          <li><span class="dot"></span><span>Modelos 3D + AR direto no celular do cliente</span></li>
         </ul>
 
         <div class="divider"></div>
-        <div class="row"><span>Subtotal</span><span>R$ 200,00</span></div>
-        <div class="row"><span>Descontos</span><span>R$ 0,00</span></div>
+
+        <!-- Resumo curto (tipo checkout profissional) -->
+        <div class="mini-summary">
+          <div class="row"><span>Plano</span><span><b>Plus</b></span></div>
+          <div class="row"><span>Validade</span><span><b>30 dias</b></span></div>
+          <div class="row"><span>Liberação</span><span><b>Automática</b></span></div>
+          <div class="row"><span>Recibo</span><span><b>Por e-mail</b></span></div>
+        </div>
+
         <div class="divider"></div>
-        <div class="row total"><span>Total</span><span>R$ 200,00</span></div>
+
+        <div class="row"><span>Subtotal</span><span id="display-subtotal">R$ 200,00</span></div>
+        <div class="row"><span>Descontos</span><span id="display-descontos">R$ 0,00</span></div>
+
+        <!-- ✅ CUPOM AGORA DO LADO ESQUERDO (abaixo de Descontos) -->
+        <details class="coupon">
+          <summary>Tenho cupom de desconto</summary>
+          <div class="coupon-inner">
+            <input id="couponCode" class="input" type="text" placeholder="Digite seu cupom">
+            <button id="btnApplyCoupon" type="button" class="btn-mini">Aplicar</button>
+            <div id="coupon-msg" class="muted" style="margin-top:8px" aria-live="polite"></div>
+          </div>
+        </details>
+        <!-- ✅ fim cupom -->
+
+        <!-- ✅ escondido (mantém IDs pra não quebrar JS) -->
+        <div class="row" id="row-taxas" style="display:none">
+          <span>Taxas</span><span id="display-taxas">R$ 0,00</span>
+        </div>
+        <div class="divider" id="divider-taxas" style="display:none"></div>
+        <div class="row total" id="row-total" style="display:none">
+          <span>Total a pagar</span><span id="display-total">R$ 200,00</span>
+        </div>
+        <p id="fees-note" class="muted" style="margin-top:8px; display:none"></p>
+
+        <div class="divider"></div>
+
+        <!-- Chips de confiança (não polui) -->
+        <div class="chips">
+          <span class="chip">🔒 Pagamento seguro</span>
+          <span class="chip">⚡ Liberação rápida</span>
+          <span class="chip">✅ Cancelamento fácil</span>
+        </div>
+
         <div class="divider"></div>
 
         <div class="secure">
@@ -48,10 +89,10 @@
         <p class="muted">Selecione <b>Pix</b> ou <b>Cartão</b> nas abas do formulário.</p>
 
         <form id="payment-form" novalidate>
-          <!-- helpers ocultos (corrigidos para Plus 30 dias) -->
-          <input type="hidden" id="amountCents" value="20000"> <!-- centavos: R$ 120,00 -->
+          <!-- helpers ocultos -->
+          <input type="hidden" id="amountCents" value="20000">
           <input type="hidden" id="description" value="Plano Plus (30 Dias)">
-          <input type="hidden" id="planoSlug" value="plano_plus_30_dias">
+          <input type="hidden" id="planoSlug" value="plus">
 
           <label for="email">Seu e-mail</label>
           <input id="email" class="input" type="email" placeholder="voce@exemplo.com" autocomplete="email" required>
@@ -60,20 +101,23 @@
           <label for="name">Nome completo</label>
           <input id="name" class="input" type="text" placeholder="Nome" autocomplete="name" required>
 
+          <label for="cpfCnpj">CPF/CNPJ</label>
+          <input id="cpfCnpj" class="input" type="text" placeholder="Somente números" autocomplete="off" inputmode="numeric" required>
+          <div id="cpf-validation" class="validation-message" aria-live="polite"></div>
+
           <!-- Abas -->
           <div id="fallback-wrapper" class="custom">
             <div class="pay-tabs" role="tablist" aria-label="Escolha a forma de pagamento">
-              <button class="tab active" type="button" data-target="#cardPanel" aria-selected="true">Cartão de crédito</button>
-              <button class="tab" type="button" data-target="#pixPanel" aria-selected="false">Pix</button>
+              <button class="tab" type="button" data-target="#cardPanel" aria-selected="false">Cartão de crédito</button>
+              <button class="tab active" type="button" data-target="#pixPanel" aria-selected="true">Pix</button>
             </div>
 
             <!-- Painel Cartão -->
-            <div class="pay-panel show" id="cardPanel" role="tabpanel">
+            <div class="pay-panel" id="cardPanel" role="tabpanel" aria-hidden="true">
               <div id="stripe-wrapper" class="is-hidden">
                 <div id="payment-element"></div>
               </div>
 
-              <!-- Campos fallback (MP CardForm usa estes IDs) -->
               <div id="card-fallback" class="card-fields">
                 <label for="cc-number">Número do cartão</label>
                 <input id="cc-number" class="input" type="text" placeholder="1234 1234 1234 1234" autocomplete="cc-number" maxlength="23">
@@ -92,11 +136,29 @@
                 <label for="cc-name">Nome do titular</label>
                 <input id="cc-name" class="input" type="text" placeholder="Nome como aparece no cartão" autocomplete="cc-name">
                 <p class="muted" style="margin-top: 8px;">Conforme aparece no cartão.</p>
+
+                <label for="installments" style="margin-top:12px">Parcelar em</label>
+                <select id="installments" class="input">
+                  <option value="1" selected>1x (sem juros)</option>
+                  <option value="2">2x</option>
+                  <option value="3">3x</option>
+                  <option value="4">4x</option>
+                  <option value="5">5x</option>
+                  <option value="6">6x</option>
+                  <option value="7">7x</option>
+                  <option value="8">8x</option>
+                  <option value="9">9x</option>
+                  <option value="10">10x</option>
+                  <option value="11">11x</option>
+                  <option value="12">12x</option>
+                </select>
+
+                <p id="installment-hint" class="muted" style="margin-top:8px"></p>
               </div>
             </div>
 
-            <!-- Painel Pix -->
-            <div class="pay-panel" id="pixPanel" role="tabpanel" aria-hidden="true">
+            <!-- Painel Pix (ativo por padrão) -->
+            <div class="pay-panel show" id="pixPanel" role="tabpanel" aria-hidden="false">
               <p class="muted" style="margin-top:8px">
                 Ao continuar com Pix, será exibido o QR Code.
               </p>
@@ -108,35 +170,62 @@
               </div>
 
               <div id="qr-placeholder" class="qr-placeholder">
-                Preencha e-mail e nome para gerar o QR Code
+                Preencha e-mail, nome e CPF/CNPJ para gerar o QR Code
               </div>
             </div>
           </div>
 
-          <!-- Mensagens -->
           <div id="error" class="err" role="alert" aria-live="polite"></div>
 
-          <!-- Botão principal -->
           <button id="submitBtn" class="btn" type="submit">
-            Pagar e assinar
+            Pagar
           </button>
+
+          <!-- Depois do pagamento (curto e forte, não polui) -->
+          <div class="afterpay">
+            <p class="afterpay-title">O que acontece depois?</p>
+            <ul class="afterpay-list">
+              <li>Acesso liberado automaticamente após confirmação.</li>
+              <li>Se der problema, o suporte resolve rápido.</li>
+            </ul>
+          </div>
+
+          <!-- FAQ compacto (colapsável) -->
+          <div class="faq">
+            <details>
+              <summary>Quando libera o acesso?</summary>
+              <p class="muted">Assim que o pagamento for confirmado (Pix costuma ser rápido).</p>
+            </details>
+            <details>
+              <summary>Posso cancelar quando quiser?</summary>
+              <p class="muted">Sim. Você consegue cancelar quando quiser.</p>
+            </details>
+            <details>
+              <summary>Paguei e não apareceu. E agora?</summary>
+              <p class="muted">Fale com o suporte e a gente valida na hora usando seu e-mail e CPF/CNPJ.</p>
+            </details>
+          </div>
+
+          <!-- Suporte rápido -->
+          <div class="support">
+            <span class="muted">Precisa de ajuda?</span>
+            <a class="support-link" href="https://wa.me/5583987687638" target="_blank" rel="noopener">Falar no WhatsApp</a>
+          </div>
         </form>
       </section>
     </div>
   </div>
 
-  <!-- Modal de feedback -->
+  <!-- MODAL (sem botão) -->
   <div id="pay-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="pay-modal-title">
     <div class="modal-box">
-      <h3 id="pay-modal-title">Título</h3>
-      <p id="pay-modal-msg">Mensagem</p>
-      <button id="pay-modal-ok" class="btn-mini btn-wide" type="button">Ok</button>
+      <h3 id="pay-modal-title" class="modal-title">Pagamento em andamento</h3>
+      <p id="pay-modal-msg" class="modal-msg">Aguardando confirmação…</p>
     </div>
   </div>
 
   <noscript>Ative o JavaScript para concluir o pagamento.</noscript>
 
-  <!-- JS principal -->
-  <script src="../java/vendaPlus.js" defer></script>
+  <script src="../java/vendaPlus.js?v=20251222-3" defer></script>
 </body>
 </html>

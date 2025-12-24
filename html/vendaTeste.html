@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- CSS -->
-  <link rel="stylesheet" href="../css/vendaTeste.css">
+  <link rel="stylesheet" href="../css/vendaTeste.css?v=20251222-3">
 </head>
 <body>
   <div class="container">
@@ -17,27 +17,58 @@
       <section class="card">
         <h2 class="h2">Plano Teste (7 Dias)</h2>
 
-        <!-- Preço de vitrine (informativo) -->
         <div class="price">R$ 10,00</div>
         <p class="muted">Acesso completo ao ARCardápio por 7 dias.</p>
 
         <ul class="bullets">
-          <li><span class="dot"></span><span>Acesso a todos os recursos e modelos 3D</span></li>
-          <li><span class="dot"></span><span>Suporte por e-mail com prioridade</span></li>
-          <li><span class="dot"></span><span>Sem taxa de adesão. Cancele quando quiser</span></li>
+          <li><span class="dot"></span><span>QR por mesa + métricas de acesso e engajamento</span></li>
+          <li><span class="dot"></span><span>Atualize seu cardápio sem reimprimir nada</span></li>
+          <li><span class="dot"></span><span>Modelos 3D + AR direto no celular do cliente</span></li>
         </ul>
 
         <div class="divider"></div>
 
-        <!-- VALORES CALCULADOS (atualizados via JS) -->
+        <!-- Resumo curto (tipo checkout profissional) -->
+        <div class="mini-summary">
+          <div class="row"><span>Plano</span><span><b>Teste</b></span></div>
+          <div class="row"><span>Validade</span><span><b>7 dias</b></span></div>
+          <div class="row"><span>Liberação</span><span><b>Automática</b></span></div>
+          <div class="row"><span>Recibo</span><span><b>Por e-mail</b></span></div>
+        </div>
+
+        <div class="divider"></div>
+
         <div class="row"><span>Subtotal</span><span id="display-subtotal">R$ 10,00</span></div>
         <div class="row"><span>Descontos</span><span id="display-descontos">R$ 0,00</span></div>
-        <div class="row"><span>Taxas</span><span id="display-taxas">R$ 0,00</span></div>
-        <div class="divider"></div>
-        <div class="row total"><span>Total a pagar</span><span id="display-total">R$ 10,00</span></div>
 
-        <!-- Observação dinâmica sobre as faixas/parcelamento -->
-        <p id="fees-note" class="muted" style="margin-top:8px"></p>
+        <!-- ✅ CUPOM NO RESUMO (abaixo de Descontos) -->
+        <details class="coupon">
+          <summary>Tenho cupom de desconto</summary>
+          <div class="coupon-inner">
+            <input id="couponCode" class="input" type="text" placeholder="Digite seu cupom">
+            <button id="btnApplyCoupon" type="button" class="btn-mini">Aplicar</button>
+            <div id="coupon-msg" class="muted" style="margin-top:8px" aria-live="polite"></div>
+          </div>
+        </details>
+
+        <!-- ✅ Mantém IDs (caso seu JS use), mas some da tela -->
+        <div class="row" id="row-taxas" style="display:none">
+          <span>Taxas</span><span id="display-taxas">R$ 0,00</span>
+        </div>
+        <div class="divider" id="divider-taxas" style="display:none"></div>
+        <div class="row total" id="row-total" style="display:none">
+          <span>Total a pagar</span><span id="display-total">R$ 10,00</span>
+        </div>
+        <p id="fees-note" class="muted" style="margin-top:8px; display:none"></p>
+
+        <div class="divider"></div>
+
+        <!-- Chips de confiança -->
+        <div class="chips">
+          <span class="chip">🔒 Pagamento seguro</span>
+          <span class="chip">⚡ Liberação rápida</span>
+          <span class="chip">✅ Cancelamento fácil</span>
+        </div>
 
         <div class="divider"></div>
 
@@ -58,9 +89,9 @@
 
         <form id="payment-form" novalidate>
           <!-- helpers ocultos -->
-          <input type="hidden" id="amountCents" value="1000"> <!-- Valor que vai ser cobrado -->
+          <input type="hidden" id="amountCents" value="1000">
           <input type="hidden" id="description" value="Plano Teste (7 Dias)">
-          <input type="hidden" id="planoSlug" value="teste_7_dias">
+          <input type="hidden" id="planoSlug" value="teste">
 
           <label for="email">Seu e-mail</label>
           <input id="email" class="input" type="email" placeholder="voce@exemplo.com" autocomplete="email" required>
@@ -69,22 +100,23 @@
           <label for="name">Nome completo</label>
           <input id="name" class="input" type="text" placeholder="Nome" autocomplete="name" required>
 
+          <label for="cpfCnpj">CPF/CNPJ</label>
+          <input id="cpfCnpj" class="input" type="text" placeholder="Somente números" autocomplete="off" inputmode="numeric" required>
+          <div id="cpf-validation" class="validation-message" aria-live="polite"></div>
+
           <!-- Abas -->
           <div id="fallback-wrapper" class="custom">
             <div class="pay-tabs" role="tablist" aria-label="Escolha a forma de pagamento">
-              <!-- Pix como padrão visual; o JS também força Pix no init() -->
               <button class="tab" type="button" data-target="#cardPanel" aria-selected="false">Cartão de crédito</button>
               <button class="tab active" type="button" data-target="#pixPanel" aria-selected="true">Pix</button>
             </div>
 
             <!-- Painel Cartão -->
             <div class="pay-panel" id="cardPanel" role="tabpanel" aria-hidden="true">
-              <!-- Wrapper para providers com elements/SDK (se necessário) -->
               <div id="stripe-wrapper" class="is-hidden">
                 <div id="payment-element"></div>
               </div>
 
-              <!-- Campos fallback (funcionam com Mercado Pago e outros) -->
               <div id="card-fallback" class="card-fields">
                 <label for="cc-number">Número do cartão</label>
                 <input id="cc-number" class="input" type="text" placeholder="1234 1234 1234 1234" autocomplete="cc-number" maxlength="23">
@@ -104,7 +136,6 @@
                 <input id="cc-name" class="input" type="text" placeholder="Nome como aparece no cartão" autocomplete="cc-name">
                 <p class="muted" style="margin-top: 8px;">Conforme aparece no cartão.</p>
 
-                <!-- Parcelamento (funcional; JS atualiza valores e usa nas cobranças) -->
                 <label for="installments" style="margin-top:12px">Parcelar em</label>
                 <select id="installments" class="input">
                   <option value="1" selected>1x (sem juros)</option>
@@ -121,21 +152,12 @@
                   <option value="12">12x</option>
                 </select>
 
-                <!-- Resumo dinâmico do parcelamento -->
                 <p id="installment-hint" class="muted" style="margin-top:8px"></p>
-
-                <!-- Tabela de taxas (informativo) -->
-                <div id="fees-table" class="muted" style="margin-top:6px; font-size:12px; line-height:1.35;">
-                  <div><b>Cartão de Crédito</b></div>
-                  <div>2,99% + R$ 0,49 à vista</div>
-                  <div>3,49% + R$ 0,49 de 2 a 6 parcelas</div>
-                  <div>3,99% + R$ 0,49 de 7 a 12 parcelas</div>
-                </div>
               </div>
             </div>
 
             <!-- Painel Pix (ativo por padrão) -->
-            <div class="pay-panel show" id="pixPanel" role="tabpanel">
+            <div class="pay-panel show" id="pixPanel" role="tabpanel" aria-hidden="false">
               <p class="muted" style="margin-top:8px">
                 Ao continuar com Pix, será exibido o QR Code.
               </p>
@@ -147,37 +169,62 @@
               </div>
 
               <div id="qr-placeholder" class="qr-placeholder">
-                Preencha e-mail e nome para gerar o QR Code
+                Preencha e-mail, nome e CPF/CNPJ para gerar o QR Code
               </div>
             </div>
           </div>
 
-          <!-- Mensagens -->
           <div id="error" class="err" role="alert" aria-live="polite"></div>
 
-          <!-- Botão principal -->
           <button id="submitBtn" class="btn" type="submit">
-            Pagar e assinar
+            Pagar
           </button>
+
+          <!-- Depois do pagamento (curto e forte) -->
+          <div class="afterpay">
+            <p class="afterpay-title">O que acontece depois?</p>
+            <ul class="afterpay-list">
+              <li>Acesso liberado automaticamente após confirmação.</li>
+              <li>Se der problema, o suporte resolve rápido.</li>
+            </ul>
+          </div>
+
+          <!-- FAQ compacto (colapsável) -->
+          <div class="faq">
+            <details>
+              <summary>Quando libera o acesso?</summary>
+              <p class="muted">Assim que o pagamento for confirmado (Pix costuma ser rápido).</p>
+            </details>
+            <details>
+              <summary>Posso cancelar quando quiser?</summary>
+              <p class="muted">Sim. Você consegue cancelar quando quiser.</p>
+            </details>
+            <details>
+              <summary>Paguei e não apareceu. E agora?</summary>
+              <p class="muted">Fale com o suporte e a gente valida na hora usando seu e-mail e CPF/CNPJ.</p>
+            </details>
+          </div>
+
+          <!-- Suporte rápido -->
+          <div class="support">
+            <span class="muted">Precisa de ajuda?</span>
+            <a class="support-link" href="https://wa.me/5583987687638" target="_blank" rel="noopener">Falar no WhatsApp</a>
+          </div>
         </form>
       </section>
     </div>
   </div>
 
+  <!-- ✅ MODAL (sem botão) -->
   <div id="pay-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="pay-modal-title">
     <div class="modal-box">
-      <h3 id="pay-modal-title">Título</h3>
-      <p id="pay-modal-msg">Mensagem</p>
-      <button id="pay-modal-ok" class="btn-mini btn-wide" type="button">Ok</button>
+      <h3 id="pay-modal-title" class="modal-title">Pagamento em andamento</h3>
+      <p id="pay-modal-msg" class="modal-msg">Aguardando confirmação…</p>
     </div>
   </div>
 
   <noscript>Ative o JavaScript para concluir o pagamento.</noscript>
 
-  <!-- SDK do Mercado Pago (opcional; cartão só ativa se MP_PUBLIC_KEY for setado no JS) -->
-  <script src="https://sdk.mercadopago.com/js/v2"></script>
-
-  <!-- JS principal (a versão que já calcula taxas, parcela e mascara MM/AA) -->
-  <script src="../java/vendaTeste.js" defer></script>
+  <script src="../java/vendaTeste.js?v=20251222-3" defer></script>
 </body>
 </html>

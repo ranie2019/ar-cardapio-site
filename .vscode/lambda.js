@@ -11,9 +11,7 @@ const {
 // ========= OPENAI ==========
 const OpenAI = require("openai");
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
-const openaiClient = OPENAI_API_KEY
-  ? new OpenAI({ apiKey: OPENAI_API_KEY })
-  : null;
+const openaiClient = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 
 // ===============================
 // VARIÁVEIS DE AMBIENTE
@@ -42,8 +40,6 @@ const INSIGHTS_MAX_PER_INTERVAL = Number(
   process.env.INSIGHTS_MAX_PER_INTERVAL || "10"
 );
 
-
-
 // CORS
 const CORS_ORIGINS = process.env.CORS_ORIGINS || "*";
 const CORS_HEADERS = process.env.CORS_HEADERS || "Content-Type,Authorization";
@@ -55,10 +51,66 @@ const s3 = new S3Client({ region: AWS_REGION });
 
 // Fuso horário de agregação (em minutos). Padrão: Brasil UTC-3 = -180
 const DAY_MS = 24 * 60 * 60 * 1000;
-const TZ_OFFSET_MINUTES = Number(
-  process.env.METRICS_TZ_OFFSET_MINUTES ?? "-180"
-);
+const TZ_OFFSET_MINUTES = Number(process.env.METRICS_TZ_OFFSET_MINUTES ?? "-180");
 const TZ_OFFSET_MS = TZ_OFFSET_MINUTES * 60 * 1000;
+
+// ===============================
+// TIMEZONE HELPERS
+// ===============================
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+function tzOffsetToIso(minutes) {
+  // minutes: -180 => "-03:00"
+  const sign = minutes <= 0 ? "-" : "+";
+  const abs = Math.abs(minutes);
+  const hh = pad2(Math.floor(abs / 60));
+  const mm = pad2(abs % 60);
+  return `${sign}${hh}:${mm}`;
+}
+
+const TZ_ISO = tzOffsetToIso(TZ_OFFSET_MINUTES);
+
+// ✅ Interpreta timestamps sem timezone como "horário local" do seu offset (Brasil -03)
+// e converte para UTC real.
+function parseTimestampSmart(ts) {
+  if (!ts) return null;
+  const s = String(ts).trim();
+
+  // Se tem timezone (Z ou +hh:mm/-hh:mm), pode confiar no Date()
+  const hasTz = /[zZ]$|[+\-]\d{2}:\d{2}$/.test(s);
+  if (hasTz) {
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // yyyy-mm-ddTHH:MM(:SS(.ms)?)?  (sem timezone)
+  const m = s.match(
+    /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?)?$/
+  );
+  if (m) {
+    const Y = Number(m[1]);
+    const Mo = Number(m[2]) - 1;
+    const D = Number(m[3]);
+    const H = Number(m[4] || "00");
+    const Mi = Number(m[5] || "00");
+    const Se = Number(m[6] || "00");
+    const Ms = Number(String(m[7] || "0").padEnd(3, "0"));
+
+    // "local virtual" em UTC
+    const localVirtualUtcMs = Date.UTC(Y, Mo, D, H, Mi, Se, Ms);
+
+    // converte local -> UTC real
+    const utcMs = localVirtualUtcMs - TZ_OFFSET_MS;
+
+    const d = new Date(utcMs);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
 
 // Converte um Date em UTC para "horário local" aplicando o offset configurado
 function toLocalDate(utcDate) {
@@ -85,23 +137,43 @@ function log(level, ...args) {
   console.log(ts, level, ...args);
 }
 
-function corsHeaders(extra = {}) {
-  return {
-    "Access-Control-Allow-Origin": CORS_ORIGINS,
-    "Access-Control-Allow-Headers": CORS_HEADERS,
-    "Access-Control-Allow-Methods": CORS_METHODS,
-    "Access-Control-Allow-Credentials": "true",
+function corsHeaders(extra = {}, event) {
+  const origin = event?.headers?.origin || event?.headers?.Origin || "";
+
+  const allowList = String(process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  // Se não configurou allowlist, libera geral ("*")
+  // Se configurou, responde com a origin real (se estiver na lista) ou cai na primeira da lista.
+  const allowOrigin =
+    allowList.length === 0
+      ? "*"
+      : (allowList.includes(origin) ? origin : allowList[0]);
+
+  const headers = {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Headers": "Content-Type,Authorization",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     Vary: "Origin",
     ...extra
   };
+
+  // Credentials só pode quando NÃO é "*"
+  if (allowOrigin !== "*") {
+    headers["Access-Control-Allow-Credentials"] = "true";
+  }
+
+  return headers;
 }
 
-function jsonResponse(statusCode, bodyObj, extraHeaders = {}) {
+function jsonResponse(event, statusCode, bodyObj, extraHeaders = {}) {
   return {
     statusCode,
     headers: {
       "Content-Type": "application/json",
-      ...corsHeaders(extraHeaders)
+      ...corsHeaders(extraHeaders, event)
     },
     body: JSON.stringify(bodyObj)
   };
@@ -116,8 +188,9 @@ function parseEvent(event) {
 
   const path = event.path || event.rawPath || "";
 
-  let query = event.queryStringParameters || {};
-  if (!query && event.rawQueryString) {
+  let query = event.queryStringParameters || null;
+
+  if ((!query || Object.keys(query).length === 0) && event.rawQueryString) {
     query = {};
     const pairs = event.rawQueryString.split("&");
     for (const p of pairs) {
@@ -126,6 +199,8 @@ function parseEvent(event) {
       query[decodeURIComponent(k)] = decodeURIComponent(v || "");
     }
   }
+
+  if (!query) query = {};
 
   return { method, path, query };
 }
@@ -138,10 +213,7 @@ function autenticarRequest(event) {
   const authHeader = headers.Authorization || headers.authorization || "";
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    log(
-      "WARN",
-      "[METRICAS] Auth 401: TOKEN_MISSING - Token JWT ausente ou mal formatado."
-    );
+    log("WARN", "[METRICAS] Auth 401: TOKEN_MISSING - Token JWT ausente ou mal formatado.");
     return {
       ok: false,
       httpStatus: 401,
@@ -253,6 +325,19 @@ function buildEmptyMetrics() {
 // HELPERS DE DATA
 // ===============================
 
+function getNowLocalParts() {
+  const nowLocalMs = Date.now() + TZ_OFFSET_MS;
+  const dLocal = new Date(nowLocalMs); // usa UTC fields como "local virtual"
+  return {
+    nowLocalMs,
+    dLocal,
+    ymdLocal: formatYMD(dLocal),
+    hour: dLocal.getUTCHours(),
+    minute: dLocal.getUTCMinutes(),
+    second: dLocal.getUTCSeconds()
+  };
+}
+
 function parseDateParam(value) {
   if (!value) return null;
 
@@ -271,12 +356,9 @@ function parseDateParam(value) {
   }
 
   // String completa de Date do JS
-  // Ex.: "Wed Dec 03 2025 00:00:00 GMT-0300 (Horário Padrão de Brasília)"
   const djs = new Date(v);
   if (!isNaN(djs.getTime())) {
-    return new Date(
-      Date.UTC(djs.getFullYear(), djs.getMonth(), djs.getDate())
-    );
+    return new Date(Date.UTC(djs.getFullYear(), djs.getMonth(), djs.getDate()));
   }
 
   return null;
@@ -323,15 +405,8 @@ function buildRangeSkeleton(startDate, endDate) {
 // HELPERS DE S3
 // ===============================
 function buildMetricsKey(tenantId, tsFromBody) {
-  let utc;
-  if (tsFromBody) {
-    utc = new Date(tsFromBody);
-    if (isNaN(utc.getTime())) {
-      utc = new Date();
-    }
-  } else {
-    utc = new Date();
-  }
+  let utc = parseTimestampSmart(tsFromBody);
+  if (!utc) utc = new Date();
 
   const local = toLocalDate(utc);
 
@@ -347,6 +422,15 @@ function buildMetricsKey(tenantId, tsFromBody) {
 }
 
 async function saveBatchToS3(tenantId, payload, tsFromBody) {
+  // ✅ pega um timestamp confiável do próprio lote/eventos
+  const firstEv = Array.isArray(payload?.events) ? payload.events[0] : null;
+  const tsForKey =
+    tsFromBody ||
+    payload?.meta?.timestamp ||
+    firstEv?.timestamp ||
+    firstEv?.ts ||
+    new Date().toISOString();
+
   const lineObj = {
     tId: tenantId,
     ts: new Date().toISOString(),
@@ -354,7 +438,7 @@ async function saveBatchToS3(tenantId, payload, tsFromBody) {
   };
 
   const bodyStr = JSON.stringify(lineObj) + "\n";
-  const Key = buildMetricsKey(tenantId, tsFromBody);
+  const Key = buildMetricsKey(tenantId, tsForKey);
 
   await s3.send(
     new PutObjectCommand({
@@ -365,15 +449,14 @@ async function saveBatchToS3(tenantId, payload, tsFromBody) {
     })
   );
 
-  const eventsCount = Array.isArray(payload.events)
-    ? payload.events.length
-    : 0;
+  const eventsCount = Array.isArray(payload.events) ? payload.events.length : 0;
 
   log(
     "INFO",
     `[METRICAS] Lote salvo no S3: ${METRICS_BUCKET}/${Key} eventsCount: ${eventsCount} tenantId: ${tenantId}`
   );
 }
+
 
 async function listAllObjects(bucket, prefix) {
   let token;
@@ -409,17 +492,12 @@ async function streamToString(stream) {
 // ===============================
 // HELPERS – BANCO DE INSIGHTS NO S3
 // ===============================
-
-// Normaliza um identificador de intervalo (start/end/hour) para usar no S3
 function normalizeIntervalId(startLabel, endLabel, hourLabel) {
   const raw = `${startLabel || "inicio"}_${endLabel || "fim"}_${hourLabel || "all"}`;
   return raw.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 }
 
-// Monta a chave do S3 para os insights de um intervalo
-// Ex: informacao/<tenantId>/insights/yyyy=2025/mm=12/dd=09/interval-<id>.json
 function buildInsightsKey(tenantId, startLabel, endLabel, hourLabel) {
-  // tenta usar uma data no formato yyyy-mm-dd para a pasta (se tiver)
   const baseDate =
     (startLabel && /^\d{4}-\d{2}-\d{2}$/.test(startLabel) && startLabel) ||
     (endLabel && /^\d{4}-\d{2}-\d{2}$/.test(endLabel) && endLabel) ||
@@ -438,7 +516,6 @@ function buildInsightsKey(tenantId, startLabel, endLabel, hourLabel) {
   return `${INSIGHTS_PREFIX}/${tenantId}/insights/yyyy=${yyyy}/mm=${mm}/dd=${dd}/interval-${intervalId}.json`;
 }
 
-// Lê insights já salvos para esse intervalo (se existir arquivo)
 async function loadInsightsFromS3(tenantId, startLabel, endLabel, hourLabel) {
   const Key = buildInsightsKey(tenantId, startLabel, endLabel, hourLabel);
 
@@ -454,7 +531,6 @@ async function loadInsightsFromS3(tenantId, startLabel, endLabel, hourLabel) {
     if (Array.isArray(parsed)) return parsed;
     return [];
   } catch (err) {
-    // Se não existir o arquivo, só volta lista vazia
     if (
       err.name === "NoSuchKey" ||
       err.Code === "NoSuchKey" ||
@@ -462,11 +538,7 @@ async function loadInsightsFromS3(tenantId, startLabel, endLabel, hourLabel) {
     ) {
       return [];
     }
-    log(
-      "WARN",
-      "[METRICAS] Erro ao carregar insights do S3:",
-      err.message
-    );
+    log("WARN", "[METRICAS] Erro ao carregar insights do S3:", err.message);
     return [];
   }
 }
@@ -475,13 +547,11 @@ async function loadInsightsFromS3(tenantId, startLabel, endLabel, hourLabel) {
 function hourBucket(ts) {
   if (!ts) return null;
 
-  // se for ISO, esse slice já resolve bem (YYYY-MM-DDTHH)
   const s = String(ts);
   if (s.length >= 13) {
     return s.slice(0, 13);
   }
 
-  // fallback: tenta converter pra Date
   const d = new Date(ts);
   if (isNaN(d.getTime())) return null;
 
@@ -492,12 +562,10 @@ function hourBucket(ts) {
   return `${y}-${m}-${day}T${h}`;
 }
 
-// Monta um timestamp baseado no intervalo (start/end + hora)
+// ✅ Timestamp do insight com offset (ex: -03:00) pra UI mostrar a hora certa
 function buildInsightTimestampForInterval(startLabel, endLabel, hourLabel) {
-  // se não tiver nenhuma info, cai no "agora"
   const fallback = new Date().toISOString();
 
-  // tenta achar uma data base no formato yyyy-mm-dd
   const baseYmd =
     (startLabel && /^\d{4}-\d{2}-\d{2}$/.test(startLabel) && startLabel) ||
     (endLabel && /^\d{4}-\d{2}-\d{2}$/.test(endLabel) && endLabel) ||
@@ -511,11 +579,8 @@ function buildInsightTimestampForInterval(startLabel, endLabel, hourLabel) {
   if (hourLabel) {
     const s = String(hourLabel).trim();
 
-    // "13"
     let m1 = s.match(/^(\d{1,2})$/);
-    // "13:00" ou "13:30"
     let m2 = s.match(/^(\d{1,2}):(\d{2})/);
-    // "2025-12-11T13" ou "2025-12-11T13:00"
     let m3 = s.match(/T(\d{2})(?::(\d{2}))?/);
 
     if (m1) {
@@ -530,8 +595,8 @@ function buildInsightTimestampForInterval(startLabel, endLabel, hourLabel) {
   }
 
   const [y, mo, d] = baseYmd.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, mo - 1, d, h, m, 0));
-  return dt.toISOString();
+  const isoLocalWithOffset = `${y}-${pad2(mo)}-${pad2(d)}T${pad2(h)}:${pad2(m)}:00${TZ_ISO}`;
+  return isoLocalWithOffset;
 }
 
 // Adiciona um insight novo no arquivo do S3 (append controlado por HORA)
@@ -546,12 +611,7 @@ async function appendInsightToS3(
 
   let current = [];
   try {
-    current = await loadInsightsFromS3(
-      tenantId,
-      startLabel,
-      endLabel,
-      hourLabel
-    );
+    current = await loadInsightsFromS3(tenantId, startLabel, endLabel, hourLabel);
   } catch {
     current = [];
   }
@@ -560,35 +620,25 @@ async function appendInsightToS3(
 
   // SE JÁ EXISTIR INSIGHT NESSA MESMA HORA, NÃO SOBRESCREVE
   if (newBucket) {
-    const exists = current.find(
-      (rec) => hourBucket(rec.timestamp) === newBucket
-    );
+    const exists = current.find((rec) => hourBucket(rec.timestamp) === newBucket);
     if (exists) {
-      log(
-        "INFO",
-        "[METRICAS] Já existe insight para esse intervalo/hora, não sobrescrevendo."
-      );
-      // Mantém a lista como está (horário antigo não muda)
+      log("INFO", "[METRICAS] Já existe insight para esse intervalo/hora, não sobrescrevendo.");
       return current;
     }
   }
 
-  // Adiciona o novo insight
   current.push(insightRecord);
 
-  // Ordena do MAIS NOVO para o MAIS ANTIGO
   current.sort((a, b) => {
     const ta = a.timestamp || "";
     const tb = b.timestamp || "";
     return tb.localeCompare(ta); // desc
   });
 
-  // Limita quantidade por intervalo
   if (current.length > INSIGHTS_MAX_PER_INTERVAL) {
     current = current.slice(0, INSIGHTS_MAX_PER_INTERVAL);
   }
 
-  // Salva no S3
   try {
     await s3.send(
       new PutObjectCommand({
@@ -599,23 +649,53 @@ async function appendInsightToS3(
       })
     );
 
-    log(
-      "INFO",
-      "[METRICAS] Insights salvos no S3:",
-      `${METRICS_BUCKET}/${Key}`,
-      "qtd:",
-      current.length
-    );
+    log("INFO", "[METRICAS] Insights salvos no S3:", `${METRICS_BUCKET}/${Key}`, "qtd:", current.length);
   } catch (err) {
-    log(
-      "WARN",
-      "[METRICAS] Erro ao salvar insights no S3:",
-      err.message
-    );
+    log("WARN", "[METRICAS] Erro ao salvar insights no S3:", err.message);
   }
 
-  // Lista já deduplicada e ordenada (mais novo em cima)
   return current;
+}
+
+// ===============================
+// NOVA LÓGICA: ROLLUP CUMULATIVO POR HORA (TOP 10)
+// ===============================
+const INSIGHTS_ROLLUP_LABEL = "rollup";
+
+function buildMetricsDayPrefix(tenantId, ymd) {
+  const [yyyy, mm, dd] = String(ymd).split("-");
+  return `${METRICS_PREFIX}/${tenantId}/metrics/yyyy=${yyyy}/mm=${mm}/dd=${dd}/`;
+}
+
+function localMsFromYmdHm(ymd, hh, mm = 0, ss = 0) {
+  // "local virtual" (coerente com toLocalDate)
+  const [y, mo, d] = String(ymd).split("-").map(Number);
+  return Date.UTC(y, mo - 1, d, Number(hh) || 0, Number(mm) || 0, Number(ss) || 0);
+}
+
+async function listHoursWithDataForDay(tenantId, ymd) {
+  const dayPrefix = buildMetricsDayPrefix(tenantId, ymd);
+  const keys = await listAllObjects(METRICS_BUCKET, dayPrefix);
+
+  const hours = new Set();
+  for (const k of keys) {
+    const m = k.match(/\/hh=(\d{2})\//);
+    if (m && m[1]) hours.add(m[1]);
+  }
+  return Array.from(hours).sort(); // asc
+}
+
+function computeBoundaryHoursFromDataHours(hoursWithData) {
+  // data em "22" -> precisa do insight "23" (cobre até 22:59)
+  const out = new Set();
+  for (const hStr of hoursWithData) {
+    const h = Number(hStr);
+    if (!Number.isFinite(h)) continue;
+    const b = h + 1;
+    if (b >= 1 && b <= 23) out.add(pad2(b));
+    // h=23 => b=24 (viraria dia seguinte). Se quiser, dá pra implementar depois.
+  }
+  return Array.from(out).sort(); // asc
 }
 
 // ===============================
@@ -628,21 +708,14 @@ function buildInsightsFromAggregated(agg, { startDate, endDate } = {}) {
   const kpis = agg.kpis || {};
   const picos = Array.isArray(agg.picos) ? agg.picos : [];
   const topItems = Array.isArray(agg.topItems) ? agg.topItems : [];
-  const timeByCategory = Array.isArray(agg.timeByCategory)
-    ? agg.timeByCategory
-    : [];
+  const timeByCategory = Array.isArray(agg.timeByCategory) ? agg.timeByCategory : [];
   const devices = Array.isArray(agg.devices) ? agg.devices : [];
 
   let periodLabel = "";
   if (startDate && endDate) {
     const same = startDate.getTime() === endDate.getTime();
-    if (same) {
-      periodLabel = `no dia ${formatYMD(startDate)}`;
-    } else {
-      periodLabel = `no período de ${formatYMD(startDate)} a ${formatYMD(
-        endDate
-      )}`;
-    }
+    if (same) periodLabel = `no dia ${formatYMD(startDate)}`;
+    else periodLabel = `no período de ${formatYMD(startDate)} a ${formatYMD(endDate)}`;
   }
 
   const scans = kpis.scansTotal || 0;
@@ -650,7 +723,6 @@ function buildInsightsFromAggregated(agg, { startDate, endDate } = {}) {
   const unicos = kpis.unicosTotal || 0;
   const infoTotal = kpis.infoTotal || kpis.infoClicks || 0;
 
-  // 1) Uso do botão Info
   if (scans > 0 && infoTotal > 0) {
     const rate = (infoTotal / scans) * 100;
     insights.push({
@@ -660,23 +732,17 @@ function buildInsightsFromAggregated(agg, { startDate, endDate } = {}) {
     });
   }
 
-  // 2) Sessões por cliente (retorno)
   if (sessoes > 0 && unicos > 0) {
     const media = sessoes / unicos;
     insights.push({
       timestamp: nowIso,
       title: `Clientes voltando ao cardápio`,
-      detail: `Você teve ${unicos} clientes únicos em ${sessoes} sessões ${periodLabel}, média de ${media.toFixed(
-        1
-      )} sessões por cliente.`
+      detail: `Você teve ${unicos} clientes únicos em ${sessoes} sessões ${periodLabel}, média de ${media.toFixed(1)} sessões por cliente.`
     });
   }
 
-  // 3) Horário de pico
   if (picos.length) {
-    const best = [...picos].reduce((a, b) =>
-      (b.scans || 0) > (a.scans || 0) ? b : a
-    );
+    const best = [...picos].reduce((a, b) => (b.scans || 0) > (a.scans || 0) ? b : a);
     if (best && best.scans > 0) {
       const hourStr = String(best.hora).padStart(2, "0");
       insights.push({
@@ -687,22 +753,16 @@ function buildInsightsFromAggregated(agg, { startDate, endDate } = {}) {
     }
   }
 
-  // 4) Item mais observado
   if (topItems.length) {
-    const topByTime = [...topItems].sort(
-      (a, b) => (b.avgTimeSec || 0) - (a.avgTimeSec || 0)
-    )[0];
+    const topByTime = [...topItems].sort((a, b) => (b.avgTimeSec || 0) - (a.avgTimeSec || 0))[0];
     if (topByTime && topByTime.avgTimeSec > 0) {
       insights.push({
         timestamp: nowIso,
         title: `Item mais observado: ${topByTime.item}`,
-        detail: `"${topByTime.item}" tem o maior tempo médio de visualização (${Math.round(
-          topByTime.avgTimeSec
-        )}s) ${periodLabel}. Considere usar esse item em destaque ou combos.`
+        detail: `"${topByTime.item}" tem o maior tempo médio de visualização (${Math.round(topByTime.avgTimeSec)}s) ${periodLabel}. Considere usar esse item em destaque ou combos.`
       });
     }
 
-    // 5) Item melhor avaliado (like vs dislike)
     const voted = topItems
       .filter((i) => (i.likes || 0) + (i.dislikes || 0) > 0)
       .map((i) => {
@@ -717,41 +777,29 @@ function buildInsightsFromAggregated(agg, { startDate, endDate } = {}) {
       voted.sort((a, b) => b.score - a.score);
       const bestVote = voted[0];
       const likeRate =
-        bestVote.total > 0
-          ? ((bestVote.likes || 0) / bestVote.total) * 100
-          : 0;
+        bestVote.total > 0 ? ((bestVote.likes || 0) / bestVote.total) * 100 : 0;
 
       insights.push({
         timestamp: nowIso,
         title: `Item melhor avaliado: ${bestVote.item}`,
-        detail: `"${bestVote.item}" recebeu ${bestVote.total} avaliações, com ${likeRate.toFixed(
-          1
-        )}% positivas.`
+        detail: `"${bestVote.item}" recebeu ${bestVote.total} avaliações, com ${likeRate.toFixed(1)}% positivas.`
       });
     }
   }
 
-  // 6) Categoria com maior tempo médio
   if (timeByCategory.length) {
-    const bestCat = [...timeByCategory].sort(
-      (a, b) => (b.avgTimeSec || 0) - (a.avgTimeSec || 0)
-    )[0];
+    const bestCat = [...timeByCategory].sort((a, b) => (b.avgTimeSec || 0) - (a.avgTimeSec || 0))[0];
     if (bestCat && bestCat.avgTimeSec > 0) {
       insights.push({
         timestamp: nowIso,
         title: `Categoria mais explorada: ${bestCat.category}`,
-        detail: `A categoria "${bestCat.category}" tem o maior tempo médio por sessão (${Math.round(
-          bestCat.avgTimeSec
-        )}s).`
+        detail: `A categoria "${bestCat.category}" tem o maior tempo médio por sessão (${Math.round(bestCat.avgTimeSec)}s).`
       });
     }
   }
 
-  // 7) Dispositivo dominante
   if (devices.length) {
-    const topDev = [...devices].sort(
-      (a, b) => (b.sessions || 0) - (a.sessions || 0)
-    )[0];
+    const topDev = [...devices].sort((a, b) => (b.sessions || 0) - (a.sessions || 0))[0];
     if (topDev && topDev.sessions > 0) {
       insights.push({
         timestamp: nowIso,
@@ -761,43 +809,94 @@ function buildInsightsFromAggregated(agg, { startDate, endDate } = {}) {
     }
   }
 
-  // Não cria insight genérico.
   return insights.slice(0, 10);
 }
 
 // ===============================
-// AGREGAÇÃO DAS MÉTRICAS (GET)
+// HELPER – NORMALIZAR TEXTO DE INSIGHT PARA TOOLTIP
 // ===============================
-async function aggregateMetrics(tenantId, startDate, endDate) {
-  const prefix = `${METRICS_PREFIX}/${tenantId}/metrics/`;
+function normalizeInsightDetail(raw) {
+  if (!raw) return "";
 
-  log(
-    "INFO",
-    "[METRICAS] aggregateMetrics prefix:",
-    `${METRICS_BUCKET}/${prefix}`
-  );
+  let text = String(raw).trim();
 
-  const allKeys = await listAllObjects(METRICS_BUCKET, prefix);
+  if (text.startsWith("```")) {
+    const fenceMatch = text.match(/```[a-zA-Z]*\s*([\s\S]*?)```/);
+    if (fenceMatch && fenceMatch[1]) {
+      text = fenceMatch[1].trim();
+    }
+  }
 
+  let parsed = null;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    const first = text.indexOf("{");
+    const last = text.lastIndexOf("}");
+    if (first !== -1 && last !== -1 && last > first) {
+      const slice = text.slice(first, last + 1);
+      try {
+        parsed = JSON.parse(slice);
+      } catch {
+        parsed = null;
+      }
+    }
+  }
+
+  if (parsed && typeof parsed === "object") {
+    const parts = [];
+    if (parsed.title) parts.push(String(parsed.title));
+    if (parsed.summary) parts.push(String(parsed.summary));
+    if (parsed.suggestion) parts.push(String(parsed.suggestion));
+    text = parts.join(" ");
+  }
+
+  text = text.replace(/\r\n/g, "\n");
+  text = text.replace(/[ \t]+/g, " ");
+  text = text.trim();
+  text = text.replace(/([.!?])\s+/g, "$1\n");
+  text = text.replace(/\n{3,}/g, "\n\n");
+
+  return text;
+}
+
+// ===============================
+// AGREGAÇÃO DAS MÉTRICAS (GET)
+// ✅ atualizado: aceita opts (prefixOverride/startLocalMs/endLocalMs)
+// ===============================
+async function aggregateMetrics(tenantId, startDate, endDate, opts = {}) {
+  let allKeys = [];
+  if (opts.prefixOverride) {
+    allKeys = await listAllObjects(METRICS_BUCKET, opts.prefixOverride);
+  } else {
+    // lista só o range de dias
+    let cur = new Date(startDate.getTime());
+    const end = new Date(endDate.getTime());
+    while (cur <= end) {
+      const ymd = formatYMD(cur);
+      const dayPrefix = buildMetricsDayPrefix(tenantId, ymd);
+      const keysDay = await listAllObjects(METRICS_BUCKET, dayPrefix);
+      allKeys.push(...keysDay);
+      cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+  }
+
+  const debugPrefix = opts.prefixOverride || `${METRICS_PREFIX}/${tenantId}/metrics/`;
+  log("INFO", "[METRICAS] aggregateMetrics prefix:", `${METRICS_BUCKET}/${debugPrefix}`);
   log("INFO", "[METRICAS] total de arquivos de métricas:", allKeys.length);
 
   const { result, indexByDay } = buildRangeSkeleton(startDate, endDate);
 
-  if (!Array.isArray(result.daily.likes)) {
-    result.daily.likes = result.rangeLabels.map(() => 0);
-  }
-  if (!Array.isArray(result.daily.dislikes)) {
-    result.daily.dislikes = result.rangeLabels.map(() => 0);
-  }
-  if (typeof result.kpis.likeTotal !== "number") {
-    result.kpis.likeTotal = 0;
-  }
-  if (typeof result.kpis.dislikeTotal !== "number") {
-    result.kpis.dislikeTotal = 0;
-  }
+  if (!Array.isArray(result.daily.likes)) result.daily.likes = result.rangeLabels.map(() => 0);
+  if (!Array.isArray(result.daily.dislikes)) result.daily.dislikes = result.rangeLabels.map(() => 0);
+  if (typeof result.kpis.likeTotal !== "number") result.kpis.likeTotal = 0;
+  if (typeof result.kpis.dislikeTotal !== "number") result.kpis.dislikeTotal = 0;
 
-  const startLocalMs = startDate.getTime();
-  const endLocalMs = endDate.getTime() + DAY_MS - 1;
+  const startLocalMs =
+    (typeof opts.startLocalMs === "number") ? opts.startLocalMs : startDate.getTime();
+
+  const endLocalMs =
+    (typeof opts.endLocalMs === "number") ? opts.endLocalMs : (endDate.getTime() + DAY_MS - 1);
 
   const sessionSetGlobal = new Set();
   const clientSetGlobal = new Set();
@@ -856,9 +955,7 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
     };
     current.scans += 1;
 
-    const currentLastMs = current.ultimoScan
-      ? new Date(current.ultimoScan).getTime()
-      : 0;
+    const currentLastMs = current.ultimoScan ? new Date(current.ultimoScan).getTime() : 0;
     if (!current.ultimoScan || eventTimeMsUtc > currentLastMs) {
       current.ultimoScan = new Date(eventTimeMsUtc).toISOString();
     }
@@ -966,9 +1063,7 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
   }
 
   function classifyDevice(ua) {
-    const devClass = String(
-      ua.deviceClass || ua.device_type || ua.device || ""
-    ).toLowerCase();
+    const devClass = String(ua.deviceClass || ua.device_type || ua.device || "").toLowerCase();
     const uaStr = String(ua.userAgent || ua.ua || "").toLowerCase();
 
     if (devClass === "mobile" || devClass === "tablet") {
@@ -982,11 +1077,7 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
     if (uaStr.includes("android")) return "Android";
     if (uaStr.includes("iphone") || uaStr.includes("ipod")) return "iPhone";
     if (uaStr.includes("ipad")) return "iPad";
-    if (
-      uaStr.includes("windows") ||
-      uaStr.includes("macintosh") ||
-      uaStr.includes("linux")
-    ) {
+    if (uaStr.includes("windows") || uaStr.includes("macintosh") || uaStr.includes("linux")) {
       return "Desktop";
     }
 
@@ -1022,20 +1113,9 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
 
     let obj;
     try {
-      obj = await s3.send(
-        new GetObjectCommand({
-          Bucket: METRICS_BUCKET,
-          Key: key
-        })
-      );
+      obj = await s3.send(new GetObjectCommand({ Bucket: METRICS_BUCKET, Key: key }));
     } catch (err) {
-      log(
-        "WARN",
-        "[METRICAS] Erro ao fazer GetObject em",
-        key,
-        "-",
-        err.message
-      );
+      log("WARN", "[METRICAS] Erro ao fazer GetObject em", key, "-", err.message);
       continue;
     }
 
@@ -1043,13 +1123,7 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
     try {
       text = await streamToString(obj.Body);
     } catch (err) {
-      log(
-        "WARN",
-        "[METRICAS] Erro ao ler stream de",
-        key,
-        "-",
-        err.message
-      );
+      log("WARN", "[METRICAS] Erro ao ler stream de", key, "-", err.message);
       continue;
     }
 
@@ -1083,22 +1157,18 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
 
         if (!tsStr) continue;
 
-        const dUtc = new Date(tsStr);
-        if (isNaN(dUtc.getTime())) continue;
+        const dUtc = parseTimestampSmart(tsStr);
+        if (!dUtc || isNaN(dUtc.getTime())) continue;
 
         const tMsUtc = dUtc.getTime();
         const dLocal = toLocalDate(dUtc);
         const tMsLocal = dLocal.getTime();
 
-        if (tMsLocal < startLocalMs || tMsLocal > endLocalMs) {
-          continue;
-        }
+        if (tMsLocal < startLocalMs || tMsLocal > endLocalMs) continue;
 
         const dayYmd = formatYMD(dLocal);
         const idx = indexByDay.get(dayYmd);
-        if (idx === undefined) {
-          continue;
-        }
+        if (idx === undefined) continue;
 
         if (name === "page_open") {
           const ua = ev.ua || {};
@@ -1156,10 +1226,7 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
           }
         }
 
-        if (
-          (name === "item_view" || name === "menu_item_view") &&
-          ev.payload
-        ) {
+        if ((name === "item_view" || name === "menu_item_view") && ev.payload) {
           const dur = ev.payload.durationMs || ev.payload.duration || 0;
           if (typeof dur === "number" && dur > 0) {
             totalItemTimeMs += dur;
@@ -1194,16 +1261,8 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
           (ev.payload && (ev.payload.likeValue || ev.payload.value)) || "";
         const likeValue = String(likeValueRaw).toLowerCase();
 
-        if (
-          nameLc === "like" ||
-          nameLc === "like_click" ||
-          nameLc === "item_like"
-        ) {
-          if (
-            likeValue === "negativo" ||
-            likeValue === "dislike" ||
-            likeValue === "down"
-          ) {
+        if (nameLc === "like" || nameLc === "like_click" || nameLc === "item_like") {
+          if (likeValue === "negativo" || likeValue === "dislike" || likeValue === "down") {
             isDislikeEvent = true;
           } else {
             isLikeEvent = true;
@@ -1223,8 +1282,7 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
           if (isLikeEvent) {
             result.daily.likes[idx] = (result.daily.likes[idx] || 0) + 1;
           } else {
-            result.daily.dislikes[idx] =
-              (result.daily.dislikes[idx] || 0) + 1;
+            result.daily.dislikes[idx] = (result.daily.dislikes[idx] || 0) + 1;
           }
 
           const itemLabel = resolveItemLabel(ev);
@@ -1263,10 +1321,7 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
           }
         }
 
-        if (
-          (name === "page_hidden" || name === "page_unload") &&
-          ev.payload
-        ) {
+        if ((name === "page_hidden" || name === "page_unload") && ev.payload) {
           const rawDur =
             ev.payload.visibleMs ||
             ev.payload.visible_ms ||
@@ -1274,15 +1329,11 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
             ev.payload.duration ||
             0;
           const durMs = Number(rawDur) || 0;
-          if (durMs > 0) {
-            addMenuDuration(dayYmd, durMs);
-          }
+          if (durMs > 0) addMenuDuration(dayYmd, durMs);
 
           if (ev.sessionId) {
             const ds = deviceBySession.get(ev.sessionId);
-            if (ds) {
-              ds.totalVisibleMs += durMs;
-            }
+            if (ds) ds.totalVisibleMs += durMs;
           }
         }
 
@@ -1306,25 +1357,18 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
 
   result.porMesa = Array.from(mesaStats.values())
     .map((m) => {
-      const avgTimeSec =
-        m.countTime > 0
-          ? Math.round(m.totalTimeMs / m.countTime / 1000)
-          : 0;
+      const avgTimeSec = m.countTime > 0 ? Math.round(m.totalTimeMs / m.countTime / 1000) : 0;
 
-      // pega os dados de engajamento calculados em mesaEngagement
       const eng = mesaEngagement.get(m.mesa);
       const sessions = eng && eng.sessionsSet ? eng.sessionsSet.size : 0;
       const interactionsPerSession =
-        eng && sessions > 0
-          ? Number((eng.totalInteractions / sessions).toFixed(2))
-          : 0;
+        eng && sessions > 0 ? Number((eng.totalInteractions / sessions).toFixed(2)) : 0;
 
       return {
         mesa: m.mesa,
         scans: m.scans,
         ultimoScan: m.ultimoScan,
         avgTimeSec,
-        // >>> campos usados pelo dashboard de Engajamento <<<
         sessions,
         totalInteractions: eng ? eng.totalInteractions : 0,
         interactionsPerSession
@@ -1335,12 +1379,9 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
   const engagementPorMesa = Array.from(mesaEngagement.values())
     .map((rec) => {
       const sessions = rec.sessionsSet ? rec.sessionsSet.size : 0;
-      const avgTimeSec =
-        sessions > 0 ? Math.round(rec.totalTimeSec / sessions) : 0;
+      const avgTimeSec = sessions > 0 ? Math.round(rec.totalTimeSec / sessions) : 0;
       const interactionsPerSession =
-        sessions > 0
-          ? Number((rec.totalInteractions / sessions).toFixed(2))
-          : 0;
+        sessions > 0 ? Number((rec.totalInteractions / sessions).toFixed(2)) : 0;
 
       return {
         mesa: rec.mesa,
@@ -1373,10 +1414,7 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
     .map((d) => ({
       label: d.label,
       sessions: d.sessions,
-      avgTimeSec:
-        d.sessions > 0
-          ? Math.round(d.totalTimeMs / d.sessions / 1000)
-          : 0
+      avgTimeSec: d.sessions > 0 ? Math.round(d.totalTimeMs / d.sessions / 1000) : 0
     }))
     .sort((a, b) => b.sessions - a.sessions);
 
@@ -1386,9 +1424,7 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
     const sessionsDay = sessionByDay.get(ymd);
     const clientsDay = clientByDay.get(ymd);
 
-    if (sessionsDay) {
-      result.daily.sessoes[idx] = sessionsDay.size;
-    }
+    if (sessionsDay) result.daily.sessoes[idx] = sessionsDay.size;
 
     if (clientsDay) {
       result.daily.unicos[idx] = clientsDay.size;
@@ -1419,27 +1455,18 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
     });
   }
 
-  // picos: agora inclui a data verdadeira de cada dia e já vem ordenado
-  // do mais novo para o mais antigo (data/hora mais recente em cima)
   result.picos = Array.from(picosMap.values())
     .sort((a, b) => {
-      if (a.ymd === b.ymd) {
-        // mesma data → hora desc
-        return b.hour - a.hour;
-      }
-      // datas diferentes → a mais nova primeiro
+      if (a.ymd === b.ymd) return b.hour - a.hour;
       return a.ymd < b.ymd ? 1 : -1;
     })
     .map((p) => {
       const idx = indexByDay.get(p.ymd);
-      const dateLabel =
-        idx !== undefined ? result.rangeLabels[idx] : p.ymd;
+      const dateLabel = idx !== undefined ? result.rangeLabels[idx] : p.ymd;
       const hourLabel = `${String(p.hour).padStart(2, "0")}:00`;
 
       return {
-        // NOVO: data em formato yyyy-mm-dd para o front usar
         data: p.ymd,
-        // mantém os campos antigos para não quebrar nada
         dateYmd: p.ymd,
         dateLabel,
         hora: p.hour,
@@ -1447,7 +1474,6 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
         scans: p.scans
       };
     });
-
 
   result.kpis.sessoesTotal = sessionSetGlobal.size;
   result.kpis.unicosTotal = clientSetGlobal.size;
@@ -1459,9 +1485,7 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
   }
 
   if (itemViewEvents > 0) {
-    result.kpis.avgTimePerItem = Math.round(
-      totalItemTimeMs / itemViewEvents / 1000
-    );
+    result.kpis.avgTimePerItem = Math.round(totalItemTimeMs / itemViewEvents / 1000);
   }
 
   let totalCatAvgSec = 0;
@@ -1483,11 +1507,8 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
     const [itemName] = key.split("||", 2);
     const agg = itemVotes.get(itemName) || { likes: 0, dislikes: 0 };
 
-    if (vote === "like") {
-      agg.likes++;
-    } else if (vote === "dislike") {
-      agg.dislikes++;
-    }
+    if (vote === "like") agg.likes++;
+    else if (vote === "dislike") agg.dislikes++;
 
     itemVotes.set(itemName, agg);
   }
@@ -1500,35 +1521,24 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
   }
 
   if (likeTotal === 0 && Array.isArray(result.daily.likes)) {
-    likeTotal = result.daily.likes.reduce(
-      (acc, v) => acc + (Number(v) || 0),
-      0
-    );
+    likeTotal = result.daily.likes.reduce((acc, v) => acc + (Number(v) || 0), 0);
   }
   if (dislikeTotal === 0 && Array.isArray(result.daily.dislikes)) {
-    dislikeTotal = result.daily.dislikes.reduce(
-      (acc, v) => acc + (Number(v) || 0),
-      0
-    );
+    dislikeTotal = result.daily.dislikes.reduce((acc, v) => acc + (Number(v) || 0), 0);
   }
 
   result.kpis.likeTotal = likeTotal;
   result.kpis.dislikeTotal = dislikeTotal;
 
-  const totalCatTimeMs = Array.from(categoryTimeMs.values()).reduce(
-    (sum, v) => sum + v,
-    0
-  );
+  const totalCatTimeMs = Array.from(categoryTimeMs.values()).reduce((sum, v) => sum + v, 0);
 
   result.timeByCategory = Array.from(categoryTimeMs.entries())
     .map(([cat, timeMs]) => {
       const views = categoryViewCount.get(cat) || 0;
 
-      const avgTimeSec =
-        views > 0 ? Math.round(timeMs / views / 1000) : 0;
+      const avgTimeSec = views > 0 ? Math.round(timeMs / views / 1000) : 0;
 
-      const pctTime =
-        totalCatTimeMs > 0 ? (timeMs / totalCatTimeMs) * 100 : 0;
+      const pctTime = totalCatTimeMs > 0 ? (timeMs / totalCatTimeMs) * 100 : 0;
 
       return {
         category: cat,
@@ -1548,10 +1558,7 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
 
     topItemsArr.push({
       item: it.item,
-      avgTimeSec:
-        it.views > 0
-          ? Math.round(it.totalTimeMs / it.views / 1000)
-          : 0,
+      avgTimeSec: it.views > 0 ? Math.round(it.totalTimeMs / it.views / 1000) : 0,
       views: it.views,
       likes: votes.likes,
       dislikes: votes.dislikes,
@@ -1598,11 +1605,8 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
   let recurringClients = 0;
 
   for (const [, daysCount] of clientDaysCount.entries()) {
-    if (daysCount <= 1) {
-      newClients++;
-    } else {
-      recurringClients++;
-    }
+    if (daysCount <= 1) newClients++;
+    else recurringClients++;
   }
 
   result.kpis.activeClients = clientSetGlobal.size;
@@ -1610,9 +1614,7 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
   result.kpis.recurringClients = recurringClients;
 
   if (result.kpis.activeClients > 0) {
-    result.kpis.returnRate = Math.round(
-      (recurringClients / result.kpis.activeClients) * 100
-    );
+    result.kpis.returnRate = Math.round((recurringClients / result.kpis.activeClients) * 100);
   }
 
   result.meta = {
@@ -1628,41 +1630,31 @@ async function aggregateMetrics(tenantId, startDate, endDate) {
 }
 
 // ===============================
-// HISTÓRICO DE SCANS (ÚLTIMOS 30 DIAS) – EXCLUSIVO DO GRÁFICO DE ESCANEAMENTO
+// HISTÓRICO DE SCANS (ÚLTIMOS 30 DIAS)
 // ===============================
 async function aggregateScansHistory30d(tenantId, referenceDate) {
-  // normaliza a data de referência (zera hora em UTC)
-  const refUtc = new Date(
-    Date.UTC(
-      referenceDate.getUTCFullYear(),
-      referenceDate.getUTCMonth(),
-      referenceDate.getUTCDate()
-    )
-  );
+  const refUtc = new Date(Date.UTC(
+    referenceDate.getUTCFullYear(),
+    referenceDate.getUTCMonth(),
+    referenceDate.getUTCDate()
+  ));
 
-  // últimos 30 dias (inclui hoje)
   const startUtc = new Date(refUtc.getTime() - 29 * DAY_MS);
 
-  // monta skeleton com labels e arrays de scans/sessoes/unicos
   const { result, indexByDay } = buildRangeSkeleton(startUtc, refUtc);
 
-  const prefix   = `${METRICS_PREFIX}/${tenantId}/metrics/`;
-  const allKeys  = await listAllObjects(METRICS_BUCKET, prefix);
-  const startMs  = startUtc.getTime();
-  const endMs    = refUtc.getTime() + DAY_MS - 1;
+  const prefix = `${METRICS_PREFIX}/${tenantId}/metrics/`;
+  const allKeys = await listAllObjects(METRICS_BUCKET, prefix);
+  const startMs = startUtc.getTime();
+  const endMs = refUtc.getTime() + DAY_MS - 1;
 
   const sessionByDay = new Map();
-  const clientByDay  = new Map();
+  const clientByDay = new Map();
 
   for (const key of allKeys) {
     let obj;
     try {
-      obj = await s3.send(
-        new GetObjectCommand({
-          Bucket: METRICS_BUCKET,
-          Key: key
-        })
-      );
+      obj = await s3.send(new GetObjectCommand({ Bucket: METRICS_BUCKET, Key: key }));
     } catch (err) {
       log("WARN", "[METRICAS][30d] GetObject erro", key, "-", err.message);
       continue;
@@ -1688,7 +1680,7 @@ async function aggregateScansHistory30d(tenantId, referenceDate) {
         continue;
       }
 
-      const batch  = rec.batch || {};
+      const batch = rec.batch || {};
       const events = Array.isArray(batch.events) ? batch.events : [];
 
       for (const ev of events) {
@@ -1702,18 +1694,17 @@ async function aggregateScansHistory30d(tenantId, referenceDate) {
           null;
         if (!tsStr) continue;
 
-        const dUtc = new Date(tsStr);
-        if (isNaN(dUtc.getTime())) continue;
+        const dUtc = parseTimestampSmart(tsStr);
+        if (!dUtc || isNaN(dUtc.getTime())) continue;
 
-        const dLocal   = toLocalDate(dUtc);
+        const dLocal = toLocalDate(dUtc);
         const tMsLocal = dLocal.getTime();
         if (tMsLocal < startMs || tMsLocal > endMs) continue;
 
         const dayYmd = formatYMD(dLocal);
-        const idx    = indexByDay.get(dayYmd);
+        const idx = indexByDay.get(dayYmd);
         if (idx === undefined) continue;
 
-        // ---- SCANS (apenas page_open) ----
         if (name === "page_open") {
           result.daily.scans[idx] = (result.daily.scans[idx] || 0) + 1;
 
@@ -1728,7 +1719,6 @@ async function aggregateScansHistory30d(tenantId, referenceDate) {
           }
         }
 
-        // ---- ÚNICOS (visitor_status) ----
         if (name === "visitor_status" && ev.payload && ev.payload.clientId) {
           const clientId = ev.payload.clientId;
           let setDia = clientByDay.get(dayYmd);
@@ -1742,26 +1732,24 @@ async function aggregateScansHistory30d(tenantId, referenceDate) {
     }
   }
 
-  // fecha sessoes/unicos por dia
   for (const [ymd, idx] of indexByDay.entries()) {
     const sess = sessionByDay.get(ymd);
-    const cli  = clientByDay.get(ymd);
+    const cli = clientByDay.get(ymd);
 
     if (sess) result.daily.sessoes[idx] = sess.size;
-    if (cli)  result.daily.unicos[idx]  = cli.size;
+    if (cli) result.daily.unicos[idx] = cli.size;
   }
 
-  // só o que o front precisa
   return {
-    labels:  result.rangeLabels,
-    scans:   result.daily.scans,
+    labels: result.rangeLabels,
+    scans: result.daily.scans,
     sessoes: result.daily.sessoes,
-    unicos:  result.daily.unicos
+    unicos: result.daily.unicos
   };
 }
 
 // ===============================
-// OPENAI – GERAÇÃO DE INSIGHTS (rota dedicada /metricas/insights)
+// OPENAI – GERAÇÃO DE INSIGHTS
 // ===============================
 async function generateInsightsWithOpenAI(metrics, opts = {}) {
   if (!openaiClient) {
@@ -1770,73 +1758,60 @@ async function generateInsightsWithOpenAI(metrics, opts = {}) {
 
   const { startLabel, endLabel, hourLabel } = opts;
 
-  const kpis         = metrics.kpis  || {};
-  const daily        = metrics.daily || {};
-  const rangeLabels  = metrics.rangeLabels || [];
+  const kpis = metrics.kpis || {};
+  const daily = metrics.daily || {};
+  const rangeLabels = metrics.rangeLabels || [];
 
   const payload = {
     periodo: {
-      inicio:        startLabel || null,
-      fim:           endLabel   || null,
+      inicio: startLabel || null,
+      fim: endLabel || null,
       horaReferencia: hourLabel || null
     },
-
     resumo: { ...kpis },
-
     escaneamentoTotal: {
-      scansTotal:   kpis.scansTotal   ?? 0,
+      scansTotal: kpis.scansTotal ?? 0,
       sessoesTotal: kpis.sessoesTotal ?? 0,
-      unicosTotal:  kpis.unicosTotal  ?? 0
+      unicosTotal: kpis.unicosTotal ?? 0
     },
-
     escaneamentoPorMesa: metrics.porMesa || [],
-
     engajamentoPorMesa: metrics.engagementByMesa || { porMesa: [] },
-
     sessoesPorPeriodo: {
-      labels:   rangeLabels,
-      sessoes:  daily.sessoes || [],
-      unicos:   daily.unicos  || []
+      labels: rangeLabels,
+      sessoes: daily.sessoes || [],
+      unicos: daily.unicos || []
     },
-
     tempoMedioCardapio: metrics.tempoMenu || [],
-
     horariosDePico: metrics.picos || [],
-
     likes: {
-      totalLikes:     kpis.likeTotal    ?? 0,
-      totalDislikes:  kpis.dislikeTotal ?? 0,
-      dailyLikes:     daily.likes       || [],
-      dailyDislikes:  daily.dislikes    || [],
-      labels:         rangeLabels
+      totalLikes: kpis.likeTotal ?? 0,
+      totalDislikes: kpis.dislikeTotal ?? 0,
+      dailyLikes: daily.likes || [],
+      dailyDislikes: daily.dislikes || [],
+      labels: rangeLabels
     },
-
     tempoPorCategoria: metrics.timeByCategory || [],
-
     botaoInfo: {
-      totalClicks:      (kpis.infoTotal ?? kpis.infoClicks) ?? 0,
-      infoClicks:       kpis.infoClicks ?? 0,
-      avgTimeSec:       kpis.infoAvgTime ?? kpis.infoAvgTimeInfoBox ?? 0,
-      dailyInfoClicks:  daily.info || [],
-      labels:           rangeLabels
+      totalClicks: (kpis.infoTotal ?? kpis.infoClicks) ?? 0,
+      infoClicks: kpis.infoClicks ?? 0,
+      avgTimeSec: kpis.infoAvgTime ?? kpis.infoAvgTimeInfoBox ?? 0,
+      dailyInfoClicks: daily.info || [],
+      labels: rangeLabels
     },
-
     tempoPorItem: (metrics.topItems || []).slice(0, 30).map(i => ({
-      item:       i.item,
+      item: i.item,
       avgTimeSec: i.avgTimeSec ?? 0,
-      views:      i.views      ?? 0,
-      likes:      i.likes      ?? 0,
-      dislikes:   i.dislikes   ?? 0,
-      categoria:  i.category   ?? null,
+      views: i.views ?? 0,
+      likes: i.likes ?? 0,
+      dislikes: i.dislikes ?? 0,
+      categoria: i.category ?? null,
       clicksInfo: i.clicksInfo ?? 0
     })),
-
-    dispositivos:        metrics.devices    || [],
+    dispositivos: metrics.devices || [],
     modelosMaisExibidos: (metrics.topModels || []).slice(0, 30),
-
     meta: {
-      labels:      rangeLabels,
-      filesCount:  metrics.meta?.filesCount  ?? null,
+      labels: rangeLabels,
+      filesCount: metrics.meta?.filesCount ?? null,
       eventsCount: metrics.meta?.eventsCount ?? null
     }
   };
@@ -1846,7 +1821,7 @@ async function generateInsightsWithOpenAI(metrics, opts = {}) {
     "Você recebe um JSON com TODOS os blocos do dashboard. " +
     "Sem rodeios, foque em coisas práticas para o dono do restaurante. " +
     "Responda SEMPRE em JSON EXATO no formato: " +
-    '{\"title\": string, \"summary\": string, \"status\": \"bom\" | \"neutro\" | \"ruim\", \"suggestion\": string}. ' +
+    "{\"title\": string, \"summary\": string, \"status\": \"bom\" | \"neutro\" | \"ruim\", \"suggestion\": string}. " +
     "Nada de markdown, nada de ```json, nada de texto fora do JSON. " +
     "Use no máximo 3 parágrafos curtos em \"summary\".";
 
@@ -1872,7 +1847,6 @@ async function generateInsightsWithOpenAI(metrics, opts = {}) {
   let content = completion.choices?.[0]?.message?.content || "";
   content = content.trim();
 
-  // --- LIMPEZA: remove ```json ... ``` se vier ---
   if (content.startsWith("```")) {
     const fenceMatch = content.match(/```[a-zA-Z]*\s*([\s\S]*?)```/);
     if (fenceMatch && fenceMatch[1]) {
@@ -1880,14 +1854,12 @@ async function generateInsightsWithOpenAI(metrics, opts = {}) {
     }
   }
 
-  // tenta parsear direto
   let parsed = null;
   try {
     parsed = JSON.parse(content);
   } catch {
-    // fallback: pega só o trecho entre { ... }
     const first = content.indexOf("{");
-    const last  = content.lastIndexOf("}");
+    const last = content.lastIndexOf("}");
     if (first !== -1 && last !== -1 && last > first) {
       const slice = content.slice(first, last + 1);
       try {
@@ -1899,7 +1871,6 @@ async function generateInsightsWithOpenAI(metrics, opts = {}) {
   }
 
   if (!parsed || typeof parsed !== "object") {
-    // último fallback: usa texto bruto
     return {
       title: "Insights de uso do ARCardápio",
       summary: content || "Não foi possível interpretar a resposta da IA.",
@@ -1909,6 +1880,143 @@ async function generateInsightsWithOpenAI(metrics, opts = {}) {
   }
 
   return parsed;
+}
+
+// ===============================
+// ✅ ROLLUP: cria o ÚLTIMO bloco faltante (ex: 23:00) sem explodir custo
+// ===============================
+async function ensureRollupInsightsForDay(tenantId, ymd, { backfill = false } = {}) {
+  let currentList = await loadInsightsFromS3(tenantId, ymd, ymd, INSIGHTS_ROLLUP_LABEL);
+  if (!Array.isArray(currentList)) currentList = [];
+
+  const existingBuckets = new Set(
+    currentList.map(r => hourBucket(r?.timestamp)).filter(Boolean)
+  );
+
+  const hoursWithData = await listHoursWithDataForDay(tenantId, ymd);
+  let boundaryHours = computeBoundaryHoursFromDataHours(hoursWithData);
+
+  // ✅ HOJE: só pode gerar hora FECHADA (nunca futuro)
+  const nowParts = getNowLocalParts();
+  const todayYmdLocal = nowParts.ymdLocal;
+
+  if (ymd === todayYmdLocal) {
+    // Ex: 00:30 => hour=0 => não gera nada
+    // Ex: 01:05 => hour=1 => pode gerar "01" (cobre 00:00-00:59)
+    boundaryHours = boundaryHours.filter(h => Number(h) <= nowParts.hour);
+  }
+
+  // pega só o mais recente faltando (ou backfill)
+  const hoursToTry = Array.from(new Set(boundaryHours))
+    .sort((a, b) => Number(b) - Number(a)); // desc
+
+  const maxToCreate = backfill ? INSIGHTS_MAX_PER_INTERVAL : 1;
+  let created = 0;
+
+  if (!hoursToTry.length) return currentList;
+
+  const startMsDay = localMsFromYmdHm(ymd, "00", 0, 0);
+
+  for (const bh of hoursToTry) {
+    const bucketNeeded = `${ymd}T${bh}`;
+    if (existingBuckets.has(bucketNeeded)) continue;
+
+    const endMs = localMsFromYmdHm(ymd, bh, 0, 0) - 1;
+
+    // ✅ nunca gerar bucket do futuro (hoje)
+    const boundaryMs = localMsFromYmdHm(ymd, bh, 0, 0);
+    if (ymd === todayYmdLocal && boundaryMs > nowParts.nowLocalMs) continue;
+
+    const dayDate = parseDateParam(ymd) || new Date();
+    const dayPrefix = buildMetricsDayPrefix(tenantId, ymd);
+
+    const metricsWindow = await aggregateMetrics(
+      tenantId,
+      dayDate,
+      dayDate,
+      {
+        prefixOverride: dayPrefix,
+        startLocalMs: startMsDay,
+        endLocalMs: endMs
+      }
+    );
+
+    const evCount = metricsWindow?.meta?.eventsCount || 0;
+    const scans = metricsWindow?.kpis?.scansTotal || 0;
+    const tsInterval = buildInsightTimestampForInterval(ymd, ymd, bh);
+
+    // sem dados -> cria bloco neutro
+    if (!evCount && !scans) {
+      const insightRecord = {
+        timestamp: tsInterval,
+        title: `Sem movimento até ${bh}:00`,
+        detail: normalizeInsightDetail(
+          `Sem movimento até ${bh}:00.\nNenhum scan foi registrado hoje até esse horário.`
+        ),
+        status: "neutro",
+        suggestion: "Se isso for inesperado, confira QR visível, internet e se o app está enviando eventos."
+      };
+
+      currentList = await appendInsightToS3(tenantId, ymd, ymd, INSIGHTS_ROLLUP_LABEL, insightRecord);
+      existingBuckets.add(bucketNeeded);
+      created++;
+      if (created >= maxToCreate) break;
+      continue;
+    }
+
+    // com dados -> tenta IA, se falhar faz fallback
+    let insightBase = null;
+    if (openaiClient) {
+      try {
+        insightBase = await generateInsightsWithOpenAI(metricsWindow, {
+          startLabel: ymd,
+          endLabel: ymd,
+          hourLabel: bh
+        });
+      } catch (e) {
+        log("WARN", "[METRICAS] OpenAI falhou no rollup:", e.message);
+        insightBase = null;
+      }
+    }
+
+    if (!insightBase) {
+      const insightRecord = {
+        timestamp: tsInterval,
+        title: `Resumo até ${bh}:00`,
+        detail: normalizeInsightDetail(
+          `Até ${bh}:00 houve ${scans} scans.\nVeja Horário de Pico e Mesa/Engajamento pra entender onde concentrou o movimento.`
+        ),
+        status: "neutro",
+        suggestion: "Se quiser textos automáticos mais ricos, valide OPENAI_API_KEY e limites."
+      };
+      currentList = await appendInsightToS3(tenantId, ymd, ymd, INSIGHTS_ROLLUP_LABEL, insightRecord);
+      existingBuckets.add(bucketNeeded);
+      created++;
+      if (created >= maxToCreate) break;
+      continue;
+    }
+
+    const baseTitle = insightBase.title || "Insight de uso do ARCardápio";
+    const combinedText =
+      `${baseTitle}\n` +
+      `${insightBase.summary || ""} ` +
+      `${insightBase.suggestion || ""}`;
+
+    const insightRecord = {
+      timestamp: tsInterval,
+      title: baseTitle,
+      detail: normalizeInsightDetail(combinedText),
+      status: insightBase.status || "neutro",
+      suggestion: insightBase.suggestion || ""
+    };
+
+    currentList = await appendInsightToS3(tenantId, ymd, ymd, INSIGHTS_ROLLUP_LABEL, insightRecord);
+    existingBuckets.add(bucketNeeded);
+    created++;
+    if (created >= maxToCreate) break;
+  }
+
+  return currentList;
 }
 
 // ===============================
@@ -1925,10 +2033,13 @@ async function handleGetMetrics(event, auth, parsed) {
   let startDate = parseDateParam(startRaw);
   let endDate = parseDateParam(endRaw);
 
-  const today = new Date();
-  const todayUTC = new Date(
-    Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
-  );
+  // ✅ "Hoje" respeitando o offset configurado (ex: Brasil -03)
+  const nowLocal = toLocalDate(new Date());
+  const todayUTC = new Date(Date.UTC(
+    nowLocal.getUTCFullYear(),
+    nowLocal.getUTCMonth(),
+    nowLocal.getUTCDate()
+  ));
 
   if (!startDate) startDate = todayUTC;
   if (!endDate) endDate = todayUTC;
@@ -1965,7 +2076,42 @@ async function handleGetMetrics(event, auth, parsed) {
   try {
     const data = await aggregateMetrics(tenantId, startDate, endDate);
 
-    data.insights = buildInsightsFromAggregated(data, { startDate, endDate });
+    // ✅ se o range inclui HOJE, garante que o último bloco (ex 23) exista
+    const todayYmdLocal = formatYMD(toLocalDate(new Date()));
+    const startYmd = formatYMD(startDate);
+    const endYmd = formatYMD(endDate);
+    if (todayYmdLocal >= startYmd && todayYmdLocal <= endYmd) {
+      await ensureRollupInsightsForDay(tenantId, todayYmdLocal, { backfill: false });
+    }
+
+    // ✅ tenta entregar rollup salvo. Se não tiver, cai no insight simples.
+    const merged = [];
+    {
+      let cur = new Date(startDate.getTime());
+      const end = new Date(endDate.getTime());
+      while (cur <= end) {
+        const ymd = formatYMD(cur);
+        const dayList = await loadInsightsFromS3(tenantId, ymd, ymd, INSIGHTS_ROLLUP_LABEL);
+        if (Array.isArray(dayList) && dayList.length) merged.push(...dayList);
+        cur.setUTCDate(cur.getUTCDate() + 1);
+      }
+    }
+
+    merged.sort((a, b) => String(b.timestamp || "").localeCompare(String(a.timestamp || "")));
+    const byHour = new Map();
+    for (const rec of merged) {
+      const hb = hourBucket(rec?.timestamp);
+      if (!hb) continue;
+      if (!byHour.has(hb)) byHour.set(hb, rec);
+    }
+
+    const rollupFinal = Array.from(byHour.values())
+      .sort((a, b) => String(b.timestamp || "").localeCompare(String(a.timestamp || "")))
+      .slice(0, INSIGHTS_MAX_PER_INTERVAL);
+
+    data.insights = rollupFinal.length
+      ? rollupFinal
+      : buildInsightsFromAggregated(data, { startDate, endDate });
 
     data.meta = {
       ...(data.meta || {}),
@@ -1973,13 +2119,9 @@ async function handleGetMetrics(event, auth, parsed) {
       tenantId
     };
 
-    log(
-      "INFO",
-      "[METRICAS] insights gerados para dashboard:",
-      Array.isArray(data.insights) ? data.insights.length : 0
-    );
+    log("INFO", "[METRICAS] insights enviados:", Array.isArray(data.insights) ? data.insights.length : 0);
 
-    return jsonResponse(200, data);
+    return jsonResponse(event, 200, data);
   } catch (err) {
     log("ERROR", "[METRICAS] Erro em aggregateMetrics:", err);
 
@@ -1992,214 +2134,161 @@ async function handleGetMetrics(event, auth, parsed) {
       prefix: METRICS_PREFIX
     };
 
-    return jsonResponse(200, vazio);
+    return jsonResponse(event, 200, vazio);
   }
 }
 
+// ===============================
 // GET/POST /metricas/insights (dashboard → IA)
+// FUNCIONAL: barato, sem loop absurdo, POST funciona, sem 500 se IA falhar
+// ===============================
 async function handleInsights(event, auth, parsed) {
   const tenantRaw = auth.tenant;
   const tenantId = normalizarTenantId(tenantRaw);
 
-  if (!openaiClient) {
-    return jsonResponse(500, {
-      ok: false,
-      code: "NO_OPENAI_KEY",
-      message: "OPENAI_API_KEY não configurada na Lambda."
-    });
-  }
+  const httpMethod = event.httpMethod || event.requestContext?.http?.method || "GET";
 
-  const httpMethod =
-    event.httpMethod || event.requestContext?.http?.method || "GET";
-
-  let metricsFromBody = null;
-  let startLabel = null;
-  let endLabel = null;
-  let hourLabel = null;
-
-  // 1) Tenta ler métricas do body (POST)
+  // ---------------------------
+  // 1) POST com métricas no body (usa e funciona)
+  // ---------------------------
   if (httpMethod === "POST" && event.body) {
+    let body = null;
     try {
-      const body =
-        typeof event.body === "string"
-          ? JSON.parse(event.body)
-          : event.body || {};
-
-      if (body && (body.kpis || body.daily || body.timeByCategory)) {
-        metricsFromBody = body;
-      } else if (
-        body.metrics &&
-        (body.metrics.kpis ||
-          body.metrics.daily ||
-          body.metrics.timeByCategory)
-      ) {
-        metricsFromBody = body.metrics;
-      }
-
-      if (body.range) {
-        startLabel =
-          body.range.startDate ||
-          body.range.start ||
-          body.range.inicio ||
-          null;
-        endLabel =
-          body.range.endDate ||
-          body.range.end ||
-          body.range.fim ||
-          null;
-        hourLabel =
-          body.range.hourLabel ||
-          body.hourLabel ||
-          body.range.horaReferencia ||
-          null;
-      } else {
-        hourLabel = body.hourLabel || null;
-      }
+      body = typeof event.body === "string" ? JSON.parse(event.body) : (event.body || {});
     } catch (e) {
-      log(
-        "WARN",
-        "[METRICAS] body inválido em /metricas/insights (POST):",
-        e.message
-      );
-    }
-  }
-
-  // 2) Decide de onde vêm as métricas
-  let metrics;
-
-  if (!metricsFromBody) {
-    const {
-      startDate: startRaw,
-      endDate: endRaw,
-      hourLabel: hourQuery
-    } = parsed.query || {};
-
-    let startDate = parseDateParam(startRaw);
-    let endDate = parseDateParam(endRaw);
-
-    const today = new Date();
-    const todayUTC = new Date(
-      Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
-    );
-
-    if (!startDate) startDate = todayUTC;
-    if (!endDate) endDate = todayUTC;
-
-    if (startDate > endDate) {
-      const tmp = startDate;
-      startDate = endDate;
-      endDate = tmp;
+      return jsonResponse(event, 400, { ok: false, code: "BAD_BODY", message: "Body JSON inválido." });
     }
 
-    hourLabel = hourLabel || hourQuery || null;
+    const metricsFromBody =
+      (body && (body.kpis || body.daily || body.timeByCategory) ? body :
+      (body.metrics && (body.metrics.kpis || body.metrics.daily || body.metrics.timeByCategory) ? body.metrics : null));
 
-    log(
-      "INFO",
-      "[METRICAS] INSIGHTS via agregação S3",
-      "tenantRaw:",
-      tenantRaw,
-      "tenantId:",
-      tenantId,
-      "startRaw:",
-      startRaw,
-      "endRaw:",
-      endRaw,
-      "start:",
-      formatYMD(startDate),
-      "end:",
-      formatYMD(endDate),
-      "hourLabel:",
-      hourLabel || null
-    );
+    const range = body.range || {};
+    const startLabel = range.startDate || range.start || range.inicio || null;
+    const endLabel   = range.endDate   || range.end   || range.fim    || null;
+    const hourLabel  = range.hourLabel || body.hourLabel || range.horaReferencia || null;
 
-    metrics = await aggregateMetrics(tenantId, startDate, endDate);
-
-    startLabel = startLabel || formatYMD(startDate);
-    endLabel = endLabel || formatYMD(endDate);
-  } else {
-    metrics = metricsFromBody;
-    log(
-      "INFO",
-      "[METRICAS] INSIGHTS usando métricas do body (POST)",
-      "tenantId:",
-      tenantId
-    );
-  }
-
-  // 3) Gera insight com OpenAI + salva no S3 (1 por hora, mais novo em cima)
-  try {
-    const insightBase = await generateInsightsWithOpenAI(metrics, {
-      startLabel,
-      endLabel,
-      hourLabel: hourLabel || null
-    });
-
-        // timestamp alinhado com o intervalo (start/end + hora)
-    const tsInterval = buildInsightTimestampForInterval(
-      startLabel || null,
-      endLabel || null,
-      hourLabel || null
-    );
-
-    // Monta primeira linha com título + data (se tiver)
-    let dateTag = null;
-    if (startLabel && /^\d{4}-\d{2}-\d{2}$/.test(startLabel)) {
-      const [y, m, d] = startLabel.split("-");
-      dateTag = `${d}/${m}`;
+    if (!metricsFromBody) {
+      return jsonResponse(event, 400, { ok: false, code: "NO_METRICS", message: "POST sem métricas no body." });
     }
 
-    const baseTitle = insightBase.title || "Insight de uso do ARCardápio";
-    let headerLine = baseTitle;
-    if (dateTag) {
-      headerLine = `${baseTitle} em ${dateTag},`;
+    // tenta IA; se falhar, fallback SEM IA
+    let insightBase = null;
+    if (openaiClient) {
+      try {
+        insightBase = await generateInsightsWithOpenAI(metricsFromBody, { startLabel, endLabel, hourLabel });
+      } catch (e) {
+        log("WARN", "[INSIGHTS] OpenAI falhou (POST):", e.message);
+        insightBase = null;
+      }
     }
 
-    let combinedText = headerLine + "\n";
-    if (insightBase.summary) {
-      combinedText += insightBase.summary + " ";
+    if (!insightBase) {
+      const fallback = buildInsightsFromAggregated(metricsFromBody, {});
+      const best = fallback[0] || {
+        timestamp: new Date().toISOString(),
+        title: "Insights do ARCardápio",
+        detail: "Sem IA: não foi possível gerar insight automático.",
+        status: "neutro",
+        suggestion: ""
+      };
+
+      return jsonResponse(event, 200, {
+        ok: true,
+        tenantRaw,
+        tenantId,
+        period: { start: startLabel, end: endLabel, mode: "post-body" },
+        insights: [best]
+      });
     }
-    if (insightBase.suggestion) {
-      combinedText += insightBase.suggestion;
-    }
 
-    const detailFormatted = normalizeInsightDetail(combinedText);
+    const ts = buildInsightTimestampForInterval(startLabel || "", endLabel || "", hourLabel || "");
+    const combinedText =
+      `${insightBase.title || "Insight de uso do ARCardápio"}\n` +
+      `${insightBase.summary || ""} ${insightBase.suggestion || ""}`;
 
-    const insightRecord = {
-      timestamp: tsInterval, // <-- AGORA usa o horário do intervalo
-      title: baseTitle,
-      detail: detailFormatted,
-      status: insightBase.status || "neutro",
-      suggestion: insightBase.suggestion || ""
-    };
-
-    const updatedList = await appendInsightToS3(
-      tenantId,
-      startLabel || null,
-      endLabel || null,
-      hourLabel || null,
-      insightRecord
-    );
-
-    return jsonResponse(200, {
+    return jsonResponse(event, 200, {
       ok: true,
       tenantRaw,
       tenantId,
-      period: {
-        start: startLabel || null,
-        end: endLabel || null,
-        hourLabel: hourLabel || null
-      },
-      insights: updatedList
-    });
-  } catch (err) {
-    log("ERROR", "[METRICAS] Erro em handleInsights:", err);
-    return jsonResponse(500, {
-      ok: false,
-      code: "INSIGHTS_ERROR",
-      message: "Erro ao gerar insights com IA.",
-      details: String(err && err.message ? err.message : err)
+      period: { start: startLabel, end: endLabel, mode: "post-body" },
+      insights: [{
+        timestamp: ts,
+        title: insightBase.title || "Insight de uso do ARCardápio",
+        detail: normalizeInsightDetail(combinedText),
+        status: insightBase.status || "neutro",
+        suggestion: insightBase.suggestion || ""
+      }]
     });
   }
+
+  // ---------------------------
+  // 2) GET / modo AUTO barato: usa rollup existente + cria só o necessário
+  // ---------------------------
+  const { startDate: startRaw, endDate: endRaw, backfill } = parsed.query || {};
+  let startDate = parseDateParam(startRaw);
+  let endDate = parseDateParam(endRaw);
+
+  const nowLocal = toLocalDate(new Date());
+  const todayUTC = new Date(Date.UTC(nowLocal.getUTCFullYear(), nowLocal.getUTCMonth(), nowLocal.getUTCDate()));
+
+  if (!startDate) startDate = todayUTC;
+  if (!endDate) endDate = todayUTC;
+  if (startDate > endDate) [startDate, endDate] = [endDate, startDate];
+
+  const startLabel = formatYMD(startDate);
+  const endLabel = formatYMD(endDate);
+  const doBackfill = String(backfill || "").trim() === "1";
+
+  // lista dias
+  const days = [];
+  {
+    let cur = new Date(startDate.getTime());
+    const end = new Date(endDate.getTime());
+    while (cur <= end) {
+      days.push(formatYMD(cur));
+      cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+  }
+
+  const merged = [];
+  const todayYmdLocal = formatYMD(toLocalDate(new Date()));
+
+  for (const ymd of days) {
+    // só gera rollup no HOJE (ou backfill=1). Barato e controlado.
+    if (doBackfill || ymd === todayYmdLocal) {
+      try {
+        await ensureRollupInsightsForDay(tenantId, ymd, { backfill: doBackfill });
+      } catch (e) {
+        log("WARN", "[INSIGHTS] ensureRollup falhou:", e.message);
+      }
+    }
+
+    const dayList = await loadInsightsFromS3(tenantId, ymd, ymd, INSIGHTS_ROLLUP_LABEL);
+    if (Array.isArray(dayList) && dayList.length) merged.push(...dayList);
+  }
+
+  merged.sort((a, b) => String(b.timestamp || "").localeCompare(String(a.timestamp || "")));
+
+  // dedup por hora
+  const byHour = new Map();
+  for (const rec of merged) {
+    const hb = hourBucket(rec?.timestamp);
+    if (!hb) continue;
+    if (!byHour.has(hb)) byHour.set(hb, rec);
+  }
+
+  const finalList = Array.from(byHour.values())
+    .sort((a, b) => String(b.timestamp || "").localeCompare(String(a.timestamp || "")))
+    .slice(0, INSIGHTS_MAX_PER_INTERVAL);
+
+  return jsonResponse(event, 200, {
+    ok: true,
+    tenantRaw,
+    tenantId,
+    period: { start: startLabel, end: endLabel, mode: "rollup-cheap" },
+    insights: finalList
+  });
 }
 
 // POST /metrics/ingest (app → público, sem JWT)
@@ -2207,13 +2296,10 @@ async function handleIngestPublic(event, parsed) {
   let body = null;
 
   try {
-    body =
-      typeof event.body === "string"
-        ? JSON.parse(event.body || "{}")
-        : event.body || {};
+    body = typeof event.body === "string" ? JSON.parse(event.body || "{}") : (event.body || {});
   } catch (err) {
     log("WARN", "[METRICAS] Ingest body JSON inválido:", err.message);
-    return jsonResponse(400, {
+    return jsonResponse(event, 400, {
       ok: false,
       code: "BAD_REQUEST",
       message: "Body JSON inválido em /metrics ingest."
@@ -2236,11 +2322,7 @@ async function handleIngestPublic(event, parsed) {
   const tenantId = normalizarTenantId(tenantRaw);
 
   if (!tenantRaw) {
-    log(
-      "WARN",
-      "[METRICAS] Ingest sem tenant nem email no payload. Usando 'unknown'.",
-      JSON.stringify(body)
-    );
+    log("WARN", "[METRICAS] Ingest sem tenant nem email no payload. Usando 'unknown'.", JSON.stringify(body));
   }
 
   let batchPayload = null;
@@ -2250,7 +2332,7 @@ async function handleIngestPublic(event, parsed) {
   } else if (Array.isArray(body.events)) {
     batchPayload = { events: body.events };
   } else {
-    return jsonResponse(400, {
+    return jsonResponse(event, 400, {
       ok: false,
       code: "NO_EVENTS",
       message: "Nenhum evento encontrado no payload."
@@ -2259,69 +2341,13 @@ async function handleIngestPublic(event, parsed) {
 
   await saveBatchToS3(tenantId, batchPayload, body.ts);
 
-  return jsonResponse(200, {
+  return jsonResponse(event, 200, {
     ok: true,
     message: "Eventos de métricas recebidos e salvos.",
     tenantId,
     email: emailRaw || null
   });
 }
-
-// ===============================
-// HELPER – NORMALIZAR TEXTO DE INSIGHT PARA TOOLTIP
-// ===============================
-function normalizeInsightDetail(raw) {
-  if (!raw) return "";
-
-  let text = String(raw).trim();
-
-  // 1) Remove fences ```...``` se vierem
-  if (text.startsWith("```")) {
-    const fenceMatch = text.match(/```[a-zA-Z]*\s*([\s\S]*?)```/);
-    if (fenceMatch && fenceMatch[1]) {
-      text = fenceMatch[1].trim();
-    }
-  }
-
-  // 2) Tenta extrair title/summary/suggestion se o conteúdo for JSON
-  let parsed = null;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    const first = text.indexOf("{");
-    const last = text.lastIndexOf("}");
-    if (first !== -1 && last !== -1 && last > first) {
-      const slice = text.slice(first, last + 1);
-      try {
-        parsed = JSON.parse(slice);
-      } catch {
-        parsed = null;
-      }
-    }
-  }
-
-  if (parsed && typeof parsed === "object") {
-    const parts = [];
-    if (parsed.title)      parts.push(String(parsed.title));
-    if (parsed.summary)    parts.push(String(parsed.summary));
-    if (parsed.suggestion) parts.push(String(parsed.suggestion));
-    text = parts.join(" ");
-  }
-
-  // 3) Normaliza espaços mas preserva quebras de linha
-  text = text.replace(/\r\n/g, "\n");    // padroniza EOL
-  text = text.replace(/[ \t]+/g, " ");   // múltiplos espaços → 1 espaço
-  text = text.trim();
-
-  // 4) Quebra em linhas por frase (. ? !)
-  text = text.replace(/([.!?])\s+/g, "$1\n");
-
-  // 5) Evita muitas linhas em branco seguidas
-  text = text.replace(/\n{3,}/g, "\n\n");
-
-  return text;
-}
-
 
 // ===============================
 // HANDLER PRINCIPAL
@@ -2334,11 +2360,7 @@ exports.handler = async (event) => {
     log("INFO", "[METRICAS] Evento recebido:", JSON.stringify(parsed));
 
     if (method === "OPTIONS") {
-      return {
-        statusCode: 204,
-        headers: corsHeaders(),
-        body: ""
-      };
+      return { statusCode: 204, headers: corsHeaders({}, event), body: "" };
     }
 
     const isIngestRoute = path.endsWith("/ingest");
@@ -2352,7 +2374,7 @@ exports.handler = async (event) => {
 
     const auth = autenticarRequest(event);
     if (!auth.ok) {
-      return jsonResponse(auth.httpStatus, {
+      return jsonResponse(event, auth.httpStatus, {
         ok: false,
         code: auth.code,
         message: auth.message
@@ -2370,14 +2392,14 @@ exports.handler = async (event) => {
       return handleInsights(event, auth, parsed);
     }
 
-    return jsonResponse(404, {
+    return jsonResponse(event, 404, {
       ok: false,
       code: "NOT_FOUND",
       message: "Rota não encontrada."
     });
   } catch (err) {
     log("ERROR", "[METRICAS] Crash no handler principal:", err);
-    return jsonResponse(500, {
+    return jsonResponse(event, 500, {
       ok: false,
       code: "UNEXPECTED_ERROR",
       message: "Erro interno nas métricas."

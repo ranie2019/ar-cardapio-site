@@ -1,5 +1,5 @@
 /* ==========================================================
-   MÉTRICAS DASHBOARD — ARCardápio
+   MÉTRICAS.js DASHBOARD — ARCardápio
    ========================================================== */
 
 (function () {
@@ -12,6 +12,18 @@
 const USE_MOCK = false; // PRODUÇÃO: só dados reais
 const API_BASE = "https://zoci6wmxqa.execute-api.us-east-1.amazonaws.com/metricas/cliente";
 
+// ===== AUTH (hard stop) =====
+function requireAuthOrRedirect() {
+  const token = getMetricsAuthToken(); // você já tem essa função mais abaixo
+
+  if (token) return true;
+
+  // volta pra esta página depois do login
+  const back = encodeURIComponent(location.pathname + location.search);
+  console.warn("[METRICAS] Sem token. Redirecionando para login...");
+  location.href = `/html/login.html?back=${back}`;
+  return false;
+}
 
 /* --------- ELEMENTOS (DOM) --------- */
 function byId(id) { return document.getElementById(id); }
@@ -539,7 +551,19 @@ async function ensureChartJs(){
   });
 }
 
+function hexToRgba(hex, alpha = 0.12) {
+  const h = String(hex || "").replace("#", "").trim();
+  if (h.length !== 6) return `rgba(59,130,246,${alpha})`; // fallback
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 function buildLineChart(ctx, labels, data, label, color, tooltipCallback){
+  const lineColor = color || "#3b82f6";
+  const fillColor = hexToRgba(lineColor, 0.12);
+
   return new Chart(ctx, {
     type: "line",
     data: {
@@ -551,8 +575,8 @@ function buildLineChart(ctx, labels, data, label, color, tooltipCallback){
         borderWidth: 2,
         pointRadius: 3,
         fill: true,
-        backgroundColor: `rgba(59, 130, 246, 0.1)`,
-        borderColor: color,
+        backgroundColor: fillColor,   // ✅ agora acompanha a cor da linha
+        borderColor: lineColor,
       }]
     },
     options: {
@@ -3016,6 +3040,9 @@ async function loadAndRender() {
    ========================================================== */
 
 document.addEventListener("DOMContentLoaded", ()=>{
+  // ✅ trava tudo aqui se não tiver login
+  if (!requireAuthOrRedirect()) return;
+
   // normaliza tenant
   if (AppState.tenant) {
     AppState.tenant = tenantKey(AppState.tenant);

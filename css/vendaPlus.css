@@ -466,3 +466,27 @@ label {
     gap: 8px;
   }
 }
+
+/* =========================
+   SUPORTE (espaço + cor do link)
+   ========================= */
+.support{
+  margin-top: 16px;          /* cria espaço da seção de FAQ */
+  padding-top: 10px;         /* dá respiro */
+  border-top: 1px solid rgba(255,255,255,0.08); /* separador sutil */
+}
+
+.support .muted{
+  margin-right: 8px;
+}
+
+.support-link{
+  color: #86ffe6 !important;           /* mais claro e legível */
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 600;
+}
+
+.support-link:hover{
+  color: #b8fff2 !important;
+}
