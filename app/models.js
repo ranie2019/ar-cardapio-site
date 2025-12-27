@@ -58,7 +58,7 @@ const models = {
   lanches: [],
   porcoes: [],
   diversos: [
-    { path: `${modelBaseURL}/diversos/chefe.glb`, price: 0.00, info: null },
+    { path: `${modelBaseURL}/diversos/chef.glb`, price: 0.00, info: null },
   ]
 };
 
@@ -96,7 +96,7 @@ const CATEGORIAS_LABELS = {
   carnes:     'Carnes',
   lanches:    'Lanches',
   porcoes:    'Porções',
-  Diversos:    'Diversos'
+  diversos:   'Diversos'
 };
 
 function etiquetarBotoesCategoria() {
@@ -160,7 +160,7 @@ async function carregarConfiguracaoDoRestaurante() {
     return config;
   } catch (e) {
     console.warn('⚠️ Usando configuração padrão. Motivo:', e.message);
-    return { logo: true, bebidas:true, pizzas:true, sobremesas:true, carnes:true, lanches:true, porcoes:true };
+    return { logo: true, bebidas:true, pizzas:true, sobremesas:true, carnes:true, lanches:true, porcoes:true, diversos:true };
   }
 }
 

@@ -1,4 +1,4 @@
-<!-- HOME.HTML (com QR Code + logo no centro, sem duplicar eventos) -->
+<!-- HOME.HTML (ATUALIZADO) -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -69,6 +69,29 @@
   <!-- CONTAINER DE ITENS -->
   <div id="itensContainer" class="itens-container"></div>
 
+  <!-- ✅ JANELA 3D / PREVIEW (AGORA EXISTE NO DOM) -->
+  <div id="scene3D" class="scene-3d">
+    <a-scene
+      embedded
+      vr-mode-ui="enabled:false"
+      renderer="colorManagement:true"
+      background="color: #111"
+    >
+      <!-- onde o JS aplica o gltf-model -->
+      <a-entity
+        id="modelo3d"
+        position="0 0 -3"
+        rotation="0 30 0"
+        scale="1 1 1"
+      ></a-entity>
+
+      <a-light type="ambient" intensity="1.0"></a-light>
+      <a-light type="directional" intensity="1.2" position="1 2 1"></a-light>
+
+      <a-camera position="0 1.6 0"></a-camera>
+    </a-scene>
+  </div>
+
   <!-- MODAL QR CODE -->
   <div id="modalQrCode" class="modal hidden">
     <div class="conteudo-modal">
@@ -95,8 +118,152 @@
   <script src="../java/home1.js"></script>
   <script src="../java/home2.js"></script>
   <script src="../java/home3.js"></script>
+  <script src="../java/home4.js"></script>
 
-  <!-- CONTROLE DE MODAIS, DROPDOWNS E PERFIL (SEM duplicar QR Code aqui) -->
+  <!-- ✅ ÚNICA ALTERAÇÃO PEDIDA: AUTOPLAY DA ANIMAÇÃO GLB NA HOME + EFEITO PROFUNDIDADE -->
+  <!-- (não mexe em menus, modais, layout, botões, cardápio etc.) -->
+  <script>
+    (function () {
+      function registerAutoGltfAnimation() {
+        if (!window.AFRAME || AFRAME.components["auto-gltf-animation"]) return;
+
+        AFRAME.registerComponent("auto-gltf-animation", {
+          schema: {
+            clip: { default: "*" },        // "*" = toca todas
+            timeScale: { default: 1.0 },   // velocidade
+            loop: { default: "repeat" }    // repeat | once
+          },
+
+          init: function () {
+            this.mixer = null;
+            this.actions = [];
+
+            this._onModelLoaded = (e) => {
+              this._stopAll();
+
+              const model = e && e.detail && e.detail.model;
+              const clips = model && model.animations ? model.animations : [];
+              if (!model || !clips.length) return;
+
+              this.mixer = new THREE.AnimationMixer(model);
+
+              const wantAll = (this.data.clip === "*" || !this.data.clip);
+              for (const clip of clips) {
+                if (!wantAll && clip.name !== this.data.clip) continue;
+
+                const action = this.mixer.clipAction(clip);
+                action.reset();
+
+                if (this.data.loop === "once") {
+                  action.setLoop(THREE.LoopOnce, 1);
+                  action.clampWhenFinished = true;
+                } else {
+                  action.setLoop(THREE.LoopRepeat, Infinity);
+                }
+
+                action.play();
+                this.actions.push(action);
+              }
+
+              this.mixer.timeScale = Number(this.data.timeScale) || 1.0;
+            };
+
+            this.el.addEventListener("model-loaded", this._onModelLoaded);
+          },
+
+          tick: function (_t, dt) {
+            if (this.mixer) this.mixer.update((dt || 0) / 1000);
+          },
+
+          remove: function () {
+            this.el.removeEventListener("model-loaded", this._onModelLoaded);
+            this._stopAll();
+          },
+
+          _stopAll: function () {
+            if (this.actions && this.actions.length) {
+              this.actions.forEach(a => { try { a.stop(); } catch (_) {} });
+            }
+            this.actions = [];
+            this.mixer = null;
+          }
+        });
+      }
+
+      function applyHomeAutoplayAndDepth() {
+        const el = document.getElementById("modelo3d");
+        if (!el) return;
+
+        registerAutoGltfAnimation();
+
+        // Sempre força autoplay (mesmo quando trocar de modelo via home1/home3)
+        el.setAttribute("auto-gltf-animation", "clip:*; loop:repeat; timeScale:1");
+
+        // Só configura o loop de profundidade 1x por carregamento de modelo
+        const onLoaded = () => {
+          // evita empilhar animações se o mesmo modelo recarregar
+          el.removeEventListener("model-loaded", onLoaded);
+
+          // pega estado "normal" atual (pra manter sua config padrão)
+          const normalPos = el.getAttribute("position") || { x: 0, y: 0, z: -3 };
+          const normalScale = el.getAttribute("scale") || { x: 1, y: 1, z: 1 };
+
+          // define o "começo" (pequeno e mais longe)
+          const startScale = 0.25;
+          const startZ = (typeof normalPos.z === "number" ? normalPos.z : -3) - 3; // -3 => -6
+
+          el.setAttribute("position", `${normalPos.x || 0} ${normalPos.y || 0} ${startZ}`);
+          el.setAttribute("scale", `${startScale} ${startScale} ${startScale}`);
+
+          // andar pra frente (Z) em loop
+          el.setAttribute(
+            "animation__homeDepthPos",
+            `property: position; from: ${normalPos.x || 0} ${normalPos.y || 0} ${startZ}; to: ${normalPos.x || 0} ${normalPos.y || 0} ${normalPos.z}; dur: 2200; loop: true; easing: linear`
+          );
+
+          // crescer em loop
+          el.setAttribute(
+            "animation__homeDepthScale",
+            `property: scale; from: ${startScale} ${startScale} ${startScale}; to: ${normalScale.x || 1} ${normalScale.y || 1} ${normalScale.z || 1}; dur: 2200; loop: true; easing: linear`
+          );
+
+          // Debug: mostra clips do GLB (se não tiver, ele vai ficar parado mesmo)
+          try {
+            const mesh = el.getObject3D("mesh");
+            const clips = (mesh && mesh.animations) ? mesh.animations : [];
+            console.log("[HOME] GLB animations:", clips.map(c => c.name));
+            if (!clips.length) console.warn("[HOME] Seu GLB não tem animação embutida.");
+          } catch (_) {}
+        };
+
+        el.addEventListener("model-loaded", onLoaded, { once: true });
+      }
+
+      function watchGltfModelChanges() {
+        const el = document.getElementById("modelo3d");
+        if (!el) return;
+
+        const obs = new MutationObserver((list) => {
+          for (const m of list) {
+            if (m.type === "attributes" && m.attributeName === "gltf-model") {
+              // reaplica no próximo tick (A-Frame ainda vai carregar)
+              setTimeout(applyHomeAutoplayAndDepth, 0);
+              break;
+            }
+          }
+        });
+
+        obs.observe(el, { attributes: true });
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        applyHomeAutoplayAndDepth();
+        watchGltfModelChanges();
+      });
+    })();
+  </script>
+
+  <!-- CONTROLE DE DROPDOWNS E PERFIL (SEM criar 2ª instância do sistema) -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       // ---------- util ----------
@@ -134,21 +301,6 @@
           const btn = document.querySelector(`button[data-nome="${nome}"]`);
           if (btn) btn.style.display = visivel ? 'inline-block' : 'none';
         };
-      }
-
-      // Instância principal (home1.js) - se você usa isso em algum lugar
-      if (window.SistemaCardapioBase && !window.sistemaCardapio) {
-        try { window.sistemaCardapio = new window.SistemaCardapioBase(); }
-        catch (e) { console.warn('Falha ao instanciar SistemaCardapioBase:', e); }
-      }
-
-      // Carregar nome da empresa
-      if (window.sistemaCardapio?.carregarNomeEmpresa) {
-        try { window.sistemaCardapio.carregarNomeEmpresa(); }
-        catch (e) { console.warn('carregarNomeEmpresa falhou:', e); }
-      } else if (typeof carregarNomeEmpresa === 'function') {
-        try { carregarNomeEmpresa(); }
-        catch (e) { console.warn('carregarNomeEmpresa global falhou:', e); }
       }
 
       // Dropdown Perfil
@@ -226,6 +378,9 @@
           setarSinalAberto(false);
         }
       });
+
+      // ✅ IMPORTANTE: NÃO instanciar SistemaCardapioBase aqui.
+      // A instância principal deve ficar só no home3.js (window.sistemaCardapio = new SistemaCardapio()).
     });
   </script>
 </body>

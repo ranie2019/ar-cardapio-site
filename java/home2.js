@@ -1,5 +1,5 @@
 // ==============================
-// home2.js - Exibição de Itens, Preview 3D e Configuração
+// home2.js - EXIBICÃO de Itens, Preview 3D e ConfiguraÃ§Ã£o
 // ==============================
 "use strict";
 
@@ -13,7 +13,7 @@ class SistemaCardapioItens extends SistemaCardapioBase {
   }
 
   // ==============================
-  // EXIBIÇÃO DE ITENS E PREVIEW 3D
+  // EXIBICÃO DE ITENS E PREVIEW 3D
   // ==============================
   mostrarItens(categoria) {
     const containerItens = document.getElementById("itensContainer");
@@ -73,7 +73,7 @@ class SistemaCardapioItens extends SistemaCardapioBase {
         }, 300);
       });
 
-      // Botão de configuração
+      // Botão de Configuração
       const botaoConfig = document.createElement("button");
       botaoConfig.className = "btn-configurar-produto";
       botaoConfig.textContent = "Configuração";
@@ -107,13 +107,13 @@ class SistemaCardapioItens extends SistemaCardapioBase {
     const ret = elementoOrigem.getBoundingClientRect();
     
     const gap = 10;
-    const modalW = 330;   // você mesmo fixa 330px no HTML do modal
+    const modalW = 330;   // vocÃª mesmo fixa 330px no HTML do modal
     const modalH = 300;   // altura do preview
 
-    // tenta abrir à direita
+    // tenta abrir Ã  direita
     let left = ret.right + gap;
 
-    // se estourar a direita, abre à esquerda
+    // se estourar a direita, abre Ã  esquerda
     if (left + modalW > window.innerWidth - gap) {
       left = ret.left - modalW - gap;
     }
@@ -150,7 +150,7 @@ class SistemaCardapioItens extends SistemaCardapioBase {
     const urlModelo = candidatos[0] || null;
 
     if (!urlModelo) {
-      this.modelModal.innerHTML = `<div style="width:330px;height:300px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#ff6b6b;">Modelo 3D não encontrado</div>`;
+      this.modelModal.innerHTML = `<div style="width:330px;height:300px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#ff6b6b;">Modelo 3D nÃ£o encontrado</div>`;
       return;
     }
 
@@ -181,7 +181,7 @@ class SistemaCardapioItens extends SistemaCardapioBase {
 
   configurarControlesPreview() {
     const cena = this.modelModal.querySelector("#previewScene");
-    // CORREÇÃO: Previne o menu de contexto (clique direito) na cena 3D
+    // CORREÃ‡ÃƒO: Previne o menu de contexto (clique direito) na cena 3D
     cena.addEventListener("contextmenu", (e) => e.preventDefault());
     const yaw = this.modelModal.querySelector("#previewYaw");
     const pitch = this.modelModal.querySelector("#previewPitch");
@@ -269,7 +269,7 @@ class SistemaCardapioItens extends SistemaCardapioBase {
       const resp = await fetch(urlJson);
       if (resp.ok) dadosProduto = await resp.json();
     } catch (e) {
-      console.error("Falha ao carregar configuração:", e);
+      console.error("Falha ao carregar Configuração:", e);
     }
 
     this.modalConfig.querySelector("#inputValor").value =
@@ -284,7 +284,7 @@ class SistemaCardapioItens extends SistemaCardapioBase {
   }
 
   // ==============================
-  // SALVAR CONFIGURAÇÃO
+  // SALVAR CONFIGURAÃ‡ÃƒO
   // ==============================
   async salvarConfiguracao(confirmado = false) {
     if (!this.itemConfiguracao || !confirmado) return false;
@@ -292,17 +292,17 @@ class SistemaCardapioItens extends SistemaCardapioBase {
     try {
       const campoValor = this.modalConfig.querySelector("#inputValor");
       const campoDescricao = this.modalConfig.querySelector("#inputDescricao");
-      if (!campoValor || !campoDescricao) throw new Error("Campos de configuração não encontrados.");
+      if (!campoValor || !campoDescricao) throw new Error("Campos de Configuração não encontrados.");
 
       const [categoria, slug] = this.itemConfiguracao.split("/");
       const original = objetos3D[categoria].find((i) => this.nomeParaSlug(i) === slug);
 
       const preco = parseFloat(campoValor.value.replace(/\./g, "").replace(",", "."));
-      if (isNaN(preco)) throw new Error("Valor inválido. Use formato: 0,00");
+      if (isNaN(preco)) throw new Error("Valor invalido. Use formato: 0,00");
 
       const dadosParaSalvar = { preco, descricao: campoDescricao.value, nome: original };
 
-      // --- INÍCIO: EXTRAÇÃO ROBUSTA DE userId (substituir bloco existente) ---
+      // --- INÃCIO: EXTRAÃ‡ÃƒO ROBUSTA DE userId (substituir bloco existente) ---
       const token = localStorage.getItem("ar.token");
       console.log("DEBUG: token (ar.token):", token);
 
@@ -336,7 +336,7 @@ class SistemaCardapioItens extends SistemaCardapioBase {
         }
       }
 
-      // 2) se não encontrou, tenta várias chaves no localStorage
+      // 2) se nÃ£o encontrou, tenta vÃ¡rias chaves no localStorage
       if (!userId) {
         const candidateKeys = ["ar.userId","ar.user.id","ar.user","userId","user_id","ar.userData","ar.user_data","userEmail","email"];
         for (const k of candidateKeys) {
@@ -353,7 +353,7 @@ class SistemaCardapioItens extends SistemaCardapioBase {
 
       // 3) final sanity: normalize (ex: email -> formato do S3 se precisar)
       if (userId && typeof userId === "string") {
-        // se estiver em formato email, converta para o formato que você usa no S3 se necessário:
+        // se estiver em formato email, converta para o formato que vocÃª usa no S3 se necessÃ¡rio:
         // exemplo: ranie.black29@gmail.com -> ranie-black29-gmail-com
         if (userId.includes("@")) {
           userId = userId.replace(/[@.]/g, "-");
@@ -364,15 +364,15 @@ class SistemaCardapioItens extends SistemaCardapioBase {
       console.log("DEBUG: userId final:", userId);
 
       if (!userId) {
-        // mensagem de erro clara para o dev — a UI já captura e mostra
-        throw new Error("ID do usuário não encontrado. Faça login novamente.");
+        // mensagem de erro clara para o dev â€” a UI jÃ¡ captura e mostra
+        throw new Error("ID do usuario não encontrado. Faça o login novamente.");
       }
-      // --- FIM: EXTRAÇÃO ROBUSTA DE userId ---
+      // --- FIM: EXTRAÃ‡ÃƒO ROBUSTA DE userId ---
 
 
       const contentType = "application/json";
 
-      // Modifique a construção da URL para incluir todos os parâmetros esperados pela Lambda
+      // Modifique a construÃ§Ã£o da URL para incluir todos os parÃ¢metros esperados pela Lambda
       const presignEndpoint = `https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/presign?fileName=${encodeURIComponent(slug + ".json")}&contentType=${encodeURIComponent(contentType)}&userId=${encodeURIComponent(userId)}`;
       console.log("Solicitando presign:", presignEndpoint);
 
@@ -390,7 +390,7 @@ class SistemaCardapioItens extends SistemaCardapioBase {
       const presignData = await respPresign.json();
       console.log("Presign retornado:", presignData);
 
-      if (!presignData.presignedUrl) throw new Error("URL pré-assinada não retornada");
+      if (!presignData.presignedUrl) throw new Error("URL pre-assinada não retornada");
 
       const uploadResp = await fetch(presignData.presignedUrl, {
         method: "PUT",
@@ -405,7 +405,7 @@ class SistemaCardapioItens extends SistemaCardapioBase {
       this.modalConfig.style.display = "none";
       return true;
     } catch (e) {
-      console.error("Erro salvar configuração:", e);
+      console.error("Erro ao salvar a Configuração:", e);
       showToast("Erro ao salvar: " + e.message, "error", 4000);
       return false;
     }

@@ -55,6 +55,7 @@ const objetos3D = {
   lanches: ["Hamburguer", "Cheeseburger", "Hot Dog"],
   sobremesas: ["Sundae", "Cupcake de Chocolate", "Rosquinha de Chocolate", "Late"],
   porcoes: ["Batata Frita", "Nuggets", "Aneis de Cebola"],
+  diversos: ["Chef"]
 };
 
 // ===================== Carregadores de S3 =====================

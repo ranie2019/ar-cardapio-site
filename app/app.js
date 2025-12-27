@@ -3,6 +3,103 @@
    ============================================================ */
 "use strict";
 
+/* ============================================================
+   ✅ AUTO PLAY GLTF ANIMATION (A-Frame)
+   - Registra o componente mesmo se AFRAME carregar depois
+   - Toca automaticamente animações do GLB quando model-loaded dispara
+   ============================================================ */
+
+function __registerAutoGltfAnimationOnce() {
+  if (!window.AFRAME) return false;
+  if (AFRAME.components["auto-gltf-animation"]) return true;
+
+  AFRAME.registerComponent("auto-gltf-animation", {
+    schema: {
+      clip: { default: "*" },        // "*" = toca todas
+      timeScale: { default: 1.0 },   // velocidade
+      loop: { default: "repeat" }    // repeat | once
+    },
+
+    init() {
+      this.mixer = null;
+      this.actions = [];
+
+      this._onModelLoaded = (e) => {
+        this._stopAll();
+
+        const model = e.detail && e.detail.model;
+        const clips = model && model.animations ? model.animations : [];
+
+        if (!model || !clips.length || !window.THREE) return;
+
+        this.mixer = new THREE.AnimationMixer(model);
+
+        const wantAll = (this.data.clip === "*" || !this.data.clip);
+
+        for (const clip of clips) {
+          if (!wantAll && clip.name !== this.data.clip) continue;
+
+          const action = this.mixer.clipAction(clip);
+          action.reset();
+
+          if (this.data.loop === "once") {
+            action.setLoop(THREE.LoopOnce, 1);
+            action.clampWhenFinished = true;
+          } else {
+            action.setLoop(THREE.LoopRepeat, Infinity);
+          }
+
+          action.play();
+          this.actions.push(action);
+        }
+
+        this.mixer.timeScale = Number(this.data.timeScale) || 1.0;
+      };
+
+      this.el.addEventListener("model-loaded", this._onModelLoaded);
+    },
+
+    tick(_t, dt) {
+      if (this.mixer) this.mixer.update((dt || 0) / 1000);
+    },
+
+    remove() {
+      this.el.removeEventListener("model-loaded", this._onModelLoaded);
+      this._stopAll();
+    },
+
+    _stopAll() {
+      if (this.actions && this.actions.length) {
+        this.actions.forEach(a => { try { a.stop(); } catch (_) {} });
+      }
+      this.actions = [];
+      this.mixer = null;
+    }
+  });
+
+  return true;
+}
+
+// tenta registrar agora; se não der, tenta algumas vezes (A-Frame pode carregar depois)
+(function ensureAutoAnimRegistered() {
+  let tries = 0;
+  const maxTries = 120; // ~6s (120 * 50ms)
+  const tick = () => {
+    tries++;
+    const ok = __registerAutoGltfAnimationOnce();
+    if (ok || tries >= maxTries) clearInterval(timer);
+  };
+  const timer = setInterval(tick, 50);
+  tick();
+})();
+
+// Helper: aplica o componente no container (sem depender do timing)
+function __applyAutoAnimTo(container) {
+  if (!container) return;
+  // garante que o componente exista no entity
+  container.setAttribute("auto-gltf-animation", "clip: *; loop: repeat; timeScale: 1");
+}
+
 // ==================== VARIÁVEIS GLOBAIS ====================
 let currentCategory = "logo";
 let currentIndex = 0;
@@ -61,7 +158,6 @@ async function ensureActivePlan() {
     }
   } catch (e) {
     console.warn("Falha ao checar assinatura:", e);
-    // Você decide se bloqueia em falha de rede.
   }
 }
 
@@ -221,6 +317,9 @@ async function loadModel(path) {
   const loadingIndicator = document.getElementById("loadingIndicator");
   if (!container || !loadingIndicator) return;
 
+  // ✅ garante componente de animação sempre presente no entity
+  __applyAutoAnimTo(container);
+
   // Se o modelo indicado está invisível, pula para o próximo visível
   const targetModel = getModelDataByPath(path);
   if (targetModel && targetModel.visible === false) {
@@ -236,19 +335,14 @@ async function loadModel(path) {
 
   container.setAttribute("rotation", "0 180 0");
 
-  // mantém o Y atual se já existir (pra não resetar quando troca de modelo),
-  // mas garante fallback válido (-0.6) se vier vazio/ruim
   const rawPos = container.getAttribute("position");
-
   let px = 0, py = -0.6, pz = 0;
 
   if (rawPos && typeof rawPos === "object") {
-    // A-Frame normalmente retorna {x,y,z}
     px = Number.isFinite(rawPos.x) ? rawPos.x : 0;
     py = Number.isFinite(rawPos.y) ? rawPos.y : -0.6;
     pz = Number.isFinite(rawPos.z) ? rawPos.z : 0;
   } else if (typeof rawPos === "string") {
-    // se vier "x y z"
     const parts = rawPos.trim().split(/\s+/).map(Number);
     px = Number.isFinite(parts[0]) ? parts[0] : 0;
     py = Number.isFinite(parts[1]) ? parts[1] : -0.6;
@@ -256,15 +350,14 @@ async function loadModel(path) {
   }
 
   container.setAttribute("position", `${px} ${py} ${pz}`);
-
   container.setAttribute("scale", "1 1 1");
 
   currentModelPath = path;
-
   const modelUrl = addBust(path);
 
   if (modelCache[modelUrl]) {
     container.setAttribute("gltf-model", modelCache[modelUrl]);
+    __applyAutoAnimTo(container); // ✅ (cache) garante autoplay
 
     await atualizarPrecoDoModelo(path);
 
@@ -288,7 +381,9 @@ async function loadModel(path) {
   xhr.onload = async () => {
     const blobURL = URL.createObjectURL(xhr.response);
     modelCache[modelUrl] = blobURL;
+
     container.setAttribute("gltf-model", blobURL);
+    __applyAutoAnimTo(container); // ✅ (XHR) garante autoplay
 
     await atualizarPrecoDoModelo(path);
 
@@ -338,12 +433,15 @@ function changeModel(dir) {
     infoPanel.style.display = "none";
     infoVisible = false;
   }
+
+  applyRotationRule();
 }
 
 function selectCategory(category) {
   if (!models[category] || !models[category].length) return;
 
   currentCategory = category;
+  applyRotationRule();
 
   const first = findNextVisibleIndex(category, 0, 1);
   currentIndex = first;
@@ -363,6 +461,8 @@ function firstVisibleIndex(cat) {
 function mostrarLogoInicial() {
   currentCategory = "logo";
   const savedSlug = localStorage.getItem("logoSelecionado");
+
+  applyRotationRule();
 
   let idx = -1;
   if (savedSlug && Array.isArray(models.logo)) {
@@ -393,7 +493,6 @@ document.getElementById("menuBtn")?.addEventListener("click", () => {
 window.addEventListener("DOMContentLoaded", async () => {
   await ensureActivePlan();
 
-  // garante visible default
   for (const categoria in models) {
     models[categoria].forEach(model => {
       if (model.visible === undefined) model.visible = true;
@@ -403,11 +502,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   await aplicarConfiguracaoDoRestaurante();
   verificarEstadoInicial();
 
-  // likes
   loadLikeStateFromStorage();
   setupLikeButtons();
 
-  // inicia logo
   mostrarLogoInicial();
 });
 
@@ -421,7 +518,6 @@ function verificarEstadoInicial() {
   try {
     const estado = JSON.parse(decodeURIComponent(estadoCodificado));
 
-    // categorias
     if (estado.categorias) {
       document.querySelectorAll(".category-btn").forEach(btn => {
         const categoria = btn.getAttribute("onclick")?.match(/'([^']+)'/)?.[1];
@@ -430,7 +526,6 @@ function verificarEstadoInicial() {
       });
     }
 
-    // itens invisíveis
     if (estado.itens) {
       for (const categoria in estado.itens) {
         if (models[categoria]) {
@@ -451,8 +546,33 @@ function verificarEstadoInicial() {
   }
 }
 
-// ==================== ROTAÇÃO AUTOMÁTICA ====================
+/* ============================================================
+   ✅ ROTAÇÃO AUTOMÁTICA (ATUALIZADA)
+   - NÃO rotaciona quando a categoria é "diversos"
+   - PAUSA enquanto o usuário está tocando (pra não brigar)
+   ============================================================ */
+
+let __isTouching = false;
+
+function shouldAutoRotate() {
+  const isDiversos = normKey(currentCategory) === "diversos";
+  if (isDiversos) return false;
+  if (__isTouching) return false;
+  return true;
+}
+
+function applyRotationRule() {
+  const isDiversos = normKey(currentCategory) === "diversos";
+  const mv = document.getElementById("modelViewer"); // pode ser null
+  if (mv) {
+    if (isDiversos) mv.removeAttribute("auto-rotate");
+    else mv.setAttribute("auto-rotate", "");
+  }
+}
+
 setInterval(() => {
+  if (!shouldAutoRotate()) return;
+
   const model = document.querySelector("#modelContainer");
   if (!model || !model.getAttribute("gltf-model")) return;
 
@@ -468,11 +588,9 @@ let initialScale = 1;
 let startY = null;
 let initialRotationX = 0;
 
-// 2 dedos deslizando = subir/descer
 let initialMidY = null;
 let initialPosY = null;
 
-// Sensibilidade e limites (ajuste se quiser)
 const TWO_FINGER_MOVE_SENS = 0.0025;
 const POS_Y_MIN = -3;
 const POS_Y_MAX = 3;
@@ -487,7 +605,6 @@ function __arClamp(n, min, max) {
 
 function __arGetPosObj(model) {
   const pos = model.getAttribute("position");
-  // A-Frame normalmente retorna objeto {x,y,z}, mas se vier string, a gente trata
   if (typeof pos === "string") {
     const parts = pos.trim().split(/\s+/).map(Number);
     return {
@@ -517,8 +634,9 @@ function __arSetModelPosY(newY) {
 }
 
 window.addEventListener("touchstart", (e) => {
+  __isTouching = true;
+
   if (e.touches.length === 2) {
-    // Pinça (zoom)
     const dx = e.touches[0].clientX - e.touches[1].clientX;
     const dy = e.touches[0].clientY - e.touches[1].clientY;
     initialDistance = Math.sqrt(dx * dx + dy * dy);
@@ -528,13 +646,11 @@ window.addEventListener("touchstart", (e) => {
       const scale = model.getAttribute("scale");
       initialScale = scale ? scale.x : 1;
 
-      // ✅ referência pra mover no Y (2 dedos deslizando juntos)
       initialMidY = __arGetMidY(e.touches);
       const pos = __arGetPosObj(model);
       initialPosY = (typeof pos.y === "number") ? pos.y : 0;
     }
   } else if (e.touches.length === 1) {
-    // 1 dedo (rotação)
     startY = e.touches[0].clientY;
 
     const model = document.querySelector("#modelContainer");
@@ -547,22 +663,19 @@ window.addEventListener("touchstart", (e) => {
 
 window.addEventListener("touchmove", (e) => {
   if (e.touches.length === 2 && initialDistance) {
-    // Zoom (pinça)
     const dx = e.touches[0].clientX - e.touches[1].clientX;
     const dy = e.touches[0].clientY - e.touches[1].clientY;
     const currentDistance = Math.sqrt(dx * dx + dy * dy);
     updateScale(currentDistance / initialDistance);
 
-    // ✅ Subir/descer (2 dedos deslizando juntos)
     if (initialMidY != null && initialPosY != null) {
       const midY = __arGetMidY(e.touches);
-      const delta = midY - initialMidY;                 // + desceu, - subiu
-      const newY = initialPosY + (-delta * TWO_FINGER_MOVE_SENS); // dedo pra cima => sobe objeto
+      const delta = midY - initialMidY;
+      const newY = initialPosY + (-delta * TWO_FINGER_MOVE_SENS);
       __arSetModelPosY(newY);
     }
 
   } else if (e.touches.length === 1 && startY !== null) {
-    // Rotação (1 dedo)
     const deltaY = e.touches[0].clientY - startY;
     const model = document.querySelector("#modelContainer");
     if (model) {
@@ -576,25 +689,22 @@ window.addEventListener("touchmove", (e) => {
 }, { passive: true });
 
 window.addEventListener("touchend", (e) => {
-  // saiu de 2 dedos
   if (!e.touches || e.touches.length < 2) {
     initialDistance = null;
     initialMidY = null;
     initialPosY = null;
   }
-  // saiu de 1 dedo
   if (!e.touches || e.touches.length === 0) {
     startY = null;
+    __isTouching = false;
   }
 }, { passive: true });
 
-// ==================== INFO (CARREGA CONTEÚDO SEM BRIGAR COM TOGGLE DO HTML) ====================
+// ==================== INFO ====================
 document.getElementById("infoBtn")?.addEventListener("click", () => {
   const panel = document.getElementById("infoPanel");
   if (!panel) return;
 
-  // Deixa qualquer toggle externo acontecer primeiro (se existir no HTML),
-  // e depois só garante conteúdo quando estiver ABERTO.
   setTimeout(() => {
     const visibleNow = panel.style.display === "block";
     infoVisible = visibleNow;
@@ -652,13 +762,11 @@ function getCurrentModelData() {
 }
 
 // ==================== LIKE / DISLIKE (VISUAL + MÉTRICAS) ====================
-
 const LIKE_EMPTY_SRC     = "../imagens/positivo.png";
 const LIKE_FILLED_SRC    = "../imagens/positivo1.png";
 const DISLIKE_EMPTY_SRC  = "../imagens/negativo.png";
 const DISLIKE_FILLED_SRC = "../imagens/negativo1.png";
 
-// ✅ isola por restaurante (evita misturar likes entre clientes/tenants)
 const __tenantKey = qs("restaurante", "unknown");
 const LIKE_STORAGE_KEY = `arcardapio_like_state_v1_${__tenantKey}`;
 
@@ -727,9 +835,8 @@ function setLikeForCurrentItem(state) {
   saveLikeStateToStorage();
 }
 
-// ✅ NÃO envia métrica quando desmarca (senão vira LIKE no seu Lambda)
 function trackLikeEvent(newState, source) {
-  if (!newState) return; // <-- corte aqui
+  if (!newState) return;
 
   if (!window.MetricaApp || typeof MetricaApp.trackEvent !== "function") return;
 
@@ -741,8 +848,8 @@ function trackLikeEvent(newState, source) {
 
   try {
     MetricaApp.trackEvent("like", {
-      value,      // positivo / negativo
-      source,     // "like" ou "dislike"
+      value,
+      source,
       category: currentCategory || null,
       itemPath,
       itemName
@@ -779,3 +886,21 @@ function setupLikeButtons() {
   });
 }
 
+/* ============================================================
+   model-viewer (se existir) — deixei seguro (não quebra)
+   (Não é necessário pro autoplay do A-Frame)
+   ============================================================ */
+const mv = document.getElementById("modelViewer"); // pode ser null
+function forceAutoPlayAnimation() {
+  if (!mv) return;
+
+  const play = () => {
+    const anims = mv.availableAnimations || [];
+    if (!anims.length) return;
+    if (!mv.animationName) mv.animationName = anims[0];
+    mv.play();
+  };
+
+  if (mv.loaded) play();
+  else mv.addEventListener("load", play, { once: true });
+}
