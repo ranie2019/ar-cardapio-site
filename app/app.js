@@ -469,6 +469,13 @@ function __getRotObj(el) {
 setInterval(() => {
   if (__isTouching) return;
 
+  // ✅ trava autorotation somente em "diversos"
+  const isDiversos =
+    currentCategory === "diversos" ||
+    (currentModelPath && String(currentModelPath).toLowerCase().includes("/diversos/"));
+
+  if (isDiversos) return;
+
   const model = document.querySelector("#modelContainer");
   if (!model || !model.getAttribute("gltf-model")) return;
 
