@@ -236,7 +236,7 @@ async function loadModel(path) {
   container.removeAttribute("gltf-model");
 
   // (base) rotação padrão
-  container.setAttribute("rotation", "0 0 0");
+  container.setAttribute("rotation", "0 -45 0");
 
   // mantém posição padrão sem quebrar ajustes manuais
   const rawPos = container.getAttribute("position");
