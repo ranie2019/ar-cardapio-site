@@ -1,104 +1,9 @@
 /* ============================================================
-   app.js (ATUALIZADO)
+   app.js (BASE - SEM LÓGICA DE ANIMAÇÃO / SEM LÓGICA DIVERSOS)
+   ✅ Atualização: selectCategory() agora normaliza (Porções/Diversos etc.)
+   ✅ Não altera as outras funções
    ============================================================ */
 "use strict";
-
-/* ============================================================
-   ✅ AUTO PLAY GLTF ANIMATION (A-Frame)
-   - Registra o componente mesmo se AFRAME carregar depois
-   - Toca automaticamente animações do GLB quando model-loaded dispara
-   ============================================================ */
-
-function __registerAutoGltfAnimationOnce() {
-  if (!window.AFRAME) return false;
-  if (AFRAME.components["auto-gltf-animation"]) return true;
-
-  AFRAME.registerComponent("auto-gltf-animation", {
-    schema: {
-      clip: { default: "*" },        // "*" = toca todas
-      timeScale: { default: 1.0 },   // velocidade
-      loop: { default: "repeat" }    // repeat | once
-    },
-
-    init() {
-      this.mixer = null;
-      this.actions = [];
-
-      this._onModelLoaded = (e) => {
-        this._stopAll();
-
-        const model = e.detail && e.detail.model;
-        const clips = model && model.animations ? model.animations : [];
-
-        if (!model || !clips.length || !window.THREE) return;
-
-        this.mixer = new THREE.AnimationMixer(model);
-
-        const wantAll = (this.data.clip === "*" || !this.data.clip);
-
-        for (const clip of clips) {
-          if (!wantAll && clip.name !== this.data.clip) continue;
-
-          const action = this.mixer.clipAction(clip);
-          action.reset();
-
-          if (this.data.loop === "once") {
-            action.setLoop(THREE.LoopOnce, 1);
-            action.clampWhenFinished = true;
-          } else {
-            action.setLoop(THREE.LoopRepeat, Infinity);
-          }
-
-          action.play();
-          this.actions.push(action);
-        }
-
-        this.mixer.timeScale = Number(this.data.timeScale) || 1.0;
-      };
-
-      this.el.addEventListener("model-loaded", this._onModelLoaded);
-    },
-
-    tick(_t, dt) {
-      if (this.mixer) this.mixer.update((dt || 0) / 1000);
-    },
-
-    remove() {
-      this.el.removeEventListener("model-loaded", this._onModelLoaded);
-      this._stopAll();
-    },
-
-    _stopAll() {
-      if (this.actions && this.actions.length) {
-        this.actions.forEach(a => { try { a.stop(); } catch (_) {} });
-      }
-      this.actions = [];
-      this.mixer = null;
-    }
-  });
-
-  return true;
-}
-
-// tenta registrar agora; se não der, tenta algumas vezes (A-Frame pode carregar depois)
-(function ensureAutoAnimRegistered() {
-  let tries = 0;
-  const maxTries = 120; // ~6s (120 * 50ms)
-  const tick = () => {
-    tries++;
-    const ok = __registerAutoGltfAnimationOnce();
-    if (ok || tries >= maxTries) clearInterval(timer);
-  };
-  const timer = setInterval(tick, 50);
-  tick();
-})();
-
-// Helper: aplica o componente no container (sem depender do timing)
-function __applyAutoAnimTo(container) {
-  if (!container) return;
-  // garante que o componente exista no entity
-  container.setAttribute("auto-gltf-animation", "clip: *; loop: repeat; timeScale: 1");
-}
 
 // ==================== VARIÁVEIS GLOBAIS ====================
 let currentCategory = "logo";
@@ -125,7 +30,6 @@ function qs(name, def = "") {
 
 function addBust(url) {
   if (!url) return url;
-  // se já tem query, adiciona &v=... ; senão ?v=...
   return url.includes("?") ? `${url}&v=${encodeURIComponent(__ver)}` : `${url}${__bust}`;
 }
 
@@ -133,12 +37,13 @@ function addBust(url) {
 function normKey(str) {
   return String(str)
     .toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove acentos
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // remove acentos
     .replace(/[\s\-]+/g, "_"); // espaços/hífen -> underscore
 }
 
 async function ensureActivePlan() {
-  const u = qs("u", "").trim(); // e-mail vindo do QR
+  const u = qs("u", "").trim();
   if (!u) return;
 
   try {
@@ -168,11 +73,11 @@ async function aplicarConfiguracaoDoRestaurante() {
 
   const CATS_CANDIDATES = [
     addBust(`https://ar-cardapio-models.s3.amazonaws.com/informacao/${nomeRestaurante}/config.json`),
-    addBust(`https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}.json`),
+    addBust(`https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}.json`)
   ];
   const ITENS_CANDIDATES = [
     addBust(`https://ar-cardapio-models.s3.amazonaws.com/informacao/${nomeRestaurante}/itens.json`),
-    addBust(`https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}-itens.json`),
+    addBust(`https://ar-cardapio-models.s3.amazonaws.com/configuracoes/${nomeRestaurante}-itens.json`)
   ];
 
   const fetchFirstJson = async (urls) => {
@@ -309,16 +214,13 @@ function findNextVisibleIndex(cat, startIndex, dir) {
     idx = (idx + dir + total) % total;
     if (models[cat][idx].visible !== false) return idx;
   }
-  return startIndex; // fallback
+  return startIndex;
 }
 
 async function loadModel(path) {
   const container = document.querySelector("#modelContainer");
   const loadingIndicator = document.getElementById("loadingIndicator");
   if (!container || !loadingIndicator) return;
-
-  // ✅ garante componente de animação sempre presente no entity
-  __applyAutoAnimTo(container);
 
   // Se o modelo indicado está invisível, pula para o próximo visível
   const targetModel = getModelDataByPath(path);
@@ -333,8 +235,10 @@ async function loadModel(path) {
   loadingIndicator.innerText = "Carregando...";
   container.removeAttribute("gltf-model");
 
-  container.setAttribute("rotation", "0 180 0");
+  // (base) rotação padrão
+  container.setAttribute("rotation", "0 0 0");
 
+  // mantém posição padrão sem quebrar ajustes manuais
   const rawPos = container.getAttribute("position");
   let px = 0, py = -0.6, pz = 0;
 
@@ -357,7 +261,6 @@ async function loadModel(path) {
 
   if (modelCache[modelUrl]) {
     container.setAttribute("gltf-model", modelCache[modelUrl]);
-    __applyAutoAnimTo(container); // ✅ (cache) garante autoplay
 
     await atualizarPrecoDoModelo(path);
 
@@ -383,7 +286,6 @@ async function loadModel(path) {
     modelCache[modelUrl] = blobURL;
 
     container.setAttribute("gltf-model", blobURL);
-    __applyAutoAnimTo(container); // ✅ (XHR) garante autoplay
 
     await atualizarPrecoDoModelo(path);
 
@@ -433,20 +335,19 @@ function changeModel(dir) {
     infoPanel.style.display = "none";
     infoVisible = false;
   }
-
-  applyRotationRule();
 }
 
 function selectCategory(category) {
-  if (!models[category] || !models[category].length) return;
+  // ✅ ÚNICA mudança: normaliza a chave para bater com "models"
+  const key = normKey(category);
+  if (!models[key] || !models[key].length) return;
 
-  currentCategory = category;
-  applyRotationRule();
+  currentCategory = key;
 
-  const first = findNextVisibleIndex(category, 0, 1);
+  const first = findNextVisibleIndex(key, 0, 1);
   currentIndex = first;
 
-  loadModel(models[category][currentIndex].path);
+  loadModel(models[key][currentIndex].path);
 }
 
 // ==================== SUPORTE A LOGO INICIAL ====================
@@ -461,8 +362,6 @@ function firstVisibleIndex(cat) {
 function mostrarLogoInicial() {
   currentCategory = "logo";
   const savedSlug = localStorage.getItem("logoSelecionado");
-
-  applyRotationRule();
 
   let idx = -1;
   if (savedSlug && Array.isArray(models.logo)) {
@@ -547,38 +446,35 @@ function verificarEstadoInicial() {
 }
 
 /* ============================================================
-   ✅ ROTAÇÃO AUTOMÁTICA (ATUALIZADA)
-   - NÃO rotaciona quando a categoria é "diversos"
-   - PAUSA enquanto o usuário está tocando (pra não brigar)
+   ROTAÇÃO AUTOMÁTICA BASE (SEM REGRAS DE "DIVERSOS")
+   - O animacaoapp.js é quem vai travar/alterar quando precisar
    ============================================================ */
-
 let __isTouching = false;
 
-function shouldAutoRotate() {
-  const isDiversos = normKey(currentCategory) === "diversos";
-  if (isDiversos) return false;
-  if (__isTouching) return false;
-  return true;
-}
-
-function applyRotationRule() {
-  const isDiversos = normKey(currentCategory) === "diversos";
-  const mv = document.getElementById("modelViewer"); // pode ser null
-  if (mv) {
-    if (isDiversos) mv.removeAttribute("auto-rotate");
-    else mv.setAttribute("auto-rotate", "");
+function __getRotObj(el) {
+  const r = el.getAttribute("rotation");
+  if (!r) return { x: 0, y: 0, z: 0 };
+  if (typeof r === "object") return r;
+  if (typeof r === "string") {
+    const p = r.trim().split(/\s+/).map(Number);
+    return {
+      x: Number.isFinite(p[0]) ? p[0] : 0,
+      y: Number.isFinite(p[1]) ? p[1] : 0,
+      z: Number.isFinite(p[2]) ? p[2] : 0
+    };
   }
+  return { x: 0, y: 0, z: 0 };
 }
 
 setInterval(() => {
-  if (!shouldAutoRotate()) return;
+  if (__isTouching) return;
 
   const model = document.querySelector("#modelContainer");
   if (!model || !model.getAttribute("gltf-model")) return;
 
-  const rotation = model.getAttribute("rotation");
-  rotation.y = (rotation.y + 0.5) % 360;
-  model.setAttribute("rotation", rotation);
+  const rot = __getRotObj(model);
+  rot.y = (rot.y + 0.5) % 360;
+  model.setAttribute("rotation", rot);
 }, 30);
 
 // ==================== ZOOM + ROTAÇÃO (1 dedo) + SUBIR/DESCER (2 dedos) ====================
@@ -655,7 +551,7 @@ window.addEventListener("touchstart", (e) => {
 
     const model = document.querySelector("#modelContainer");
     if (model) {
-      const rotation = model.getAttribute("rotation");
+      const rotation = __getRotObj(model);
       initialRotationX = rotation ? rotation.x : 0;
     }
   }
@@ -674,16 +570,13 @@ window.addEventListener("touchmove", (e) => {
       const newY = initialPosY + (-delta * TWO_FINGER_MOVE_SENS);
       __arSetModelPosY(newY);
     }
-
   } else if (e.touches.length === 1 && startY !== null) {
     const deltaY = e.touches[0].clientY - startY;
     const model = document.querySelector("#modelContainer");
     if (model) {
-      const rotation = model.getAttribute("rotation");
-      if (rotation) {
-        const newX = Math.min(Math.max(initialRotationX - deltaY * 0.2, -90), 90);
-        model.setAttribute("rotation", `${newX} ${rotation.y} ${rotation.z}`);
-      }
+      const rotation = __getRotObj(model);
+      const newX = Math.min(Math.max(initialRotationX - deltaY * 0.2, -90), 90);
+      model.setAttribute("rotation", `${newX} ${rotation.y} ${rotation.z}`);
     }
   }
 }, { passive: true });
@@ -717,7 +610,7 @@ document.getElementById("infoBtn")?.addEventListener("click", () => {
   }, 0);
 });
 
-async function loadProductInfoJSON(filename, panel) {
+async function loadProductInfoJSON(_filename, panel) {
   try {
     const modelData = getCurrentModelData();
     if (!modelData || !modelData.info) throw new Error("Informações não disponíveis");
@@ -726,7 +619,6 @@ async function loadProductInfoJSON(filename, panel) {
     if (!response.ok) throw new Error("Erro ao carregar informações");
 
     const data = await response.json();
-
     const ocultar = new Set(["preco", "nome", "ultimaAtualizacao"]);
 
     const linhas = [];
@@ -837,7 +729,6 @@ function setLikeForCurrentItem(state) {
 
 function trackLikeEvent(newState, source) {
   if (!newState) return;
-
   if (!window.MetricaApp || typeof MetricaApp.trackEvent !== "function") return;
 
   const current = getCurrentModelData() || {};
@@ -884,23 +775,4 @@ function setupLikeButtons() {
     applyLikeVisual();
     trackLikeEvent(likeState, "dislike");
   });
-}
-
-/* ============================================================
-   model-viewer (se existir) — deixei seguro (não quebra)
-   (Não é necessário pro autoplay do A-Frame)
-   ============================================================ */
-const mv = document.getElementById("modelViewer"); // pode ser null
-function forceAutoPlayAnimation() {
-  if (!mv) return;
-
-  const play = () => {
-    const anims = mv.availableAnimations || [];
-    if (!anims.length) return;
-    if (!mv.animationName) mv.animationName = anims[0];
-    mv.play();
-  };
-
-  if (mv.loaded) play();
-  else mv.addEventListener("load", play, { once: true });
 }

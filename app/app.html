@@ -4,6 +4,14 @@
   <meta charset="utf-8" />
   <title>Visualizador 3D com Botões</title>
 
+  <!-- Pré-conexões (acelera rede) -->
+  <link rel="preconnect" href="https://aframe.io" crossorigin>
+  <link rel="dns-prefetch" href="https://aframe.io">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://zoci6wmxqa.execute-api.us-east-1.amazonaws.com" crossorigin>
+  <link rel="dns-prefetch" href="https://zoci6wmxqa.execute-api.us-east-1.amazonaws.com">
+
   <!-- Cache-buster dinâmico (seguro) -->
   <script>
     const urlParams = new URLSearchParams(window.location.search);
@@ -32,7 +40,6 @@
       const API_METRICAS_BASE = "https://zoci6wmxqa.execute-api.us-east-1.amazonaws.com/metricas";
 
       // Parâmetros vindos do QR / redirect:
-      // Exemplo final:
       // app.html?u=ranie.black29%40gmail.com&i=mesa1&v=123&restaurante=ranie-black29-gmail-com&t=...
       const tenant =
         url.searchParams.get("restaurante") ||
@@ -57,11 +64,10 @@
       const persistKey = `arcardapio_metrics_v3_${tenant || "unknown"}`;
 
       window.__AR_METRICA_INIT = {
-        // POST /metricas/ingest
         endpoint: API_METRICAS_BASE + "/ingest",
         tenant: tenant,
-        table: table,   // usado como qrLabel/mesa no dashboard
-        qrId: qrId,     // ID estável do QR/mesa
+        table: table,
+        qrId: qrId,
         env: "prod",
         flushIntervalMs: 10000,
         maxBufferSize: 30,
@@ -70,9 +76,6 @@
         consentMetrics: true,
         heartbeatMs: 30000
       };
-
-      // Debug rápido (remova se quiser)
-      // console.log("[AR_METRICA_INIT]", window.__AR_METRICA_INIT);
     })();
   </script>
 </head>
@@ -191,6 +194,8 @@
       touch-action="none"
       crossorigin="anonymous"
     ></a-entity>
+
+    <!-- NÃO MEXI NA CÂMERA (intocada) -->
     <a-camera position="0 1.5 3"></a-camera>
   </a-scene>
 
@@ -199,6 +204,123 @@
     document.write(`<script src="../app/models.js${cacheBuster}"><\/script>`);
     document.write(`<script src="../app/metricaapp.js${cacheBuster}"><\/script>`);
     document.write(`<script src="../app/app.js${cacheBuster}"><\/script>`);
+    document.write(`<script src="../app/animacaoapp.js${cacheBuster}"><\/script>`);
+  </script>
+
+  <!-- PATCH 1: MATAR ANIMAÇÃO DO CHEF/LOGO (sem mexer em câmera / sem quebrar app.js) -->
+  <script>
+    (function () {
+      const el = document.getElementById("modelContainer");
+      if (!el) return;
+
+      function getSrc() {
+        // A-Frame gltf-model guarda URL no atributo
+        const v = el.getAttribute("gltf-model");
+        return String(v || "").toLowerCase();
+      }
+
+      function isChefOrLogo() {
+        const src = getSrc();
+        const isChef = src.includes("chef");
+
+        let isLogo = false;
+        try {
+          isLogo = (typeof currentCategory !== "undefined" && currentCategory === "logo");
+        } catch (e) {}
+
+        return isChef || isLogo;
+      }
+
+      function killAnimationsIfNeeded() {
+        if (!isChefOrLogo()) return;
+
+        // 1) Remove animation-mixer (se algum JS adicionou)
+        try {
+          if (el.hasAttribute("animation-mixer")) el.removeAttribute("animation-mixer");
+        } catch (e) {}
+
+        // 2) Remove animation (se algum JS adicionou animação do A-Frame)
+        try {
+          if (el.hasAttribute("animation")) el.removeAttribute("animation");
+        } catch (e) {}
+
+        // 3) Remove quaisquer animation__* (múltiplas animações)
+        try {
+          const attrs = el.getAttributeNames ? el.getAttributeNames() : [];
+          for (const a of attrs) {
+            if (a && a.startsWith("animation__")) el.removeAttribute(a);
+          }
+        } catch (e) {}
+      }
+
+      // Quando trocar o modelo
+      el.addEventListener("componentchanged", function (evt) {
+        if (!evt || evt.detail?.name !== "gltf-model") return;
+        // corta logo após mudança
+        killAnimationsIfNeeded();
+        // corta de novo após carregar malha (garante)
+        setTimeout(killAnimationsIfNeeded, 0);
+        setTimeout(killAnimationsIfNeeded, 250);
+        setTimeout(killAnimationsIfNeeded, 800);
+      });
+
+      // Quando carregar o modelo (caso seu app dispare)
+      el.addEventListener("model-loaded", function () {
+        killAnimationsIfNeeded();
+        setTimeout(killAnimationsIfNeeded, 250);
+      });
+
+      // Segurança: após load da página
+      window.addEventListener("load", function () {
+        killAnimationsIfNeeded();
+        setTimeout(killAnimationsIfNeeded, 500);
+      });
+    })();
+  </script>
+
+  <!-- PATCH 2: PREFETCH DO PRÓXIMO GLB (acelera troca de modelo quando URL é cacheável) -->
+  <script>
+    (function () {
+      function extractPossibleUrl(obj) {
+        if (!obj) return "";
+        return String(
+          obj.url ||
+          obj.src ||
+          obj.model ||
+          obj.modelUrl ||
+          obj.path ||
+          obj.gltf ||
+          ""
+        );
+      }
+
+      function prefetch(url) {
+        if (!url) return;
+        // evita lixo
+        if (!/^https?:\/\//i.test(url) && !url.startsWith("../") && !url.startsWith("./") && !url.startsWith("/")) return;
+
+        // link prefetch (não quebra nada se o browser ignorar)
+        const link = document.createElement("link");
+        link.rel = "prefetch";
+        link.as = "fetch";
+        link.href = url;
+        link.crossOrigin = "anonymous";
+        document.head.appendChild(link);
+
+        // fetch leve (se der, entra no cache)
+        try { fetch(url, { mode: "cors", credentials: "omit" }).catch(() => {}); } catch (e) {}
+      }
+
+      const original = window.changeModel;
+      if (typeof original !== "function") return;
+
+      window.changeModel = function (dir) {
+        const next = original(dir) || {};
+        const u = extractPossibleUrl(next);
+        if (u) prefetch(u);
+        return next;
+      };
+    })();
   </script>
 
   <!-- INTEGRAÇÃO DE MÉTRICAS + INFO / CATEGORIA -->
