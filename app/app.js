@@ -1,7 +1,9 @@
 /* ============================================================
-   app.js (BASE - SEM LÓGICA DE ANIMAÇÃO / SEM LÓGICA DIVERSOS)
-   ✅ Atualização: selectCategory() agora normaliza (Porções/Diversos etc.)
-   ✅ Não altera as outras funções
+   app.js (BASE + HOME4 FIX)
+   ✅ Mantém sua lógica original
+   ✅ Chef: começa na direção certa (Y=30) + centraliza X/Z + chão no Y=0 (resolve “na lateral”)
+   ✅ GLB anima via THREE.AnimationMixer + remove tracks scale bugadas (chef não some)
+   ✅ Auto-rotate controlável (diversos/chef)
    ============================================================ */
 "use strict";
 
@@ -217,6 +219,306 @@ function findNextVisibleIndex(cat, startIndex, dir) {
   return startIndex;
 }
 
+/* ============================================================
+   ✅ HOME4: AnimationMixer + Fix de scale + Chef Centralizado
+   ============================================================ */
+
+// Detecta Chef por nome/caminho
+function __isChefPath(path) {
+  return String(path || "").toLowerCase().includes("chef");
+}
+
+// Direção igual HOME
+const __CHEF_FRONT_Y = 0;
+
+// Fix scale tracks
+const __FIX_SCALE_TINY_THRESHOLD = 0.05;
+const __FIX_REMOVE_NEGATIVE_SCALE = true;
+
+// Mixer
+let __mixer = null;
+let __actions = [];
+let __mixerRAF = null;
+let __mixerLastTs = 0;
+
+// Cache de “centralização” por path (pra não aplicar 2x)
+const __centerApplied = Object.create(null);
+
+function __stopMixer() {
+  if (__mixerRAF) cancelAnimationFrame(__mixerRAF);
+  __mixerRAF = null;
+  __mixerLastTs = 0;
+
+  try {
+    __actions.forEach(a => { try { a.stop(); } catch (_) {} });
+  } catch (_) {}
+  __actions = [];
+  __mixer = null;
+}
+
+function __shouldDropScaleTrack(track) {
+  if (!track || !track.name || !track.name.endsWith(".scale")) return false;
+  const v = track.values;
+  if (!v || v.length < 3) return false;
+
+  let min = Infinity, max = -Infinity;
+  for (let i = 0; i < v.length; i++) {
+    const val = v[i];
+    if (val < min) min = val;
+    if (val > max) max = val;
+  }
+
+  if (max < __FIX_SCALE_TINY_THRESHOLD) return true;
+  if (__FIX_REMOVE_NEGATIVE_SCALE && min < 0) return true;
+  return false;
+}
+
+function __fixClipScaleTracks(clip) {
+  if (!clip || !clip.tracks || !clip.tracks.length) return clip;
+
+  let changed = false;
+  const tracks = clip.tracks.filter(tr => {
+    const drop = __shouldDropScaleTrack(tr);
+    if (drop) changed = true;
+    return !drop;
+  });
+
+  if (!changed) return clip;
+
+  const cloned = clip.clone();
+  cloned.tracks = tracks;
+  return cloned;
+}
+
+function __pickClips(anims) {
+  const bad = /(t[\-\s_]?pose|bindpose|rest)/i;
+  const good = anims.filter(a => a && a.name && !bad.test(a.name));
+  return good.length ? good : anims;
+}
+
+function __startMixerLoop() {
+  if (__mixerRAF) return;
+
+  const tick = (ts) => {
+    if (!__mixer) {
+      __mixerRAF = null;
+      return;
+    }
+
+    if (!__mixerLastTs) __mixerLastTs = ts;
+    const dt = Math.min(0.05, (ts - __mixerLastTs) / 1000);
+    __mixerLastTs = ts;
+
+    try { __mixer.update(dt); } catch (_) {}
+
+    __mixerRAF = requestAnimationFrame(tick);
+  };
+
+  __mixerRAF = requestAnimationFrame(tick);
+}
+
+function __applyChefFront(container, path) {
+  if (!container) return;
+  if (!__isChefPath(path)) return;
+  container.setAttribute("rotation", `0 ${__CHEF_FRONT_Y} 0`);
+}
+
+/**
+ * ✅ NOVO (o que resolve seu problema):
+ * Centraliza o modelo no meio (X/Z) e coloca o “chão” no Y=0,
+ * baseado no bounding box do THREE model.
+ */
+function __centerAndGroundThreeModel(threeModel, cacheKey) {
+  if (!window.THREE || !threeModel) return;
+  if (__centerApplied[cacheKey]) return;
+
+  try {
+    const box = new THREE.Box3().setFromObject(threeModel);
+    const center = box.getCenter(new THREE.Vector3());
+
+    // centraliza X/Z (meio da tela)
+    threeModel.position.x -= center.x;
+    threeModel.position.z -= center.z;
+
+    // recalcula após centralizar
+    const box2 = new THREE.Box3().setFromObject(threeModel);
+
+    // joga o “pé” no chão
+    threeModel.position.y -= box2.min.y;
+
+    __centerApplied[cacheKey] = true;
+  } catch (e) {
+    console.warn("[CENTER] falha ao centralizar:", e);
+  }
+}
+
+function __setupAnimationsFromModelLoadedEvent(ev, path) {
+  if (!window.THREE) return;
+
+  const threeModel = ev && ev.detail && ev.detail.model ? ev.detail.model : null;
+  if (!threeModel) return;
+
+  const animations = Array.isArray(threeModel.animations) ? threeModel.animations : [];
+  if (!animations.length) {
+    __stopMixer();
+    return;
+  }
+
+  __stopMixer();
+
+  try {
+    __mixer = new THREE.AnimationMixer(threeModel);
+
+    const chosen = __pickClips(animations).map(__fixClipScaleTracks);
+
+    for (const clip of chosen) {
+      try {
+        const action = __mixer.clipAction(clip);
+        action.reset();
+        action.setLoop(THREE.LoopRepeat, Infinity);
+        action.play();
+        __actions.push(action);
+      } catch (_) {}
+    }
+
+    __startMixerLoop();
+  } catch (e) {
+    console.warn("[ANIM] Falha ao iniciar mixer:", e);
+    __stopMixer();
+  }
+}
+
+// ==================== CHEF: ANDAR RETO IGUAL HOME (walk-depth-loop) ====================
+const __CHEF_WALK = {
+  enabled: true,
+  startZ: -8,
+  endZ: -3,
+  startScale: 0.15,
+  endScale: 1.0,
+  durMs: 4500,
+  pauseMs: 400,
+
+  raf: null,
+  t0: null,
+  phase: "move",
+  pauseT0: 0,
+
+  baseX: 0,
+  baseY: 0,
+  zOffset: 0
+};
+
+function __easeOutCubic(p) { return 1 - Math.pow(1 - p, 3); }
+
+function __stopChefWalk() {
+  if (__CHEF_WALK.raf) cancelAnimationFrame(__CHEF_WALK.raf);
+  __CHEF_WALK.raf = null;
+  __CHEF_WALK.t0 = null;
+  __CHEF_WALK.phase = "move";
+}
+
+function __startChefWalk(container) {
+  if (!container || !container.object3D) return;
+  if (!__CHEF_WALK.enabled) return;
+
+  __stopChefWalk();
+
+  const el = container.object3D;
+  __CHEF_WALK.t0 = null;
+  __CHEF_WALK.phase = "move";
+
+  const tick = (t) => {
+    // pausa loop se usuário estiver tocando (pra não brigar)
+    if (__isTouching) {
+      __CHEF_WALK.raf = requestAnimationFrame(tick);
+      return;
+    }
+
+    if (__CHEF_WALK.t0 == null) __CHEF_WALK.t0 = t;
+
+    if (__CHEF_WALK.phase === "move") {
+      const p = Math.min(1, (t - __CHEF_WALK.t0) / Math.max(1, __CHEF_WALK.durMs));
+      const e = __easeOutCubic(p);
+
+      const z = (__CHEF_WALK.startZ + (__CHEF_WALK.endZ - __CHEF_WALK.startZ) * e) + __CHEF_WALK.zOffset;
+      const s = __CHEF_WALK.startScale + (__CHEF_WALK.endScale - __CHEF_WALK.startScale) * e;
+
+      el.position.x = __CHEF_WALK.baseX;
+      el.position.y = __CHEF_WALK.baseY;
+      el.position.z = z;
+
+      el.scale.set(s, s, s);
+
+      if (p >= 1) {
+        __CHEF_WALK.phase = "pause";
+        __CHEF_WALK.pauseT0 = t;
+      }
+
+      __CHEF_WALK.raf = requestAnimationFrame(tick);
+      return;
+    }
+
+    if (__CHEF_WALK.phase === "pause") {
+      if ((t - __CHEF_WALK.pauseT0) >= Math.max(0, __CHEF_WALK.pauseMs)) {
+        __CHEF_WALK.t0 = null;
+        __CHEF_WALK.phase = "move";
+      }
+      __CHEF_WALK.raf = requestAnimationFrame(tick);
+      return;
+    }
+  };
+
+  __CHEF_WALK.raf = requestAnimationFrame(tick);
+}
+
+// Centraliza o chef SEM mexer no threeModel.position (pra mixer não sobrescrever)
+function __computeChefOffsets(threeModel) {
+  if (!window.THREE || !threeModel) return { xOff: 0, yOff: 0, zOff: 0 };
+
+  try {
+    const box = new THREE.Box3().setFromObject(threeModel);
+    const center = box.getCenter(new THREE.Vector3());
+
+    // X/Z: centraliza (no entity)
+    const xOff = -center.x;
+    const zOff = -center.z;
+
+    // Y: põe “pé” no chão (no entity)
+    const yOff = -box.min.y;
+
+    return { xOff, yOff, zOff };
+  } catch (_) {
+    return { xOff: 0, yOff: 0, zOff: 0 };
+  }
+}
+
+// Flags de auto-rotate (animacaoapp.js controla "diversos")
+let __autoRotateBaseEnabled = true;
+let __autoRotateDisabledByDiversos = false;
+
+window.__setAutoRotateEnabled = function (enabled) {
+  __autoRotateBaseEnabled = !!enabled;
+};
+
+window.__setDiversosAutoRotateDisabled = function (disabled) {
+  __autoRotateDisabledByDiversos = !!disabled;
+};
+
+function __isAutoRotateBlockedNow() {
+  const isDiversos =
+    currentCategory === "diversos" ||
+    (currentModelPath && String(currentModelPath).toLowerCase().includes("/diversos/"));
+
+  const isChef = __isChefPath(currentModelPath);
+
+  if (!__autoRotateBaseEnabled) return true;
+  if (__autoRotateDisabledByDiversos) return true;
+  if (isDiversos) return true;
+  if (isChef) return true;
+
+  return false;
+}
+
 async function loadModel(path) {
   const container = document.querySelector("#modelContainer");
   const loadingIndicator = document.getElementById("loadingIndicator");
@@ -235,8 +537,12 @@ async function loadModel(path) {
   loadingIndicator.innerText = "Carregando...";
   container.removeAttribute("gltf-model");
 
-  // (base) rotação padrão
-  container.setAttribute("rotation", "0 -45 0");
+  // rotação padrão
+  if (__isChefPath(path)) {
+    container.setAttribute("rotation", `0 ${__CHEF_FRONT_Y} 0`);
+  } else {
+    container.setAttribute("rotation", "0 -45 0");
+  }
 
   // mantém posição padrão sem quebrar ajustes manuais
   const rawPos = container.getAttribute("position");
@@ -253,11 +559,39 @@ async function loadModel(path) {
     pz = Number.isFinite(parts[2]) ? parts[2] : 0;
   }
 
+  // ✅ Chef: zera X/Z do container pra evitar nascer “pro lado”
+  if (__isChefPath(path)) {
+    px = 0;
+    pz = 0;
+  }
+
   container.setAttribute("position", `${px} ${py} ${pz}`);
   container.setAttribute("scale", "1 1 1");
 
   currentModelPath = path;
   const modelUrl = addBust(path);
+
+  // limpa mixer ao trocar
+  __stopMixer();
+
+  // Quando o modelo carregar: direção + centralização + animação
+  const onModelLoaded = (ev) => {
+    container.removeEventListener("model-loaded", onModelLoaded);
+
+    // chef: força frente
+    __applyChefFront(container, path);
+
+    // ✅ chef: centraliza o THREE model (resolve “lateral”)
+    if (__isChefPath(path)) {
+      const threeModel = ev && ev.detail && ev.detail.model ? ev.detail.model : null;
+      __centerAndGroundThreeModel(threeModel, path);
+    }
+
+    // animação (mixer + fix scale)
+    __setupAnimationsFromModelLoadedEvent(ev, path);
+  };
+
+  container.addEventListener("model-loaded", onModelLoaded);
 
   if (modelCache[modelUrl]) {
     container.setAttribute("gltf-model", modelCache[modelUrl]);
@@ -447,7 +781,7 @@ function verificarEstadoInicial() {
 
 /* ============================================================
    ROTAÇÃO AUTOMÁTICA BASE (SEM REGRAS DE "DIVERSOS")
-   - O animacaoapp.js é quem vai travar/alterar quando precisar
+   - Agora usa bloqueio central (chef/diversos/flags)
    ============================================================ */
 let __isTouching = false;
 
@@ -468,13 +802,7 @@ function __getRotObj(el) {
 
 setInterval(() => {
   if (__isTouching) return;
-
-  // ✅ trava autorotation somente em "diversos"
-  const isDiversos =
-    currentCategory === "diversos" ||
-    (currentModelPath && String(currentModelPath).toLowerCase().includes("/diversos/"));
-
-  if (isDiversos) return;
+  if (__isAutoRotateBlockedNow()) return;
 
   const model = document.querySelector("#modelContainer");
   if (!model || !model.getAttribute("gltf-model")) return;
