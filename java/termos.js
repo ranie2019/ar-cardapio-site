@@ -1,9 +1,11 @@
 /* =========================================================================
-   termos.js  —  Interações da página “Termos de Uso”
-   - Rolagem suave para âncoras do sumário
-   - Destaque do item ativo no sumário conforme a rolagem
-   - Numeração automática dos títulos H2 (opcional)
-   - Suporte a seções colapsáveis (data-collapsible)
+   termos.js — Interações da página “Termos de Uso” (robusto + clean)
+   - Rolagem suave para âncoras do sumário (com offset)
+   - Destaque do item ativo no sumário (scroll-spy estável)
+   - Numeração automática dos H2 (sem duplicar e sem quebrar IDs)
+   - Suporte a blocos colapsáveis (data-collapsible)
+   - Suporte a hash inicial + voltar/avançar (hashchange)
+   - Respeita prefers-reduced-motion
    ========================================================================= */
 
 (function () {
@@ -13,19 +15,54 @@
   const SELECTORS = {
     toc: ".toc",
     tocLinks: ".toc a[href^='#']",
-    headings: "h2[id]" // titulos com id (para ancoragem)
+    headings: "h2[id]"
   };
 
-  const SCROLL_OFFSET = 80;      // margem visual ao rolar até o título
-  const ACTIVE_CLASS  = "is-active";
+  const SCROLL_OFFSET = 80;
+  const ACTIVE_CLASS = "is-active";
 
   /* ------------------------------- Utils -------------------------------- */
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-  const $  = (sel, root = document) => root.querySelector(sel);
+  const $ = (sel, root = document) => root.querySelector(sel);
 
-  function smoothScrollTo(targetY, duration = 400) {
-    const startY = window.scrollY || window.pageYOffset;
-    const distance = targetY - startY;
+  const prefersReducedMotion =
+    window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function safeDecode(str) {
+    try {
+      return decodeURIComponent(str);
+    } catch {
+      return str;
+    }
+  }
+
+  function getIdFromHref(href) {
+    const raw = safeDecode(String(href || ""));
+    if (!raw.startsWith("#")) return "";
+    return raw.slice(1).trim();
+  }
+
+  function clamp(n, a, b) {
+    return Math.max(a, Math.min(b, n));
+  }
+
+  function getTopWithOffset(el) {
+    const rect = el.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
+    return rect.top + scrollTop - SCROLL_OFFSET;
+  }
+
+  function smoothScrollTo(targetY, duration = 450) {
+    const startY = window.scrollY || window.pageYOffset || 0;
+    const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    const endY = clamp(targetY, 0, maxY);
+
+    if (prefersReducedMotion || duration <= 0) {
+      window.scrollTo(0, endY);
+      return;
+    }
+
+    const distance = endY - startY;
     const startTime = performance.now();
 
     function step(now) {
@@ -39,97 +76,119 @@
     requestAnimationFrame(step);
   }
 
-  function getTopWithOffset(el) {
-    const rect = el.getBoundingClientRect();
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-    return rect.top + scrollTop - SCROLL_OFFSET;
+  function scrollToEl(el, { updateHash = true, smooth = true } = {}) {
+    if (!el) return;
+    const y = getTopWithOffset(el);
+
+    if (updateHash && el.id) {
+      // pushState mantém histórico (melhor do que replaceState em navegação)
+      history.pushState(null, "", `#${encodeURIComponent(el.id)}`);
+    }
+
+    smoothScrollTo(y, smooth ? 450 : 0);
   }
 
   /* --------------------- Numeração automática (opcional) ----------------- */
+  // Mantém IDs intactos e evita duplicar (usa dataset + span .h-num)
   function autoNumberH2() {
     const list = $$(SELECTORS.headings);
-    list.forEach((h2, i) => {
-      const n = i + 1;
-      // evita duplicar numeração se já existir
-      if (!h2.dataset.numbered) {
-        h2.dataset.numbered = "true";
-        const txt = h2.textContent.trim();
-        h2.textContent = `${n}. ${txt}`;
-      }
+    if (!list.length) return;
+
+    let n = 0;
+    list.forEach((h2) => {
+      n += 1;
+
+      // evita duplicar
+      if (h2.dataset.numbered) return;
+      h2.dataset.numbered = "true";
+
+      // injeta prefixo sem destruir HTML interno
+      h2.innerHTML = `<span class="h-num">${n}.</span> ${h2.innerHTML}`;
     });
   }
 
   /* ------------------------ Destaque no sumário -------------------------- */
   function buildActiveObserver() {
     const links = $$(SELECTORS.tocLinks);
+    if (!links.length) return;
+
     const map = new Map(); // id -> link
     links.forEach((a) => {
-      const id = decodeURIComponent(a.getAttribute("href").slice(1));
-      map.set(id, a);
+      const id = getIdFromHref(a.getAttribute("href"));
+      if (id) map.set(id, a);
     });
 
-    // limpa estado
+    const headings = $$(SELECTORS.headings).filter((el) => map.has(el.id));
+    if (!headings.length) return;
+
+    let activeId = "";
+
     function clearActive() {
       links.forEach((a) => a.classList.remove(ACTIVE_CLASS));
     }
 
-    // usa IntersectionObserver para saber o título visível
-    const headings = $$(SELECTORS.headings).filter((el) =>
-      map.has(el.id)
-    );
-
-    if ("IntersectionObserver" in window) {
-      const io = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              const id = entry.target.id;
-              clearActive();
-              const link = map.get(id);
-              if (link) link.classList.add(ACTIVE_CLASS);
-            }
-          });
-        },
-        {
-          root: null,
-          rootMargin: `-${SCROLL_OFFSET + 5}px 0px -60% 0px`,
-          threshold: 0
-        }
-      );
-      headings.forEach((h) => io.observe(h));
-    } else {
-      // fallback: atualiza em scroll
-      function onScrollFallback() {
-        const top = window.scrollY + SCROLL_OFFSET + 1;
-        let currentId = null;
-        headings.forEach((h) => {
-          if (h.offsetTop <= top) currentId = h.id;
-        });
-        clearActive();
-        if (currentId && map.get(currentId)) {
-          map.get(currentId).classList.add(ACTIVE_CLASS);
-        }
-      }
-      window.addEventListener("scroll", onScrollFallback, { passive: true });
-      onScrollFallback();
+    function setActive(id) {
+      if (!id || id === activeId) return;
+      const link = map.get(id);
+      if (!link) return;
+      clearActive();
+      link.classList.add(ACTIVE_CLASS);
+      activeId = id;
     }
+
+    // Scroll-spy estável: usa posição dos headings (mais previsível que IO “piscando”)
+    function getCurrentSectionId() {
+      const threshold = SCROLL_OFFSET + 6;
+      let current = headings[0].id;
+
+      for (const h of headings) {
+        const top = h.getBoundingClientRect().top;
+        if (top <= threshold) current = h.id;
+        else break;
+      }
+      return current;
+    }
+
+    // rAF throttle
+    let ticking = false;
+    function update() {
+      ticking = false;
+      setActive(getCurrentSectionId());
+    }
+    function requestUpdate() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(update);
+    }
+
+    // Atualiza em scroll/resize
+    window.addEventListener("scroll", requestUpdate, { passive: true });
+    window.addEventListener("resize", requestUpdate);
+
+    // Inicial
+    requestUpdate();
+
+    return { requestUpdate, setActive };
   }
 
   /* ------------------------- Rolagem suave (TOC) ------------------------- */
   function enableSmoothAnchorScroll() {
-    $$(SELECTORS.tocLinks).forEach((a) => {
+    const links = $$(SELECTORS.tocLinks);
+    if (!links.length) return;
+
+    links.forEach((a) => {
       a.addEventListener("click", (e) => {
-        const hash = a.getAttribute("href");
-        if (!hash || !hash.startsWith("#")) return;
-        const target = document.getElementById(decodeURIComponent(hash.slice(1)));
+        // respeita abrir em nova aba/janela
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+
+        const id = getIdFromHref(a.getAttribute("href"));
+        if (!id) return;
+
+        const target = document.getElementById(id);
         if (!target) return;
 
         e.preventDefault();
-        const y = getTopWithOffset(target);
-        smoothScrollTo(y, 450);
-
-        // opcional: atualizar hash sem “pulo”
-        history.replaceState(null, "", hash);
+        scrollToEl(target, { updateHash: true, smooth: true });
       });
     });
   }
@@ -138,19 +197,50 @@
   // Para qualquer bloco com data-collapsible, cria um toggle simples
   function wireCollapsibles() {
     const blocks = $$("[data-collapsible]");
+    if (!blocks.length) return;
+
     blocks.forEach((el) => {
       const header = $("h3, h4, summary", el) || el.firstElementChild;
-      const body   = $(".collapsible-body", el) || header?.nextElementSibling;
+      const body = $(".collapsible-body", el) || (header ? header.nextElementSibling : null);
       if (!header || !body) return;
 
+      const isInitiallyOpen = String(el.dataset.open || "").toLowerCase() === "true";
+
       header.style.cursor = "pointer";
-      body.style.display = el.dataset.open === "true" ? "block" : "none";
+      body.style.display = isInitiallyOpen ? "block" : "none";
+      el.dataset.open = String(isInitiallyOpen);
 
       header.addEventListener("click", () => {
-        const isOpen = body.style.display !== "none";
+        const isOpen = el.dataset.open === "true";
         body.style.display = isOpen ? "none" : "block";
         el.dataset.open = String(!isOpen);
       });
+    });
+  }
+
+  /* ------------------- Hash inicial + voltar/avançar --------------------- */
+  function handleInitialHash() {
+    const id = getIdFromHref(location.hash);
+    if (!id) return;
+
+    const target = document.getElementById(id);
+    if (!target) return;
+
+    // espera layout/fonts
+    requestAnimationFrame(() => {
+      scrollToEl(target, { updateHash: false, smooth: false });
+    });
+  }
+
+  function bindHashChange() {
+    window.addEventListener("hashchange", () => {
+      const id = getIdFromHref(location.hash);
+      if (!id) return;
+
+      const target = document.getElementById(id);
+      if (!target) return;
+
+      scrollToEl(target, { updateHash: false, smooth: true });
     });
   }
 
@@ -160,9 +250,10 @@
     enableSmoothAnchorScroll();
     buildActiveObserver();
     wireCollapsibles();
+    bindHashChange();
+    handleInitialHash();
   }
 
-  // DOM pronto
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
   } else {

@@ -59,6 +59,7 @@ const models = {
   porcoes: [],
   diversos: [
     { path: `${modelBaseURL}/diversos/chef.glb`, price: 0.00, info: null },
+    { path: `${modelBaseURL}/diversos/mickey.glb`, price: 0.00, info: null }
   ]
 };
 

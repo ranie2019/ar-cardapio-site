@@ -5,126 +5,205 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Política de Privacidade • ARCardápio</title>
 
+  <meta name="description" content="Política de Privacidade do ARCardápio em conformidade com a LGPD (Lei nº 13.709/2018)." />
+  <meta name="robots" content="index,follow" />
+  <meta name="color-scheme" content="dark light" />
+
   <!-- Estilos da página de Política (usa mesma paleta do site) -->
   <link rel="stylesheet" href="../css/privacidade.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
+
 <body>
   <div class="page">
     <header class="header">
       <h1>Política de Privacidade</h1>
-      <p class="muted">Última atualização: 13/10/2025</p>
     </header>
 
     <div class="grid">
       <!-- SUMÁRIO (fica fixo/colado ao rolar) -->
-      <aside class="card toc">
+      <aside class="card toc" aria-label="Sumário da Política de Privacidade">
         <h3>Sumário</h3>
-        <ul class="toc__list">
-          <li><a class="toc__link" href="#dados-coletados">1. Dados que coletamos</a></li>
-          <li><a class="toc__link" href="#bases-fins">2. Finalidades e bases legais</a></li>
-          <li><a class="toc__link" href="#compartilhamento">3. Compartilhamento com terceiros</a></li>
-          <li><a class="toc__link" href="#cookies">4. Cookies e tecnologias semelhantes</a></li>
-          <li><a class="toc__link" href="#retencao">5. Retenção e descarte</a></li>
-          <li><a class="toc__link" href="#seguranca">6. Segurança da informação</a></li>
-          <li><a class="toc__link" href="#direitos">7. Seus direitos (LGPD)</a></li>
-          <li><a class="toc__link" href="#transferencias">8. Transferências internacionais</a></li>
-          <li><a class="toc__link" href="#menores">9. Dados de crianças e adolescentes</a></li>
-          <li><a class="toc__link" href="#alteracoes">10. Alterações desta política</a></li>
-          <li><a class="toc__link" href="#contato">11. Como falar com o Encarregado</a></li>
-        </ul>
+        <nav aria-label="Navegação do sumário">
+          <ul class="toc__list">
+            <li><a class="toc__link" href="#dados-coletados">1. Dados que coletamos</a></li>
+            <li><a class="toc__link" href="#bases-fins">2. Finalidades e bases legais</a></li>
+            <li><a class="toc__link" href="#compartilhamento">3. Compartilhamento com terceiros</a></li>
+            <li><a class="toc__link" href="#cookies">4. Cookies e tecnologias semelhantes</a></li>
+            <li><a class="toc__link" href="#retencao">5. Retenção e descarte</a></li>
+            <li><a class="toc__link" href="#seguranca">6. Segurança da informação</a></li>
+            <li><a class="toc__link" href="#direitos">7. Seus direitos (LGPD)</a></li>
+            <li><a class="toc__link" href="#transferencias">8. Transferências internacionais</a></li>
+            <li><a class="toc__link" href="#menores">9. Dados de crianças e adolescentes</a></li>
+            <li><a class="toc__link" href="#alteracoes">10. Alterações desta política</a></li>
+            <li><a class="toc__link" href="#contato">11. Como falar com o Encarregado</a></li>
+          </ul>
+        </nav>
       </aside>
 
       <!-- CONTEÚDO -->
       <main class="card content">
         <p>
           Esta Política de Privacidade descreve como o <strong>ARCardápio</strong> (“nós”, “nosso”, “plataforma”)
-          coleta, utiliza, compartilha e protege os seus dados pessoais em conformidade com a
+          coleta, utiliza, compartilha e protege dados pessoais, em conformidade com a
           <strong>Lei Geral de Proteção de Dados Pessoais – LGPD (Lei nº 13.709/2018)</strong>.
         </p>
 
+        <p class="note" style="margin-top:10px;">
+          Termos rápidos: <strong>Controlador</strong> é quem decide “por que” e “como” os dados serão tratados.
+          <strong>Operador</strong> é quem trata dados em nome do controlador (ex.: provedores de infraestrutura e pagamento).
+        </p>
+
         <h2 id="dados-coletados">Dados que coletamos</h2>
-        <p>Coletamos apenas o necessário para operar a plataforma e prestar suporte:</p>
+        <p>Coletamos apenas o necessário para operar a plataforma, oferecer suporte, segurança e cobrança:</p>
         <ul>
-          <li><strong>Cadastro/Autenticação:</strong> nome, e-mail, telefone (opcional), senha (hash/criptografada).</li>
-          <li><strong>Assinatura e cobrança:</strong> identificadores do cliente em gateways de pagamento
-            (ex.: Asaas/Mercado Pago), dados do titular necessários para autorização da transação
-            (nome, CPF/CNPJ, endereço e contato).
-            <span class="note" style="display:block;margin-top:8px;">Não armazenamos números completos de cartão.</span>
+          <li>
+            <strong>Cadastro/Autenticação:</strong>
+            nome (quando informado), e-mail, telefone (opcional), senha (<strong>hash</strong>), e dados básicos de conta/empresa (ex.: empresa, CPF/CNPJ quando informado).
           </li>
-          <li><strong>Uso do sistema:</strong> logs técnicos (IP, device/navegador, data/hora, páginas acessadas) para segurança e auditoria.</li>
-          <li><strong>Suporte:</strong> mensagens e anexos enviados por você em formulários ou e-mail.</li>
+
+          <li>
+            <strong>Assinatura e cobrança:</strong>
+            identificadores do cliente no gateway de pagamento (ex.: Asaas/Mercado Pago) e dados necessários
+            para emissão de cobrança e autorização de transação (nome, CPF/CNPJ, endereço e contato, quando aplicável).
+            <span class="note" style="display:block;margin-top:8px;">
+              Não armazenamos números completos de cartão. Quando há cartão, tokenização e processamento ficam com o provedor de pagamento.
+            </span>
+          </li>
+
+          <li>
+            <strong>Uso do sistema (painel, QR e AR):</strong>
+            dados técnicos e operacionais para funcionamento e segurança, como logs de acesso (IP, data/hora),
+            informações do dispositivo/navegador, eventos de uso (ex.: abertura do cardápio, item visualizado,
+            tempo de sessão, cliques em informações) e identificadores operacionais (ex.: tenant/conta e QR/mesa)
+            para atribuição correta das métricas.
+          </li>
+
+          <li>
+            <strong>Suporte:</strong>
+            mensagens, dados e anexos que você enviar ao solicitar suporte.
+          </li>
+
+          <li>
+            <strong>Comunicações transacionais:</strong>
+            dados necessários para enviar confirmação de conta, redefinição de senha, avisos de pagamento/assinatura e informações essenciais do serviço.
+          </li>
         </ul>
+
+        <p class="note" style="margin-top:10px;">
+          <strong>Dados sensíveis:</strong> não solicitamos dados sensíveis (ex.: saúde, biometria, religião, opinião política) para operar o ARCardápio.
+          Se você enviar algo sensível no suporte, isso pode ser tratado apenas para atender sua solicitação.
+        </p>
 
         <h2 id="bases-fins">Finalidades e bases legais</h2>
         <ul>
           <li><strong>Criar e manter sua conta</strong> — execução de contrato (art. 7º, V).</li>
-          <li><strong>Processar pagamentos e emitir cobranças/recibos</strong> — execução de contrato (art. 7º, V) e cumprimento de obrigação legal (fiscal).</li>
-          <li><strong>Segurança, prevenção a fraudes e auditoria</strong> — legítimo interesse (art. 7º, IX).</li>
-          <li><strong>Comunicações transacionais</strong> (confirmação de conta, redefinição de senha, status de pagamento, avisos de renovação) — execução de contrato (art. 7º, V).</li>
+          <li><strong>Disponibilizar recursos do ARCardápio (painel, QR e AR)</strong> — execução de contrato (art. 7º, V).</li>
+          <li><strong>Processar pagamentos e emitir cobranças/recibos</strong> — execução de contrato (art. 7º, V) e/ou cumprimento de obrigação legal/regulatória (quando aplicável).</li>
+          <li><strong>Segurança, prevenção a fraudes e auditoria</strong> — legítimo interesse (art. 7º, IX) e/ou obrigação legal (quando aplicável).</li>
+          <li><strong>Comunicações transacionais</strong> (conta, senha, status de pagamento, renovação) — execução de contrato (art. 7º, V).</li>
           <li><strong>Suporte ao cliente</strong> — execução de contrato e legítimo interesse.</li>
-          <li><strong>Melhoria do serviço</strong> (métricas agregadas e anônimas) — legítimo interesse.</li>
+          <li><strong>Melhoria do serviço</strong> (métricas agregadas/anônimas, desempenho, estabilidade) — legítimo interesse (art. 7º, IX).</li>
         </ul>
+
+        <p class="note" style="margin-top:10px;">
+          Quando usarmos <strong>consentimento</strong> (ex.: cookies opcionais), você poderá revogar a qualquer momento, sem afetar o que já foi realizado de forma válida.
+        </p>
 
         <h2 id="compartilhamento">Compartilhamento com terceiros</h2>
-        <p>Compartilhamos dados apenas com provedores essenciais para a operação:</p>
+        <p>Compartilhamos dados apenas com provedores essenciais para operar o serviço:</p>
         <ul>
-          <li><strong>Infraestrutura e hospedagem:</strong> Amazon Web Services (AWS) — armazenamento, segurança e envio de e-mails transacionais (Amazon SES).</li>
-          <li><strong>Pagamentos:</strong> Asaas e/ou Mercado Pago — tokenização de cartão, cobranças, PIX, faturas e conciliação.</li>
-          <li><strong>Analytics/Logs de segurança</strong> (quando habilitado): coleta anonimizada/aglomerada.</li>
+          <li>
+            <strong>Infraestrutura e hospedagem:</strong>
+            Amazon Web Services (AWS) — hospedagem, armazenamento, banco de dados, segurança e (quando usado) e-mails transacionais (ex.: SES).
+          </li>
+
+          <li>
+            <strong>Pagamentos:</strong>
+            Asaas e/ou Mercado Pago — criação de cobranças, PIX, faturas, conciliação e, quando aplicável, tokenização e fluxo de cartão.
+          </li>
+
+          <li>
+            <strong>Analytics/Logs de segurança (quando habilitado):</strong>
+            ferramentas de monitoramento e auditoria, com foco em dados técnicos e/ou agregados.
+          </li>
         </ul>
-        <p>Esses terceiros tratam dados sob nossas instruções contratuais e implementam controles de segurança compatíveis.</p>
+
+        <p>
+          Esses terceiros tratam dados sob nossas instruções e com medidas de segurança compatíveis.
+          Também podemos compartilhar dados quando exigido por lei, ordem judicial/autoridade competente ou para exercício regular de direitos.
+        </p>
 
         <h2 id="cookies">Cookies e tecnologias semelhantes</h2>
-        <p>Usamos cookies estritamente necessários (login, sessão e segurança). Cookies opcionais (métricas/analytics) só são utilizados quando estritamente necessários e, se aplicável, serão apresentados para seu consentimento.</p>
+        <p>
+          Usamos cookies/armazenamento local <strong>estritamente necessários</strong> para login, sessão, segurança e funcionamento da plataforma.
+          Cookies <strong>opcionais</strong> (ex.: analytics) só serão usados quando necessários e, se aplicável, com consentimento.
+        </p>
+        <ul>
+          <li><strong>Necessários:</strong> autenticação, manutenção de sessão, prevenção de fraude e segurança.</li>
+          <li><strong>Opcionais:</strong> métricas/analytics para entender uso e melhorar o produto (quando habilitado).</li>
+        </ul>
 
         <h2 id="retencao">Retenção e descarte</h2>
         <ul>
-          <li>Dados de conta: mantidos enquanto a conta estiver ativa e por período adicional mínimo para cumprimento de obrigações legais.</li>
-          <li>Documentos de cobrança/notas: prazos legais fiscais aplicáveis.</li>
-          <li>Logs de segurança: prazos curtos e rotativos, salvo necessidade de investigação.</li>
-          <li>Após os prazos, realizamos <strong>anonimização</strong> ou <strong>eliminação segura</strong>.</li>
+          <li><strong>Dados de conta:</strong> enquanto a conta estiver ativa e por período adicional mínimo para obrigações legais e defesa em demandas.</li>
+          <li><strong>Dados de cobrança/recibos:</strong> conforme prazos legais fiscais aplicáveis.</li>
+          <li><strong>Logs e métricas de segurança:</strong> prazos curtos e rotativos, salvo necessidade de investigação/auditoria/cumprimento legal.</li>
+          <li><strong>Após os prazos:</strong> aplicamos <strong>anonimização</strong> ou <strong>eliminação segura</strong>, conforme aplicável.</li>
         </ul>
 
         <h2 id="seguranca">Segurança da informação</h2>
         <ul>
-          <li>Criptografia em trânsito (HTTPS/TLS) e em repouso para dados sensíveis quando aplicável.</li>
-          <li>Senhas armazenadas com hash seguro (não mantemos a senha em texto puro).</li>
-          <li>Controle de acesso e registros de auditoria.</li>
-          <li>Segregação de ambientes e backups.</li>
+          <li>Criptografia em trânsito (HTTPS/TLS) e, quando aplicável, em repouso para dados sensíveis.</li>
+          <li>Senhas armazenadas com hash seguro (não mantemos senha em texto puro).</li>
+          <li>Controle de acesso, segregação de ambientes e registros de auditoria.</li>
+          <li>Monitoramento, backups e medidas para reduzir risco de acesso não autorizado.</li>
         </ul>
+
+        <p class="note" style="margin-top:10px;">
+          Mesmo com medidas técnicas e organizacionais, nenhum sistema é 100% invulnerável. Se ocorrer incidente relevante,
+          adotaremos ações de contenção e comunicação conforme exigências legais aplicáveis.
+        </p>
 
         <h2 id="direitos">Seus direitos (LGPD)</h2>
         <p>Você pode, a qualquer momento:</p>
         <ul>
           <li>Confirmar a existência de tratamento e <strong>acessar</strong> seus dados;</li>
           <li>Solicitar <strong>correção</strong> de dados incompletos, inexatos ou desatualizados;</li>
-          <li>Solicitar a <strong>anonimização, bloqueio ou eliminação</strong> de dados desnecessários ou excessivos;</li>
-          <li>Solicitar a <strong>portabilidade</strong> (quando aplicável);</li>
-          <li>Solicitar a <strong>eliminação</strong> dos dados tratados com consentimento (quando for a base legal);</li>
-          <li>Obter informações sobre o <strong>compartilhamento</strong> com terceiros;</li>
+          <li>Solicitar <strong>anonimização, bloqueio ou eliminação</strong> de dados desnecessários ou excessivos;</li>
+          <li>Solicitar <strong>portabilidade</strong> (quando aplicável);</li>
+          <li>Solicitar <strong>eliminação</strong> de dados tratados com consentimento (quando essa for a base legal);</li>
+          <li>Obter informações sobre <strong>compartilhamento</strong> com terceiros;</li>
           <li>Revogar consentimentos, quando a base legal for consentimento.</li>
         </ul>
-        <p>Para exercer seus direitos, entre em contato no canal abaixo.</p>
+        <p>
+          Para exercer seus direitos, entre em contato no canal abaixo. Podemos solicitar confirmação de identidade para proteger sua conta.
+        </p>
 
         <h2 id="transferencias">Transferências internacionais</h2>
         <p>
           Nossos provedores (como AWS) podem operar servidores fora do Brasil.
-          Nesses casos, adotamos cláusulas contratuais e medidas adequadas para garantir um nível de proteção compatível com a LGPD.
+          Nesses casos, adotamos medidas contratuais e técnicas para garantir um nível de proteção compatível com a LGPD.
         </p>
 
         <h2 id="menores">Dados de crianças e adolescentes</h2>
-        <p>O ARCardápio não é destinado a menores de 18 anos. Não coletamos dados de menores de forma intencional.</p>
+        <p>
+          O ARCardápio não é destinado a menores de 18 anos. Não coletamos dados de menores de forma intencional.
+          Se você acreditar que houve coleta indevida, fale conosco para remoção e medidas cabíveis.
+        </p>
 
         <h2 id="alteracoes">Alterações desta política</h2>
-        <p>Podemos atualizar esta política para refletir mudanças legais ou de produto. Publicaremos a nova versão com a data de atualização no topo desta página.</p>
+        <p>
+          Podemos atualizar esta política para refletir mudanças legais, técnicas ou de produto.
+          Publicaremos a nova versão com a data de atualização no topo desta página.
+        </p>
 
         <h2 id="contato">Como falar com o Encarregado (DPO)</h2>
         <p>
-          Encarregado (DPO): <strong>Ranie Black</strong><br />
-          E-mail de contato: <a href="mailto:ranie.black29@gmail.com">ranie.black29@gmail.com</a><br />
+          Encarregado (DPO): <strong>AR Cardapio</strong><br />
+          E-mail de contato: <a href="mailto:arcardapio@gmail.com">arcardapio@gmail.com</a><br />
           Assunto do e-mail: <em>“LGPD – Solicitação de direitos”</em>
         </p>
 

@@ -1,20 +1,42 @@
-// animacaoapp.js — REMOVER AUTO-ROTATION APENAS EM "DIVERSOS" (igual lógica do HOME4 no preview)
-// ✅ Em "diversos": desliga auto-rotate do app.js (sem brigar travando Y)
-// ✅ Remove qualquer A-Frame animation que esteja rotacionando o modelo
-// ✅ Saiu de "diversos": volta o auto-rotate e restaura o animation (se existia)
-
+// animacaoapp.js — DIVERSOS: trava Y e começa SEMPRE de frente + pega config do S3
 "use strict";
 
 (function () {
   const MODEL_ID = "modelContainer";
   const DIVERSOS_KEY = "diversos";
 
+  // ✅ fallback se não existir config no S3
+  const DEFAULT_DIVERSOS_FRONT_Y = 0;
+
+  // bucket fixo (igual seu padrão atual)
+  const S3_BASE = "https://ar-cardapio-models.s3.amazonaws.com";
+
+  // cache-buster pelo ?v=... (igual você já usa no app)
+  const __qs = new URLSearchParams(location.search);
+  const __ver = __qs.get("v") || Date.now().toString();
+  function addBust(url) {
+    if (!url) return url;
+    return url.includes("?") ? `${url}&v=${encodeURIComponent(__ver)}` : `${url}?v=${encodeURIComponent(__ver)}`;
+  }
+
   const state = {
     isDiversos: false,
+    lockedY: null,
+    raf: null,
+
+    userInteracting: false,
+    lastInteractTs: 0,
+    interactTimeoutMs: 220,
+
     hooked: false,
 
-    savedAnimationAttr: null,
-    savedAnimationWasSet: false
+    // ✅ pra saber qual item está carregado (já que currentModelPath não é window)
+    lastModelPath: "",
+
+    // ✅ config de diversos do S3
+    diversosCfg: null,
+    cfgLoaded: false,
+    cfgLoading: false
   };
 
   function normKey(str) {
@@ -25,72 +47,256 @@
       .replace(/[\s\-]+/g, "_");
   }
 
+  function qs(name, def = "") {
+    const v = new URL(location.href).searchParams.get(name);
+    return v == null ? def : v;
+  }
+
   function getEl() {
     return document.getElementById(MODEL_ID);
   }
 
-  function hasRotationAnimation(val) {
-    const s = String(val || "").toLowerCase();
-    // cobre "property: rotation" / "rotation;" / etc.
-    return s.includes("rotation");
-  }
+  function getRotationObj(el) {
+    const r = el.getAttribute("rotation");
+    if (!r) return { x: 0, y: 0, z: 0 };
 
-  function disableRotate() {
-    // desliga o auto-rotate do app.js (se existir)
-    if (typeof window.__setAutoRotateEnabled === "function") {
-      window.__setAutoRotateEnabled(false);
+    if (typeof r === "object") {
+      return {
+        x: Number.isFinite(r.x) ? r.x : 0,
+        y: Number.isFinite(r.y) ? r.y : 0,
+        z: Number.isFinite(r.z) ? r.z : 0
+      };
     }
 
-    // remove animation A-Frame que rotaciona (se existir)
+    const p = String(r).trim().split(/\s+/).map(Number);
+    return {
+      x: Number.isFinite(p[0]) ? p[0] : 0,
+      y: Number.isFinite(p[1]) ? p[1] : 0,
+      z: Number.isFinite(p[2]) ? p[2] : 0
+    };
+  }
+
+  function setRotation(el, x, y, z) {
+    el.setAttribute("rotation", `${x} ${y} ${z}`);
+  }
+
+  function markInteracting() {
+    if (!state.isDiversos) return;
+    state.userInteracting = true;
+    state.lastInteractTs = Date.now();
+  }
+
+  function refreshInteractingFlag() {
+    if (!state.userInteracting) return;
+    if (Date.now() - state.lastInteractTs > state.interactTimeoutMs) {
+      state.userInteracting = false;
+    }
+  }
+
+  function stopFreeze() {
+    if (state.raf) cancelAnimationFrame(state.raf);
+    state.raf = null;
+    state.lockedY = null;
+  }
+
+  // =========================
+  // ✅ CONFIG "DIVERSOS" via S3
+  // =========================
+
+  function getTenant() {
+    // seu padrão usa restaurante=...
+    return qs("restaurante", "restaurante-padrao").trim() || "restaurante-padrao";
+  }
+
+  function getDiversosConfigCandidates() {
+    const tenant = getTenant();
+
+    return [
+      addBust(`${S3_BASE}/informacao/${tenant}/diversos.json`),
+      addBust(`${S3_BASE}/informacao/${tenant}/diversos/config.json`),
+      addBust(`${S3_BASE}/configuracoes/${tenant}-diversos.json`)
+    ];
+  }
+
+  async function fetchFirstJson(urls) {
+    for (const u of urls) {
+      try {
+        const r = await fetch(u, { cache: "no-store" });
+        if (!r.ok) continue;
+        const j = await r.json();
+        return j;
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  async function ensureDiversosConfigLoaded() {
+    if (state.cfgLoaded || state.cfgLoading) return;
+    state.cfgLoading = true;
+
+    try {
+      const cfg = await fetchFirstJson(getDiversosConfigCandidates());
+
+      // aceita:
+      // 1) {frontY, lockY, perItem:{mickey:{frontY}}}
+      // 2) {mickey: 0, chef: 0} (mapping simples)
+      if (cfg && typeof cfg === "object") {
+        state.diversosCfg = cfg;
+      } else {
+        state.diversosCfg = null;
+      }
+    } catch (_) {
+      state.diversosCfg = null;
+    } finally {
+      state.cfgLoaded = true;
+      state.cfgLoading = false;
+    }
+  }
+
+  function getCurrentItemSlugFromPath(path) {
+    // pega "mickey" de ".../mickey.glb"
+    const p = String(path || "");
+    if (!p) return "";
+    const file = p.split("/").pop() || "";
+    return normKey(file.replace(".glb", ""));
+  }
+
+  function resolveDiversosFrontYForPath(path) {
+    const cfg = state.diversosCfg;
+    const slug = getCurrentItemSlugFromPath(path);
+
+    // fallback
+    let frontY = DEFAULT_DIVERSOS_FRONT_Y;
+
+    if (!cfg) return frontY;
+
+    // formato 1: cfg.frontY
+    if (typeof cfg.frontY === "number" && Number.isFinite(cfg.frontY)) {
+      frontY = cfg.frontY;
+    }
+
+    // formato 1: cfg.perItem[slug].frontY
+    if (cfg.perItem && typeof cfg.perItem === "object" && slug) {
+      const it = cfg.perItem[slug];
+      if (it && typeof it === "object") {
+        if (typeof it.frontY === "number" && Number.isFinite(it.frontY)) {
+          frontY = it.frontY;
+        }
+      }
+    }
+
+    // formato 2: cfg[slug] = number
+    if (slug && typeof cfg[slug] === "number" && Number.isFinite(cfg[slug])) {
+      frontY = cfg[slug];
+    }
+
+    return frontY;
+  }
+
+  function resolveDiversosLockY() {
+    const cfg = state.diversosCfg;
+    if (!cfg) return true; // padrão: trava
+    if (typeof cfg.lockY === "boolean") return cfg.lockY;
+    return true;
+  }
+
+  // =========================
+  // ✅ Freeze Y em Diversos
+  // =========================
+  function startFreeze() {
     const el = getEl();
     if (!el) return;
+    if (state.raf) return;
 
-    const anim = el.getAttribute("animation");
-    if (anim && hasRotationAnimation(anim)) {
-      state.savedAnimationAttr = anim;
-      state.savedAnimationWasSet = true;
-      el.removeAttribute("animation");
-    }
+    const tick = () => {
+      if (!state.isDiversos) {
+        stopFreeze();
+        return;
+      }
+
+      refreshInteractingFlag();
+
+      const r = getRotationObj(el);
+
+      // enquanto usuário mexe, deixa mexer e só salva onde ele parou
+      if (state.userInteracting) {
+        state.lockedY = Number.isFinite(r.y) ? r.y : state.lockedY;
+        state.raf = requestAnimationFrame(tick);
+        return;
+      }
+
+      // se lockY estiver desligado no config, não força trava
+      if (!resolveDiversosLockY()) {
+        state.raf = requestAnimationFrame(tick);
+        return;
+      }
+
+      // ✅ primeira vez: trava SEMPRE na frente (com override por item)
+      if (state.lockedY == null) {
+        state.lockedY = resolveDiversosFrontYForPath(state.lastModelPath);
+      }
+
+      // congela só o Y
+      setRotation(el, r.x, state.lockedY, r.z);
+
+      state.raf = requestAnimationFrame(tick);
+    };
+
+    state.raf = requestAnimationFrame(tick);
   }
 
-  function enableRotate() {
-    // liga o auto-rotate do app.js (se existir)
-    if (typeof window.__setAutoRotateEnabled === "function") {
-      window.__setAutoRotateEnabled(true);
-    }
-
-    // restaura animation anterior (se tinha)
-    const el = getEl();
-    if (!el) return;
-
-    if (state.savedAnimationWasSet && state.savedAnimationAttr) {
-      el.setAttribute("animation", state.savedAnimationAttr);
-    }
-
-    state.savedAnimationAttr = null;
-    state.savedAnimationWasSet = false;
-  }
-
-  function enterDiversos() {
+  async function enterDiversos() {
     state.isDiversos = true;
-    disableRotate();
+
+    // ✅ carrega config do S3 (não quebra se falhar)
+    await ensureDiversosConfigLoaded();
+
+    const el = getEl();
+    const frontY = resolveDiversosFrontYForPath(state.lastModelPath);
+
+    if (el) {
+      const r = getRotationObj(el);
+      state.lockedY = frontY;              // ✅ força frente
+      setRotation(el, r.x, state.lockedY, r.z); // ✅ aplica na hora
+    } else {
+      state.lockedY = frontY;
+    }
+
+    // bloqueia auto-rotate base (se existir)
+    try {
+      if (typeof window.__setDiversosAutoRotateDisabled === "function") {
+        window.__setDiversosAutoRotateDisabled(true);
+      }
+    } catch (_) {}
+
+    startFreeze();
   }
 
   function leaveDiversos() {
     state.isDiversos = false;
-    enableRotate();
+
+    try {
+      if (typeof window.__setDiversosAutoRotateDisabled === "function") {
+        window.__setDiversosAutoRotateDisabled(false);
+      }
+    } catch (_) {}
+
+    stopFreeze();
   }
 
+  // =========================
+  // ✅ Hook sem mexer no app.js
+  // =========================
   function wrapGlobalFn(fnName, onCall) {
     const current = window[fnName];
     if (typeof current !== "function") return false;
-    if (current.__diversosWrapped) return true;
+    if (current.__diversosFreezeWrapped) return true;
 
     function wrapped(...args) {
       try { onCall(args); } catch (_) {}
       return current.apply(this, args);
     }
-    wrapped.__diversosWrapped = true;
+    wrapped.__diversosFreezeWrapped = true;
     window[fnName] = wrapped;
     return true;
   }
@@ -98,23 +304,51 @@
   function tryHook() {
     if (state.hooked) return;
 
-    // troca de categoria
+    // detecta troca de categoria
     wrapGlobalFn("selectCategory", (args) => {
       const cat = normKey(args[0]);
       if (cat === DIVERSOS_KEY) enterDiversos();
       else leaveDiversos();
     });
 
-    // quando trocar modelo dentro de diversos, garante que continua sem rotate
-    wrapGlobalFn("loadModel", () => {
-      if (state.isDiversos) disableRotate();
+    // ✅ pega o path real carregado
+    wrapGlobalFn("loadModel", (args) => {
+      const p = args && args[0] ? String(args[0]) : "";
+      if (p) state.lastModelPath = p;
+
+      // se já estiver em diversos, re-aplica frente (por item) ao trocar modelo
+      if (state.isDiversos) {
+        const el = getEl();
+        if (el) {
+          const r = getRotationObj(el);
+          state.lockedY = resolveDiversosFrontYForPath(state.lastModelPath);
+          setRotation(el, r.x, state.lockedY, r.z);
+        } else {
+          state.lockedY = resolveDiversosFrontYForPath(state.lastModelPath);
+        }
+        startFreeze();
+      }
     });
 
     state.hooked = true;
   }
 
   function boot() {
-    // tenta hookar até o app.js existir
+    const onDown = () => markInteracting();
+    const onMove = () => markInteracting();
+    const onUp = () => markInteracting();
+
+    document.addEventListener("pointerdown", onDown, { passive: true });
+    document.addEventListener("pointermove", onMove, { passive: true });
+    document.addEventListener("pointerup", onUp, { passive: true });
+    document.addEventListener("pointercancel", onUp, { passive: true });
+
+    document.addEventListener("touchstart", onDown, { passive: true });
+    document.addEventListener("touchmove", onMove, { passive: true });
+    document.addEventListener("touchend", onUp, { passive: true });
+    document.addEventListener("touchcancel", onUp, { passive: true });
+
+    // tenta hookar algumas vezes
     let tries = 0;
     const timer = setInterval(() => {
       tries++;
@@ -129,16 +363,17 @@
       if (tries >= 240) clearInterval(timer);
     }, 50);
 
-    // se o model carregar já em diversos, reforça
+    // quando modelo carregar, se estiver em diversos, reforça travamento
     const el = getEl();
     if (el) {
-      el.addEventListener(
-        "model-loaded",
-        () => {
-          if (state.isDiversos) disableRotate();
-        },
-        { passive: true }
-      );
+      el.addEventListener("model-loaded", () => {
+        if (!state.isDiversos) return;
+        // se o config disser lockY=false, não trava
+        if (!resolveDiversosLockY()) return;
+        // garante que travou no front do item atual
+        state.lockedY = resolveDiversosFrontYForPath(state.lastModelPath);
+        startFreeze();
+      }, { passive: true });
     }
   }
 

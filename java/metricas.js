@@ -180,7 +180,13 @@ const CATEGORY_MAP = window.CATEGORY_MAP || {
   "Categoria 3": "Sobremesas",
   "Categoria 4": "Carnes",
   "Categoria 5": "Lanches",
+  "Categoria 6": "Diversos",
+
+  // ✅ cobre quando vier normalizado / texto direto
+  "diversos": "Diversos",
+  "Diversos": "Diversos",
 };
+
 
 const ITEM_MAP = window.ITEM_MAP || {
   // "Item 1": "Nome real", ...
@@ -188,8 +194,15 @@ const ITEM_MAP = window.ITEM_MAP || {
 
 function mapCategoryName(raw){
   const s = String(raw ?? "").trim();
-  return CATEGORY_MAP[s] || s || "Categoria";
+  const key = s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\s\-]+/g, "_");
+
+  return CATEGORY_MAP[s] || CATEGORY_MAP[key] || s || "Categoria";
 }
+
 
 function mapItemName(raw){
   const s = String(raw ?? "").trim();

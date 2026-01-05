@@ -1,9 +1,10 @@
 /* ============================================================
-   app.js (BASE + HOME4 FIX)
+   app.js (BASE + HOME4 FIX + DIVERSOS FRONT GLOBAL)
    ✅ Mantém sua lógica original
-   ✅ Chef: começa na direção certa (Y=30) + centraliza X/Z + chão no Y=0 (resolve “na lateral”)
-   ✅ GLB anima via THREE.AnimationMixer + remove tracks scale bugadas (chef não some)
-   ✅ Auto-rotate controlável (diversos/chef)
+   ✅ DIVERSOS: TODOS os modelos sempre apontam para frente (Y=0)
+   ✅ Chef: frente (Y=0) + centraliza/ground + mixer + fix scale
+   ✅ GLB anima via THREE.AnimationMixer + remove tracks scale bugadas
+   ✅ Auto-rotate bloqueado em diversos e chef
    ============================================================ */
 "use strict";
 
@@ -23,6 +24,10 @@ const __bust = `?v=${encodeURIComponent(__ver)}`;
 const API_BASE = "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com"; // stage $default
 const ENDPOINT_STATUS = `${API_BASE}/assinatura/status`;
 const PAGE_EXPIRADO = "https://site-arcardapio.s3.us-east-1.amazonaws.com/planoExpirado.html";
+
+// ==================== FRENTE GLOBAL (DIVERSOS) ====================
+// ✅ Tudo em "diversos" nasce apontando pra frente
+const __DIVERSOS_FRONT_Y = 0;
 
 // -------------------- Helpers --------------------
 function qs(name, def = "") {
@@ -228,7 +233,12 @@ function __isChefPath(path) {
   return String(path || "").toLowerCase().includes("chef");
 }
 
-// Direção igual HOME
+// Detecta Diversos por path
+function __isDiversosPath(path) {
+  return String(path || "").toLowerCase().includes("/diversos/");
+}
+
+// Direção do Chef (igual você já fixou)
 const __CHEF_FRONT_Y = 0;
 
 // Fix scale tracks
@@ -317,14 +327,30 @@ function __startMixerLoop() {
   __mixerRAF = requestAnimationFrame(tick);
 }
 
-function __applyChefFront(container, path) {
+// ✅ aplica “frente” global: DIVERSOS sempre, Chef também
+function __applyFrontRules(container, path) {
   if (!container) return;
-  if (!__isChefPath(path)) return;
-  container.setAttribute("rotation", `0 ${__CHEF_FRONT_Y} 0`);
+
+  const isDiversos = (currentCategory === "diversos") || __isDiversosPath(path);
+  const isChef = __isChefPath(path);
+
+  // 1) Diversos: sempre frente (resolve Mickey de lado)
+  if (isDiversos) {
+    container.setAttribute("rotation", `0 ${__DIVERSOS_FRONT_Y} 0`);
+    return;
+  }
+
+  // 2) Chef (fora de diversos também fica frente)
+  if (isChef) {
+    container.setAttribute("rotation", `0 ${__CHEF_FRONT_Y} 0`);
+    return;
+  }
+
+  // 3) Padrão geral
+  container.setAttribute("rotation", "0 -45 0");
 }
 
 /**
- * ✅ NOVO (o que resolve seu problema):
  * Centraliza o modelo no meio (X/Z) e coloca o “chão” no Y=0,
  * baseado no bounding box do THREE model.
  */
@@ -336,7 +362,7 @@ function __centerAndGroundThreeModel(threeModel, cacheKey) {
     const box = new THREE.Box3().setFromObject(threeModel);
     const center = box.getCenter(new THREE.Vector3());
 
-    // centraliza X/Z (meio da tela)
+    // centraliza X/Z
     threeModel.position.x -= center.x;
     threeModel.position.z -= center.z;
 
@@ -388,7 +414,7 @@ function __setupAnimationsFromModelLoadedEvent(ev, path) {
   }
 }
 
-// ==================== CHEF: ANDAR RETO IGUAL HOME (walk-depth-loop) ====================
+// ==================== CHEF: ANDAR RETO (mantido) ====================
 const __CHEF_WALK = {
   enabled: true,
   startZ: -8,
@@ -428,7 +454,6 @@ function __startChefWalk(container) {
   __CHEF_WALK.phase = "move";
 
   const tick = (t) => {
-    // pausa loop se usuário estiver tocando (pra não brigar)
     if (__isTouching) {
       __CHEF_WALK.raf = requestAnimationFrame(tick);
       return;
@@ -469,27 +494,6 @@ function __startChefWalk(container) {
   };
 
   __CHEF_WALK.raf = requestAnimationFrame(tick);
-}
-
-// Centraliza o chef SEM mexer no threeModel.position (pra mixer não sobrescrever)
-function __computeChefOffsets(threeModel) {
-  if (!window.THREE || !threeModel) return { xOff: 0, yOff: 0, zOff: 0 };
-
-  try {
-    const box = new THREE.Box3().setFromObject(threeModel);
-    const center = box.getCenter(new THREE.Vector3());
-
-    // X/Z: centraliza (no entity)
-    const xOff = -center.x;
-    const zOff = -center.z;
-
-    // Y: põe “pé” no chão (no entity)
-    const yOff = -box.min.y;
-
-    return { xOff, yOff, zOff };
-  } catch (_) {
-    return { xOff: 0, yOff: 0, zOff: 0 };
-  }
 }
 
 // Flags de auto-rotate (animacaoapp.js controla "diversos")
@@ -537,12 +541,8 @@ async function loadModel(path) {
   loadingIndicator.innerText = "Carregando...";
   container.removeAttribute("gltf-model");
 
-  // rotação padrão
-  if (__isChefPath(path)) {
-    container.setAttribute("rotation", `0 ${__CHEF_FRONT_Y} 0`);
-  } else {
-    container.setAttribute("rotation", "0 -45 0");
-  }
+  // ✅ rotação global (diversos sempre frente)
+  __applyFrontRules(container, path);
 
   // mantém posição padrão sem quebrar ajustes manuais
   const rawPos = container.getAttribute("position");
@@ -559,7 +559,7 @@ async function loadModel(path) {
     pz = Number.isFinite(parts[2]) ? parts[2] : 0;
   }
 
-  // ✅ Chef: zera X/Z do container pra evitar nascer “pro lado”
+  // Chef: zera X/Z do container (mantido)
   if (__isChefPath(path)) {
     px = 0;
     pz = 0;
@@ -578,10 +578,10 @@ async function loadModel(path) {
   const onModelLoaded = (ev) => {
     container.removeEventListener("model-loaded", onModelLoaded);
 
-    // chef: força frente
-    __applyChefFront(container, path);
+    // ✅ reforça regra global após carregar (evita reset)
+    __applyFrontRules(container, path);
 
-    // ✅ chef: centraliza o THREE model (resolve “lateral”)
+    // Chef: centraliza/ground (mantido)
     if (__isChefPath(path)) {
       const threeModel = ev && ev.detail && ev.detail.model ? ev.detail.model : null;
       __centerAndGroundThreeModel(threeModel, path);
@@ -672,7 +672,6 @@ function changeModel(dir) {
 }
 
 function selectCategory(category) {
-  // ✅ ÚNICA mudança: normaliza a chave para bater com "models"
   const key = normKey(category);
   if (!models[key] || !models[key].length) return;
 
@@ -780,8 +779,8 @@ function verificarEstadoInicial() {
 }
 
 /* ============================================================
-   ROTAÇÃO AUTOMÁTICA BASE (SEM REGRAS DE "DIVERSOS")
-   - Agora usa bloqueio central (chef/diversos/flags)
+   ROTAÇÃO AUTOMÁTICA BASE
+   - bloqueio central (chef/diversos/flags)
    ============================================================ */
 let __isTouching = false;
 

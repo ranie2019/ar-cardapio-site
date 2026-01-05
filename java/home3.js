@@ -160,7 +160,7 @@ class SistemaCardapio extends SistemaCardapioItens {
     const dropdown = document.getElementById("dropdownCardapio");
     if (!dropdown) return;
 
-    const categoriasPadrao = ["logo", "bebidas", "carnes", "pizzas", "lanches", "sobremesas", "porcoes"];
+    const categoriasPadrao = ["logo", "bebidas", "carnes", "pizzas", "lanches", "sobremesas", "porcoes", "diversos"];
     const nomesCategorias = {
       logo: "Logo",
       bebidas: "Bebidas",
@@ -169,6 +169,7 @@ class SistemaCardapio extends SistemaCardapioItens {
       lanches: "Lanches",
       sobremesas: "Sobremesas",
       porcoes: "Porções",
+      diversos: "Diversos",
     };
 
     categoriasPadrao.forEach((categoria) => {
