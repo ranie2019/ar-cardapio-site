@@ -50,7 +50,7 @@ const objetos3D = {
   logo: ["Espetinho do Gil Filho", "Tabua de Carne", "Cubo"],
 
   bebidas: ["Heineken", "Redbull", "Jack Daniels", "Champagne", "Vinho Pergola", "Cerveja Imperio", "Champagne Prestige", "Cerveja Corona", "Cerveja Budweiser"],
-  pizzas: ["Mussarela", "Salami","Calabresa com Queijo"],
+  pizzas: ["Mussarela", "Salami","Calabresa com Queijo", "Pepperoni", "Presunto de Parma e Rucula", "Vegetariana", "Brocolis", "Champignon"],
   carnes: ["Bisteca Suina Grelhada", "Costela Bovina Grelhada", "Paleta De Cordeiro", "Lombo de Porco", "Coxa de Frango"],
   lanches: ["Hamburguer", "Cheeseburger", "Hot Dog"],
   sobremesas: ["Sundae", "Cupcake de Chocolate", "Rosquinha de Chocolate", "Late"],

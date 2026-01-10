@@ -1,13 +1,24 @@
 // ==============================
-// esqueciSenha.js — Versão robusta (atualizada)
+// esqueciSenha.js — Versão robusta (atualizada, sem quebrar suas lógicas)
 // ==============================
 "use strict";
 
 const API_CONFIG = {
   baseUrl: "https://1u3m3f6x1m.execute-api.us-east-1.amazonaws.com/prod",
-  endpoints: { requestPasswordReset: "/request-password-reset" },
+
+  // ✅ Mantém compatibilidade: você pode deixar só 1 string OU usar array de fallback.
+  // Se o seu backend mudar, você não quebra o front.
+  endpoints: {
+    requestPasswordReset: [
+      "/request-password-reset",     // seu endpoint atual
+      "/password/reset/request"      // fallback comum (caso você tenha padronizado)
+    ],
+  },
+
   timeoutMs: 12000,
   retries: 2,
+
+  // secureMode = true: NÃO revela se o e-mail existe (retorna "sucesso" em 404 "conta não encontrada")
   secureMode: true,
 };
 
@@ -18,14 +29,16 @@ const submitBtn = document.getElementById("submitBtn");
 const successMessage = document.getElementById("successMessage");
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const SUBMIT_THROTTLE_MS = 1500; // protege contra envios rápidos
+const SUBMIT_THROTTLE_MS = 1500;
 let lastSubmitTs = 0;
 
-function isValidEmail(email) { return emailRegex.test(email); }
+function isValidEmail(email) {
+  return emailRegex.test(email);
+}
 
 function showError(el, message) {
   if (!el) return;
-  el.textContent = message;
+  el.textContent = message || "";
   el.setAttribute("role", "alert");
   el.setAttribute("aria-live", "polite");
   const label = el.previousElementSibling;
@@ -44,14 +57,14 @@ function clearError(el) {
 function setButtonLoading(loading) {
   if (!submitBtn) return;
   submitBtn.classList.toggle("loading", loading);
-  submitBtn.disabled = loading;
-  submitBtn.setAttribute("aria-busy", String(loading));
+  submitBtn.disabled = !!loading;
+  submitBtn.setAttribute("aria-busy", String(!!loading));
 }
 
 function lockForm(locked) {
   if (!form || !emailInput) return;
-  form.setAttribute("aria-busy", String(locked));
-  emailInput.readOnly = locked;
+  form.setAttribute("aria-busy", String(!!locked));
+  emailInput.readOnly = !!locked;
 }
 
 function showSuccessMessage() {
@@ -74,18 +87,57 @@ function mapErrorMessage(status, fallback = "Erro ao enviar. Tente novamente.") 
   return fallback;
 }
 
-// Fetch com timeout + retry (inclui retry em 5xx)
+// ---------- Helpers de resposta ----------
+function safeJsonParse(text) {
+  try { return JSON.parse(text); } catch { return null; }
+}
+
+async function readJsonSafely(response) {
+  try {
+    const ct = (response.headers.get("content-type") || "").toLowerCase();
+    if (ct.includes("application/json")) return await response.json();
+    const txt = await response.text();
+    return safeJsonParse(txt) || {};
+  } catch {
+    return {};
+  }
+}
+
+function isEndpointNotFound(status, data) {
+  // ✅ Diferencia:
+  // - "endpoint não encontrado" (config errada) => mostrar erro
+  // - "conta não encontrada" (secureMode)       => tratar como sucesso
+  if (status !== 404) return false;
+
+  const msg = String(data?.message || data?.error || "").toLowerCase();
+  const route = String(data?.route || "").toLowerCase();
+
+  // padrões comuns do seu backend / API Gateway
+  if (msg.includes("endpoint não encontrado")) return true;
+  if (msg.includes("endpoint nao encontrado")) return true;
+  if (msg.includes("not found") && msg.includes("endpoint")) return true;
+  if (route && route.includes(":/")) return true; // exemplo: "POST:/"
+  return false;
+}
+
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+
+// ---------- Fetch com timeout + retry ----------
 async function fetchWithResilience(url, options, { timeoutMs = 12000, retries = 2 } = {}) {
   let attempt = 0;
   const maxBackoff = 5000;
+
   while (true) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
       const res = await fetch(url, { ...options, signal: controller.signal });
       clearTimeout(id);
 
-      // Se 5xx -> considerar retry (quando attempt < retries)
+      // retry apenas para 5xx
       if (res.status >= 500 && attempt < retries) {
         const backoff = Math.min(1500 * 2 ** attempt, maxBackoff);
         await new Promise(r => setTimeout(r, backoff));
@@ -93,48 +145,98 @@ async function fetchWithResilience(url, options, { timeoutMs = 12000, retries = 
         continue;
       }
 
-      // Retorna a resposta para o chamador (ok ou 4xx sem retry)
       return res;
     } catch (err) {
       clearTimeout(id);
+
       const isAbort = err?.name === "AbortError";
-      const isNetwork = err?.message && (err.message.includes("Failed to fetch") || err.message.includes("NetworkError"));
-      const canRetry = isAbort || isNetwork;
-      if (attempt < retries && canRetry) {
+      const isNetwork =
+        err?.message &&
+        (err.message.includes("Failed to fetch") || err.message.includes("NetworkError"));
+
+      if (attempt < retries && (isAbort || isNetwork)) {
         const backoff = Math.min(1500 * 2 ** attempt, maxBackoff);
         await new Promise(r => setTimeout(r, backoff));
         attempt++;
         continue;
       }
+
       throw err;
     }
   }
 }
 
+// ---------- Request reset (com fallback de endpoint) ----------
 async function requestPasswordReset(email) {
-  const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.requestPasswordReset}`;
+  const endpoints = API_CONFIG.endpoints.requestPasswordReset;
+  const candidates = Array.isArray(endpoints) ? endpoints : [endpoints];
+
+  const payload = { email: normalizeEmail(email) };
   const options = {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
-    body: JSON.stringify({ email: email.trim() }),
+    body: JSON.stringify(payload),
   };
 
-  const response = await fetchWithResilience(url, options, {
-    timeoutMs: API_CONFIG.timeoutMs,
-    retries: API_CONFIG.retries,
-  });
+  let lastResult = null;
 
-  let data = {};
-  try { data = await response.json(); } catch (_) { data = {}; }
+  for (let i = 0; i < candidates.length; i++) {
+    const endpoint = candidates[i];
+    const url = `${API_CONFIG.baseUrl}${endpoint}`;
 
-  if (response.ok) return { success: true, data };
-  if (response.status === 404 && API_CONFIG.secureMode) return { success: true, data: { masked: true } };
+    const response = await fetchWithResilience(url, options, {
+      timeoutMs: API_CONFIG.timeoutMs,
+      retries: API_CONFIG.retries,
+    });
 
-  return {
+    const data = await readJsonSafely(response);
+
+    // ✅ 200/2xx
+    if (response.ok) {
+      // alguns backends retornam ok/success false mesmo com 200
+      const okFlag = (data?.ok ?? data?.success ?? true);
+      if (okFlag === false) {
+        return {
+          success: false,
+          error: data?.message || data?.error || "Não foi possível enviar as instruções.",
+          status: response.status,
+          data,
+        };
+      }
+      return { success: true, data };
+    }
+
+    // ✅ 404: se for endpoint inexistente, tenta o próximo fallback
+    if (response.status === 404 && isEndpointNotFound(response.status, data)) {
+      lastResult = {
+        success: false,
+        error: "Endpoint de redefinição não encontrado. Verifique a rota da API.",
+        status: 404,
+        data,
+      };
+      continue; // tenta próximo endpoint
+    }
+
+    // ✅ secureMode: se 404 for “conta não encontrada”, não revela — considera sucesso
+    if (response.status === 404 && API_CONFIG.secureMode) {
+      return { success: true, data: { masked: true } };
+    }
+
+    // Outros erros: retorna
+    return {
+      success: false,
+      error: data?.error || data?.message || mapErrorMessage(response.status) || "Erro desconhecido",
+      status: response.status,
+      data,
+    };
+  }
+
+  // Se chegou aqui, todos endpoints falharam (ex.: endpoint errado)
+  return lastResult || {
     success: false,
-    error: data?.error || mapErrorMessage(response.status) || "Erro desconhecido",
-    status: response.status,
+    error: "Falha ao enviar. Verifique a configuração do endpoint.",
+    status: 0,
   };
 }
 
@@ -148,7 +250,7 @@ if (form && emailInput && emailError && submitBtn && successMessage) {
     if (now - lastSubmitTs < SUBMIT_THROTTLE_MS) return;
     lastSubmitTs = now;
 
-    const email = emailInput.value.trim();
+    const email = normalizeEmail(emailInput.value);
     if (!email) {
       showError(emailError, "Por favor, digite seu e-mail.");
       emailInput.focus();
@@ -173,11 +275,16 @@ if (form && emailInput && emailError && submitBtn && successMessage) {
         return;
       }
 
-      const msg = mapErrorMessage(result.status, result.error) || "Erro ao enviar. Tente novamente.";
+      // Se secureMode está true, mapErrorMessage(404) retorna null,
+      // mas aqui a gente já separou "endpoint não encontrado" (mostra erro).
+      const msg =
+        result.error ||
+        mapErrorMessage(result.status) ||
+        "Erro ao enviar. Tente novamente.";
+
       showError(emailError, msg);
       emailInput.focus();
-      // opcional: console.warn para debugging
-      console.warn("Forgot-password failed", result.status, result.error);
+      console.warn("Forgot-password failed", result.status, result.error, result.data);
     } catch (error) {
       console.error("Erro na requisição de reset de senha:", error);
       showError(emailError, "Erro de conexão. Tente novamente.");
@@ -203,6 +310,5 @@ if (form && emailInput && emailError && submitBtn && successMessage) {
     try { emailInput.focus({ preventScroll: true }); } catch (_) { emailInput.focus(); }
   });
 } else {
-  // Proteção para evitar quebrar se script for incluído em página sem os elementos
   console.warn("esqueciSenha.js: elementos do formulário não encontrados — listeners não foram registrados.");
 }

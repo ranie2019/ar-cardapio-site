@@ -3,14 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Esqueci minha senha - ARCardápio</title>
+  <title>Esqueci minha senha • ARCardápio</title>
 
-  <!-- Use URL ABSOLUTA para garantir que o CSS sempre carrega -->
-  <link rel="stylesheet" href="https://arcardapio.com.br/css/esqueciSenha.css" />
-
-  <!-- Opcional: dica para renderização consistente -->
+  <meta name="description" content="Recupere o acesso ao ARCardápio. Informe seu e-mail para receber instruções de redefinição de senha." />
+  <meta name="robots" content="noindex,nofollow" />
   <meta name="color-scheme" content="light dark" />
+
+  <!-- CSS (URL absoluta) -->
+  <link rel="stylesheet" href="https://arcardapio.com.br/css/esqueciSenha.css" />
 </head>
+
 <body>
   <noscript>
     <div style="background:#fff3cd;color:#664d03;padding:12px;text-align:center;border:1px solid #ffeeba;">
@@ -49,25 +51,43 @@
             <span class="error-message" id="emailError" aria-live="polite"></span>
           </div>
 
-          <button type="submit" class="submit-btn" id="submitBtn" aria-live="polite" aria-busy="false">
+          <button
+            type="submit"
+            class="submit-btn"
+            id="submitBtn"
+            aria-live="polite"
+            aria-busy="false"
+          >
             <span class="btn-text">Enviar instruções</span>
             <span class="btn-loading" hidden>Enviando...</span>
           </button>
         </fieldset>
       </form>
 
-      <div class="success-message" id="successMessage" hidden role="status" aria-live="polite" tabindex="-1">
+      <!-- IMPORTANTE:
+           Seu esqueciSenha.js atual usa successMessage.style.display = "block".
+           Então aqui NÃO pode ficar com "hidden", senão pode continuar escondido.
+      -->
+      <div
+        class="success-message"
+        id="successMessage"
+        style="display:none"
+        role="status"
+        aria-live="polite"
+        tabindex="-1"
+      >
         <div class="success-icon" aria-hidden="true">✓</div>
-        <h3>E-mail enviado com sucesso!</h3>
-        <p>Verifique sua caixa de entrada e siga as instruções para redefinir sua senha.</p>
+        <h3>Se o e-mail existir, enviamos as instruções</h3>
+        <p>Verifique sua caixa de entrada (e o spam) e siga os passos para redefinir sua senha.</p>
       </div>
 
-      <nav class="back-to-login">
+      <nav class="back-to-login" aria-label="Voltar para o login">
         <a href="login.html">← Voltar para o login</a>
       </nav>
     </section>
   </main>
 
-  <script src="https://arcardapio.com.br/java/esqueciSenha.js" defer></script>
+  <!-- JS (URL absoluta) + cache-buster pra não puxar arquivo antigo -->
+  <script src="https://arcardapio.com.br/java/esqueciSenha.js?v=9" defer></script>
 </body>
 </html>

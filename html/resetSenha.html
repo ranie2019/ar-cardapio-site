@@ -1,42 +1,91 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Redefinir Senha</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Redefinir Senha • ARCardápio</title>
 
-  <!-- Importa o arquivo de estilos CSS -->
-  <!-- Certifique-se de que o caminho para o arquivo CSS está correto -->
-  <link rel="stylesheet" href="../css/resetSenha.css">
+  <meta name="description" content="Defina uma nova senha para sua conta ARCardápio." />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="color-scheme" content="light dark" />
+
+  <!-- (Opcional) evita 404 do favicon sujando console -->
+  <link rel="icon" href="/favicon.ico" />
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="../css/resetSenha.css" />
 </head>
 
 <body>
-  <div class="container">
+  <main class="container" role="main">
     <h2>Redefinir Senha</h2>
 
-    <!-- Campo para a nova senha -->
-    <label for="newPassword">Nova senha:</label>
-    <input type="password" id="newPassword" placeholder="Digite a nova senha" />
+    <p class="muted" style="margin: 8px 0 16px;">
+      Crie uma senha nova para sua conta.
+    </p>
 
-    <!-- Campo para confirmar a nova senha -->
-    <label for="confirmPassword">Confirme a senha:</label>
-    <input type="password" id="confirmPassword" placeholder="Confirme a nova senha" />
+    <!-- ✅ FORM (resolve warning e não quebra seu JS) -->
+    <form id="resetForm" autocomplete="on" novalidate>
+      <!-- Nova senha -->
+      <label for="newPassword">Nova senha:</label>
+      <input
+        type="password"
+        id="newPassword"
+        placeholder="Digite a nova senha"
+        autocomplete="new-password"
+        minlength="8"
+        required
+      />
 
-    <!-- Container para a funcionalidade de mostrar/ocultar senha -->
-    <div class="show-password-container">
-      <input type="checkbox" id="showPassword">
-      <label for="showPassword" class="show-password-label">Mostrar Senha</label>
-    </div>
+      <!-- Confirmar senha -->
+      <label for="confirmPassword">Confirme a senha:</label>
+      <input
+        type="password"
+        id="confirmPassword"
+        placeholder="Confirme a nova senha"
+        autocomplete="new-password"
+        minlength="8"
+        required
+      />
 
-    <!-- Botão para acionar a redefinição -->
-    <button id="resetBtn">Redefinir Senha</button>
+      <!-- Mostrar/ocultar -->
+      <div class="show-password-container">
+        <input type="checkbox" id="showPassword" />
+        <label for="showPassword" class="show-password-label">Mostrar senha</label>
+      </div>
 
-    <!-- Div para exibir mensagens de sucesso ou erro para o usuário -->
-    <div id="message"></div>
-  </div>
+      <!-- Botão -->
+      <!-- ✅ mantém id resetBtn. Agora é submit (melhor UX) -->
+      <button id="resetBtn" type="submit" aria-busy="false">
+        <span class="btn-text">Redefinir Senha</span>
+        <span class="btn-loading" hidden>Redefinindo...</span>
+      </button>
 
-  <!-- Importa o arquivo JavaScript no final do body para melhor performance -->
-  <!-- Certifique-se de que o caminho para o arquivo JS está correto -->
-  <script src="../java/resetSenha.js"></script>
+      <!-- Mensagens -->
+      <div id="message" role="status" aria-live="polite" style="margin-top: 12px;"></div>
+    </form>
+
+    <p class="back" style="margin-top: 14px;">
+      <a href="login.html">← Voltar para o login</a>
+    </p>
+  </main>
+
+  <!-- JS -->
+  <script src="../java/resetSenha.js?v=9"></script>
+
+  <!-- ✅ Evita submit padrão recarregar a página (sem mexer no seu resetSenha.js) -->
+  <script>
+    (function () {
+      const form = document.getElementById("resetForm");
+      const btn = document.getElementById("resetBtn");
+      if (!form || !btn) return;
+
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        // dispara o mesmo fluxo que seu JS já usa no click do botão
+        btn.click();
+      });
+    })();
+  </script>
 </body>
 </html>

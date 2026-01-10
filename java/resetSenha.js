@@ -1,134 +1,307 @@
-// ============================
-//   resetSenha.js
-// ============================
+// resetSenha.js — COMPLETO / ATUALIZADO (ARCardápio)
+// ✅ URL correta: https://1u3m3f6x1m.execute-api.us-east-1.amazonaws.com/prod/reset-password (POST)
+// ✅ Sem placeholder
+// ✅ Debug claro no console (pra provar que carregou o arquivo novo)
+// ✅ Timeout + retry leve
+// ✅ Mostra erro real retornado pela API
+// ✅ Mantém seus IDs: newPassword, confirmPassword, showPassword, resetBtn, message
 
-// --- CONFIGURAÇÃO ---
-// IMPORTANTE: Substitua esta URL pela URL de invocação (Invoke URL) do seu API Gateway.
-const API_ENDPOINT = 'https://SEU_API_GATEWAY_AQUI/seu-recurso'; // <-- TROQUE AQUI
+"use strict";
 
-// --- ELEMENTOS DO DOM ---
-// Captura todos os elementos do HTML que vamos manipular.
-const newPasswordInput = document.getElementById('newPassword' );
-const confirmPasswordInput = document.getElementById('confirmPassword');
-const showPasswordCheckbox = document.getElementById('showPassword');
-const resetBtn = document.getElementById('resetBtn');
-const messageDiv = document.getElementById('message');
+/* =========================
+   BUILD (pra você ver no console se está carregando o arquivo novo)
+   ========================= */
+const BUILD_ID = "resetSenha.js@2026-01-06_v1";
 
-// --- LÓGICA DE VISIBILIDADE DA SENHA ---
-// Adiciona um "ouvinte" de eventos na caixa de seleção.
-showPasswordCheckbox.addEventListener('change', () => {
-  // Verifica se a caixa está marcada.
-  const isChecked = showPasswordCheckbox.checked;
-  
-  // Define o tipo do campo com base no estado da caixa (operador ternário).
-  const newType = isChecked ? 'text' : 'password';
-  
-  // Aplica o novo tipo aos dois campos de senha.
-  newPasswordInput.type = newType;
-  confirmPasswordInput.type = newType;
-});
+/* =========================
+   CONFIG (CERTA)
+   ========================= */
+const API_HOST = "https://1u3m3f6x1m.execute-api.us-east-1.amazonaws.com";
+const API_STAGE = "prod";
+const RESET_PATH = "/reset-password"; // POST
 
-// --- CAPTURA DE PARÂMETROS DA URL ---
-// Cria um objeto para facilitar a busca de parâmetros na URL da página.
+const TIMEOUT_MS = 12000;
+const RETRIES = 2;
+
+// Se sua Lambda exige 8, deixa 8. Se aceitar 6, pode mudar.
+const MIN_PASSWORD_LEN = 6;
+
+/* =========================
+   DOM
+   ========================= */
+const newPasswordInput = document.getElementById("newPassword");
+const confirmPasswordInput = document.getElementById("confirmPassword");
+const showPasswordCheckbox = document.getElementById("showPassword");
+const resetBtn = document.getElementById("resetBtn");
+const messageDiv = document.getElementById("message");
+
+// spans do botão (do seu HTML)
+const btnText = resetBtn ? resetBtn.querySelector(".btn-text") : null;
+const btnLoading = resetBtn ? resetBtn.querySelector(".btn-loading") : null;
+
+/* =========================
+   URL PARAMS
+   ========================= */
 const urlParams = new URLSearchParams(window.location.search);
-const tokenFromUrl = urlParams.get('token'); // Pega o valor do parâmetro 'token'
-const emailFromUrl = urlParams.get('email'); // Pega o valor do parâmetro 'email'
+const tokenFromUrl = (urlParams.get("token") || "").trim();
+const emailFromUrl = (urlParams.get("email") || "").trim().toLowerCase();
 
-// --- VALIDAÇÃO INICIAL ---
-// Verifica se o token e o e-mail foram encontrados na URL.
-// Se um deles estiver faltando, o processo não pode continuar.
-if (!tokenFromUrl || !emailFromUrl) {
-  showMessage('Link inválido. Token ou e-mail ausente na URL.', true);
-  resetBtn.disabled = true; // Desabilita o botão para impedir ações.
+/* =========================
+   HELPERS
+   ========================= */
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function isValidEmail(email) {
+  return emailRegex.test(String(email || ""));
 }
 
-// --- FUNÇÃO AUXILIAR PARA EXIBIR MENSAGENS ---
-/**
- * Exibe uma mensagem na tela para o usuário.
- * @param {string} msg - A mensagem a ser exibida.
- * @param {boolean} isError - Se verdadeiro, aplica o estilo de erro; senão, aplica o de sucesso.
- */
 function showMessage(msg, isError = false) {
-  messageDiv.textContent = msg;
-  // Adiciona a classe CSS 'error' ou 'success' para colorir a mensagem.
-  messageDiv.className = isError ? 'error' : 'success';
+  if (!messageDiv) return;
+  messageDiv.textContent = msg || "";
+  messageDiv.className = isError ? "error" : "success";
 }
 
-// --- EVENTO PRINCIPAL DO BOTÃO "REDEFINIR SENHA" ---
-// Adiciona um "ouvinte" para o evento de clique no botão.
-resetBtn.addEventListener('click', async () => {
-  // Pega e limpa os valores dos campos de senha.
-  const newPassword = newPasswordInput.value.trim();
-  const confirmPassword = confirmPasswordInput.value.trim();
+function setLoading(loading) {
+  if (!resetBtn) return;
 
-  // 1. VALIDAÇÕES DO LADO DO CLIENTE
-  if (!newPassword || !confirmPassword) {
-    showMessage('Por favor, preencha os dois campos de senha.', true);
-    return; // Para a execução.
-  }
-  if (newPassword !== confirmPassword) {
-    showMessage('As senhas não coincidem. Tente novamente.', true);
-    return;
-  }
-  if (newPassword.length < 8) {
-    showMessage('A senha deve ter pelo menos 8 caracteres.', true);
-    return;
-  }
+  resetBtn.disabled = !!loading;
+  resetBtn.setAttribute("aria-busy", String(!!loading));
 
-  // 2. PREPARAÇÃO PARA A REQUISIÇÃO
-  // Desabilita o botão para evitar cliques duplos e mostra uma mensagem de carregamento.
-  resetBtn.disabled = true;
-  showMessage('Redefinindo sua senha, aguarde...');
+  if (btnText && btnLoading) {
+    btnText.hidden = !!loading;
+    btnLoading.hidden = !loading;
+  }
+}
 
-  // 3. REQUISIÇÃO PARA A API (BACKEND)
+function lockInputs(locked) {
+  if (newPasswordInput) newPasswordInput.readOnly = !!locked;
+  if (confirmPasswordInput) confirmPasswordInput.readOnly = !!locked;
+  if (showPasswordCheckbox) showPasswordCheckbox.disabled = !!locked;
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function readJsonSafe(res) {
   try {
-    // Monta o corpo (payload) da requisição em formato JSON.
-    const payload = {
-      email: emailFromUrl,
-      token: tokenFromUrl,
-      newPassword: newPassword
-    };
-
-    // Envia a requisição para o endpoint da API usando o método POST.
-    const response = await fetch(API_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    // Tenta converter a resposta da API para JSON. Se falhar, retorna um objeto vazio.
-    const responseBody = await response.json().catch(() => ({}));
-
-    // 4. TRATAMENTO DA RESPOSTA
-    if (response.ok) {
-      // SUCESSO: A API retornou um status 2xx.
-      showMessage('Senha redefinida com sucesso! Redirecionando para o login...');
-      
-      // Aguarda 2 segundos para o usuário ler a mensagem e então redireciona.
-      setTimeout(() => {
-        window.location.href = 'login.html'; // Altere se o nome da sua página de login for diferente.
-      }, 2000);
-      
-      // Não reabilita o botão, pois a página será redirecionada.
-      return; 
-    } else {
-      // ERRO: A API retornou um status de erro (4xx ou 5xx).
-      // Tenta encontrar a mensagem de erro mais específica no corpo da resposta.
-      const errorMessage = responseBody.error || responseBody.message || `Erro ${response.status}. Tente novamente.`;
-      showMessage(errorMessage, true);
+    const ct = (res.headers.get("content-type") || "").toLowerCase();
+    if (ct.includes("application/json")) return await res.json();
+    const txt = await res.text();
+    try {
+      return JSON.parse(txt);
+    } catch {
+      return { message: txt };
     }
+  } catch {
+    return {};
+  }
+}
 
-  } catch (err) {
-    // ERRO DE CONEXÃO: Falha ao tentar se comunicar com o servidor.
-    console.error('Erro de rede ou na requisição fetch:', err);
-    showMessage('Erro de conexão. Verifique sua internet e tente novamente.', true);
-  } finally {
-    // O bloco 'finally' sempre é executado, com ou sem erro.
-    // Reabilita o botão apenas se a requisição não teve sucesso.
-    if (resetBtn.disabled && !messageDiv.classList.contains('success')) {
-      resetBtn.disabled = false;
+function buildResetUrl() {
+  // Garante que fica exatamente: https://.../prod/reset-password
+  return `${API_HOST}/${API_STAGE}${RESET_PATH}`;
+}
+
+function mapHumanError(status, data) {
+  // se a API já mandou msg, usa ela
+  const apiMsg = data?.error || data?.message;
+  if (apiMsg) return String(apiMsg);
+
+  if (status === 400) return "Dados inválidos. Confira o link e a senha.";
+  if (status === 401 || status === 403) return "Link inválido ou expirado. Gere um novo.";
+  if (status === 404) return "Rota da API não encontrada (rota ou deploy do API Gateway).";
+  if (status === 409) return "Este link já foi usado. Gere outro link.";
+  if (status === 429) return "Muitas tentativas. Aguarde alguns minutos e tente de novo.";
+  if (status >= 500) return "Servidor instável no momento. Tente novamente em instantes.";
+  return `Erro (${status}). Tente novamente.`;
+}
+
+async function fetchWithRetry(url, options, timeoutMs, retries) {
+  let attempt = 0;
+
+  while (true) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+        cache: "no-store",
+      });
+
+      clearTimeout(timer);
+
+      // retry só em 5xx
+      if (res.status >= 500 && attempt < retries) {
+        await sleep(Math.min(1500 * 2 ** attempt, 5000));
+        attempt++;
+        continue;
+      }
+
+      return res;
+    } catch (err) {
+      clearTimeout(timer);
+
+      const msg = String(err?.message || "");
+      const isAbort = err?.name === "AbortError";
+      const isNetwork =
+        msg.includes("Failed to fetch") ||
+        msg.includes("NetworkError") ||
+        msg.includes("ERR_NAME_NOT_RESOLVED");
+
+      if (attempt < retries && (isAbort || isNetwork)) {
+        await sleep(Math.min(1500 * 2 ** attempt, 5000));
+        attempt++;
+        continue;
+      }
+
+      throw err;
     }
   }
-});
+}
+
+/* =========================
+   API CALL
+   ========================= */
+async function confirmPasswordReset(email, token, newPassword) {
+  const url = buildResetUrl();
+
+  // PROVA que o arquivo novo carregou + qual URL ele está chamando
+  console.log(`[${BUILD_ID}] POST =>`, url);
+
+  const payload = {
+    email: String(email || "").trim().toLowerCase(),
+    token: String(token || "").trim(),
+    newPassword: String(newPassword || ""),
+  };
+
+  const res = await fetchWithRetry(
+    url,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+    TIMEOUT_MS,
+    RETRIES
+  );
+
+  const data = await readJsonSafe(res);
+
+  if (!res.ok) {
+    return { ok: false, status: res.status, data, error: mapHumanError(res.status, data) };
+  }
+
+  // aceita vários formatos
+  const okFlag = data?.ok ?? data?.success ?? true;
+  if (okFlag === false) {
+    return {
+      ok: false,
+      status: res.status,
+      data,
+      error: String(data?.message || data?.error || "Não foi possível redefinir."),
+    };
+  }
+
+  return { ok: true, status: res.status, data };
+}
+
+/* =========================
+   SHOW/HIDE PASSWORD
+   ========================= */
+if (showPasswordCheckbox && newPasswordInput && confirmPasswordInput) {
+  showPasswordCheckbox.addEventListener("change", () => {
+    const type = showPasswordCheckbox.checked ? "text" : "password";
+    newPasswordInput.type = type;
+    confirmPasswordInput.type = type;
+  });
+}
+
+/* =========================
+   GUARD INICIAL
+   ========================= */
+(function initialGuard() {
+  console.log(`[${BUILD_ID}] carregado ✅`);
+
+  if (!resetBtn || !messageDiv || !newPasswordInput || !confirmPasswordInput) {
+    console.warn(`[${BUILD_ID}] elementos do formulário não encontrados.`);
+    return;
+  }
+
+  if (!tokenFromUrl || !emailFromUrl) {
+    showMessage("Link inválido (faltando token ou e-mail). Gere um novo link.", true);
+    setLoading(false);
+    resetBtn.disabled = true;
+    lockInputs(true);
+    return;
+  }
+
+  if (!isValidEmail(emailFromUrl)) {
+    showMessage("Link inválido (e-mail inválido). Gere um novo link.", true);
+    setLoading(false);
+    resetBtn.disabled = true;
+    lockInputs(true);
+    return;
+  }
+})();
+
+/* =========================
+   CLICK HANDLER
+   ========================= */
+if (resetBtn) {
+  resetBtn.addEventListener("click", async () => {
+    if (!tokenFromUrl || !emailFromUrl || !isValidEmail(emailFromUrl)) {
+      showMessage("Link inválido. Gere um novo link de redefinição.", true);
+      return;
+    }
+
+    const newPassword = String(newPasswordInput?.value || "").trim();
+    const confirmPassword = String(confirmPasswordInput?.value || "").trim();
+
+    if (!newPassword || !confirmPassword) {
+      showMessage("Preencha os dois campos de senha.", true);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      showMessage("As senhas não coincidem.", true);
+      return;
+    }
+
+    if (newPassword.length < MIN_PASSWORD_LEN) {
+      showMessage(`A senha deve ter pelo menos ${MIN_PASSWORD_LEN} caracteres.`, true);
+      return;
+    }
+
+    setLoading(true);
+    lockInputs(true);
+    showMessage("Redefinindo sua senha...");
+
+    try {
+      const result = await confirmPasswordReset(emailFromUrl, tokenFromUrl, newPassword);
+
+      if (result.ok) {
+        showMessage("Senha redefinida com sucesso! Indo para o login...");
+        setTimeout(() => {
+          window.location.href = "login.html";
+        }, 1200);
+        return;
+      }
+
+      showMessage(result.error || "Erro ao redefinir.", true);
+      console.warn(`[${BUILD_ID}] RESET FAIL:`, result.status, result.data);
+
+      setLoading(false);
+      lockInputs(false);
+    } catch (err) {
+      console.error(`[${BUILD_ID}] FETCH FAIL:`, err);
+      showMessage(
+        "Falha de conexão com a API. (normalmente é cache com JS antigo ou API Gateway não implantado)",
+        true
+      );
+      setLoading(false);
+      lockInputs(false);
+    }
+  });
+}
