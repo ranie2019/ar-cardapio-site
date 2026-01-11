@@ -69,7 +69,7 @@
   <!-- CONTAINER DE ITENS -->
   <div id="itensContainer" class="itens-container"></div>
 
-  <!-- ✅ JANELA 3D / PREVIEW (AGORA EXISTE NO DOM) -->
+  <!-- ✅ JANELA 3D / PREVIEW -->
   <div id="scene3D" class="scene-3d">
     <a-scene
       embedded
@@ -77,7 +77,6 @@
       renderer="colorManagement:true"
       background="color: #111"
     >
-      <!-- onde o JS aplica o gltf-model -->
       <a-entity
         id="modelo3d"
         position="0 0 -3"
@@ -120,8 +119,7 @@
   <script src="../java/home3.js"></script>
   <script src="../java/home4.js"></script>
 
-  <!-- ✅ ÚNICA ALTERAÇÃO PEDIDA: AUTOPLAY DA ANIMAÇÃO GLB NA HOME + EFEITO PROFUNDIDADE -->
-  <!-- (não mexe em menus, modais, layout, botões, cardápio etc.) -->
+  <!-- ✅ AUTOPLAY DA ANIMAÇÃO GLB NA HOME + EFEITO PROFUNDIDADE -->
   <script>
     (function () {
       function registerAutoGltfAnimation() {
@@ -129,9 +127,9 @@
 
         AFRAME.registerComponent("auto-gltf-animation", {
           schema: {
-            clip: { default: "*" },        // "*" = toca todas
-            timeScale: { default: 1.0 },   // velocidade
-            loop: { default: "repeat" }    // repeat | once
+            clip: { default: "*" },
+            timeScale: { default: 1.0 },
+            loop: { default: "repeat" }
           },
 
           init: function () {
@@ -195,39 +193,30 @@
         if (!el) return;
 
         registerAutoGltfAnimation();
-
-        // Sempre força autoplay (mesmo quando trocar de modelo via home1/home3)
         el.setAttribute("auto-gltf-animation", "clip:*; loop:repeat; timeScale:1");
 
-        // Só configura o loop de profundidade 1x por carregamento de modelo
         const onLoaded = () => {
-          // evita empilhar animações se o mesmo modelo recarregar
           el.removeEventListener("model-loaded", onLoaded);
 
-          // pega estado "normal" atual (pra manter sua config padrão)
           const normalPos = el.getAttribute("position") || { x: 0, y: 0, z: -3 };
           const normalScale = el.getAttribute("scale") || { x: 1, y: 1, z: 1 };
 
-          // define o "começo" (pequeno e mais longe)
           const startScale = 0.25;
-          const startZ = (typeof normalPos.z === "number" ? normalPos.z : -3) - 3; // -3 => -6
+          const startZ = (typeof normalPos.z === "number" ? normalPos.z : -3) - 3;
 
           el.setAttribute("position", `${normalPos.x || 0} ${normalPos.y || 0} ${startZ}`);
           el.setAttribute("scale", `${startScale} ${startScale} ${startScale}`);
 
-          // andar pra frente (Z) em loop
           el.setAttribute(
             "animation__homeDepthPos",
             `property: position; from: ${normalPos.x || 0} ${normalPos.y || 0} ${startZ}; to: ${normalPos.x || 0} ${normalPos.y || 0} ${normalPos.z}; dur: 2200; loop: true; easing: linear`
           );
 
-          // crescer em loop
           el.setAttribute(
             "animation__homeDepthScale",
             `property: scale; from: ${startScale} ${startScale} ${startScale}; to: ${normalScale.x || 1} ${normalScale.y || 1} ${normalScale.z || 1}; dur: 2200; loop: true; easing: linear`
           );
 
-          // Debug: mostra clips do GLB (se não tiver, ele vai ficar parado mesmo)
           try {
             const mesh = el.getObject3D("mesh");
             const clips = (mesh && mesh.animations) ? mesh.animations : [];
@@ -246,7 +235,6 @@
         const obs = new MutationObserver((list) => {
           for (const m of list) {
             if (m.type === "attributes" && m.attributeName === "gltf-model") {
-              // reaplica no próximo tick (A-Frame ainda vai carregar)
               setTimeout(applyHomeAutoplayAndDepth, 0);
               break;
             }
@@ -263,10 +251,139 @@
     })();
   </script>
 
+  <!-- ✅ ADD (FOCO): cria o botão lápis ao lado do nome SEM alterar o botão do nome -->
+  <script>
+    (function () {
+      function isConfigButton(btn) {
+        const t = (btn?.textContent || "").trim().toLowerCase();
+        return t === "configuração" || t === "configuracao";
+      }
+
+      function acharCardDoItem(cfgBtn, container) {
+        // Sobe até achar um "card" que contenha poucos botões (nome + config)
+        let el = cfgBtn.parentElement;
+        while (el && el !== container) {
+          const btns = el.querySelectorAll("button");
+          if (btns.length <= 3) return el; // normalmente 2 (nome + config)
+          el = el.parentElement;
+        }
+        return cfgBtn.parentElement;
+      }
+
+      async function tentarSalvarNome(nomePadrao, novoNome) {
+        // não quebra nada se ainda não existir
+        if (window.sistemaCardapio && typeof window.sistemaCardapio.salvarNomePersonalizado === "function") {
+          return window.sistemaCardapio.salvarNomePersonalizado(nomePadrao, novoNome);
+        }
+        if (typeof window.salvarNomePersonalizado === "function") {
+          return window.salvarNomePersonalizado(nomePadrao, novoNome);
+        }
+        console.warn("[Rename] Sem função de salvar ainda. Alterou só visual.");
+        return null;
+      }
+
+      function aplicarLapis(nameBtn) {
+        if (!nameBtn || nameBtn.dataset.hasEdit === "1") return;
+        nameBtn.dataset.hasEdit = "1";
+
+        const nomePadrao = (nameBtn.textContent || "").trim();
+        if (!nomePadrao) return;
+
+        // regra: só se houver um botão "Configuração" no mesmo card
+        const card = nameBtn.parentElement;
+        const temConfig = !!Array.from(card.querySelectorAll("button")).find(isConfigButton);
+        if (!temConfig) return;
+
+        // cria wrapper da linha do nome (NÃO muda o botão original)
+        const row = document.createElement("div");
+        row.className = "itemNameRow";
+
+        // insere row no lugar do botão do nome
+        nameBtn.parentNode.insertBefore(row, nameBtn);
+        row.appendChild(nameBtn);
+
+        // cria lápis
+        const pencilBtn = document.createElement("button");
+        pencilBtn.type = "button";
+        pencilBtn.className = "editNameBtn";
+        pencilBtn.title = "Editar nome";
+        pencilBtn.setAttribute("aria-label", "Editar nome");
+        pencilBtn.textContent = "✎";
+
+        // tenta copiar cor do botão nome (visual)
+        try {
+          const cs = getComputedStyle(nameBtn);
+          pencilBtn.style.background = cs.backgroundColor;
+          pencilBtn.style.color = cs.color;
+          pencilBtn.style.boxShadow = cs.boxShadow;
+        } catch (_) {}
+
+        row.appendChild(pencilBtn);
+
+        // clique do lápis NÃO dispara o clique do item
+        const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
+        pencilBtn.addEventListener("pointerdown", stop, true);
+        pencilBtn.addEventListener("click", async (e) => {
+          stop(e);
+
+          const atual = (nameBtn.textContent || nomePadrao).trim();
+          const novo = prompt("Novo nome do produto:", atual);
+          if (novo == null) return;
+
+          const clean = novo.trim();
+          if (!clean) return;
+
+          // muda só o texto (o resto do botão continua igual)
+          nameBtn.textContent = clean;
+
+          try {
+            await tentarSalvarNome(nomePadrao, clean);
+          } catch (err) {
+            console.warn("[Rename] Falha ao salvar. Visual já foi alterado.", err);
+          }
+        }, true);
+      }
+
+      function scan(container) {
+        if (!container) return;
+
+        // A lógica mais segura: achar todos os "Configuração" e pegar o botão do nome no mesmo card
+        const cfgBtns = Array.from(container.querySelectorAll("button")).filter(isConfigButton);
+
+        for (const cfg of cfgBtns) {
+          const card = acharCardDoItem(cfg, container);
+          if (!card) continue;
+
+          const btns = Array.from(card.querySelectorAll("button"));
+          const nameBtn = btns.find(b => !isConfigButton(b));
+          if (!nameBtn) continue;
+
+          aplicarLapis(nameBtn);
+        }
+      }
+
+      function init() {
+        const container = document.getElementById("itensContainer");
+        if (!container) return;
+
+        scan(container);
+
+        const obs = new MutationObserver(() => scan(container));
+        obs.observe(container, { childList: true, subtree: true });
+
+        // reforço (caso o render aconteça com delay)
+        setTimeout(() => scan(container), 0);
+        setTimeout(() => scan(container), 300);
+        setTimeout(() => scan(container), 900);
+      }
+
+      document.addEventListener("DOMContentLoaded", init);
+    })();
+  </script>
+
   <!-- CONTROLE DE DROPDOWNS E PERFIL (SEM criar 2ª instância do sistema) -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      // ---------- util ----------
       function getRestauranteId() {
         return (
           localStorage.getItem('nomeRestaurante') ||
@@ -277,7 +394,6 @@
         );
       }
 
-      // Modal configuração (se existir)
       const modalConfig = document.getElementById("modalConfiguracao");
       const btnFechar = modalConfig?.querySelector(".fechar-modal-config");
       if (btnFechar) {
@@ -286,12 +402,10 @@
         if (btnSalvar) btnSalvar.addEventListener("click", () => modalConfig.classList.remove("active"));
       }
 
-      // Modal QR: aqui só fecha no X (ABRIR/GERAR fica 100% no home3.js)
       const modalQr = document.getElementById("modalQrCode");
       const btnFecharQr = modalQr?.querySelector("#fecharModal");
       if (btnFecharQr) btnFecharQr.addEventListener("click", () => modalQr.classList.add("hidden"));
 
-      // BroadcastChannel (opcional)
       if ("BroadcastChannel" in window) {
         const canalStatus = new BroadcastChannel("cardapio_channel");
         window.canalStatus = canalStatus;
@@ -303,7 +417,6 @@
         };
       }
 
-      // Dropdown Perfil
       const profileButtonOriginal = document.getElementById("profile-btn");
       const dropdownPerfil = document.getElementById("dropdownPerfil");
       const perfilTexto = document.getElementById("perfil-texto");
@@ -337,7 +450,6 @@
         });
       }
 
-      // Ações do dropdown
       const btnPerfilDados     = document.getElementById("perfil-dados");
       const btnPerfilMetricas  = document.getElementById("perfil-metricas");
       const btnPerfilSair      = document.getElementById("perfil-sair");
@@ -369,7 +481,6 @@
         window.location.href = "../html/login.html";
       });
 
-      // Fechar dropdown ao clicar fora
       document.addEventListener("click", (e) => {
         if (!dropdownPerfil) return;
         if (!dropdownPerfil.contains(e.target) && e.target !== profileButton) {
@@ -378,9 +489,6 @@
           setarSinalAberto(false);
         }
       });
-
-      // ✅ IMPORTANTE: NÃO instanciar SistemaCardapioBase aqui.
-      // A instância principal deve ficar só no home3.js (window.sistemaCardapio = new SistemaCardapio()).
     });
   </script>
 </body>

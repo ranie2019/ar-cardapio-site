@@ -49,6 +49,59 @@ function normKey(str) {
     .replace(/[\s\-]+/g, "_"); // espaços/hífen -> underscore
 }
 
+// ==================== NOMES PERSONALIZADOS (S3) ====================
+function emailToFolder(email = "") {
+  return String(email).trim().toLowerCase().replace(/[@.]/g, "-");
+}
+
+function getTenantFolder() {
+  // 1) prioridade: ?restaurante=
+  const r = qs("restaurante", "").trim();
+  if (r) return r;
+
+  // 2) fallback: ?u=email
+  const u = qs("u", "").trim().toLowerCase();
+  if (u) return emailToFolder(u);
+
+  // 3) último fallback
+  return "restaurante-padrao";
+}
+
+let __NOMES_MAP = {};
+
+async function carregarNomesPersonalizados() {
+  const tenant = getTenantFolder();
+  const url = addBust(`https://ar-cardapio-models.s3.amazonaws.com/informacao/${tenant}/nomes.json`);
+
+  try {
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) {
+      __NOMES_MAP = {};
+      return;
+    }
+    const j = await r.json();
+    __NOMES_MAP = (j && typeof j === "object") ? j : {};
+  } catch (_) {
+    __NOMES_MAP = {};
+  }
+}
+
+// pega nome renomeado usando chave "categoria/slug"
+function getNomeExibidoPorPath(path, categoriaKey) {
+  const file = String(path).split("/").pop().replace(".glb", "");
+  const slug = normKey(file);                 // ex: "redbull"
+  const cat = normKey(categoriaKey || "");    // ex: "bebidas"
+
+  // formato recomendado: "bebidas/redbull"
+  const k1 = `${cat}/${slug}`;
+
+  // fallback (se você salvou só por slug)
+  const k2 = slug;
+
+  return __NOMES_MAP[k1] || __NOMES_MAP[k2] || formatProductName(path);
+}
+
+
 async function ensureActivePlan() {
   const u = qs("u", "").trim();
   if (!u) return;
@@ -76,7 +129,7 @@ async function ensureActivePlan() {
 // ==================== CONFIGURAÇÃO DO RESTAURANTE VIA S3 ====================
 async function aplicarConfiguracaoDoRestaurante() {
   const urlParams = new URLSearchParams(window.location.search);
-  const nomeRestaurante = urlParams.get("restaurante") || "restaurante-padrao";
+  const nomeRestaurante = getTenantFolder();
 
   const CATS_CANDIDATES = [
     addBust(`https://ar-cardapio-models.s3.amazonaws.com/informacao/${nomeRestaurante}/config.json`),
@@ -174,7 +227,7 @@ function updateUI(model) {
   const priceEl = document.getElementById("priceDisplay");
   const infoBtn = document.getElementById("infoBtn");
 
-  if (nameEl) nameEl.textContent = formatProductName(model.path);
+  if (nameEl) nameEl.textContent = getNomeExibidoPorPath(model.path, currentCategory);
 
   const deveMostrarPreco = ["pizzas", "sobremesas", "bebidas", "carnes"].includes(currentCategory);
 
@@ -731,6 +784,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  await carregarNomesPersonalizados();
   await aplicarConfiguracaoDoRestaurante();
   verificarEstadoInicial();
 
@@ -993,7 +1047,7 @@ const LIKE_FILLED_SRC    = "../imagens/positivo1.png";
 const DISLIKE_EMPTY_SRC  = "../imagens/negativo.png";
 const DISLIKE_FILLED_SRC = "../imagens/negativo1.png";
 
-const __tenantKey = qs("restaurante", "unknown");
+const __tenantKey = getTenantFolder();
 const LIKE_STORAGE_KEY = `arcardapio_like_state_v1_${__tenantKey}`;
 
 let likeStateByItem = {};
@@ -1067,7 +1121,7 @@ function trackLikeEvent(newState, source) {
 
   const current = getCurrentModelData() || {};
   const itemPath = current.path || currentModelPath || null;
-  const itemName = itemPath ? formatProductName(itemPath) : null;
+  const itemName = itemPath ? getNomeExibidoPorPath(itemPath, currentCategory) : null;
 
   const value = (newState === "like") ? "positivo" : "negativo";
 

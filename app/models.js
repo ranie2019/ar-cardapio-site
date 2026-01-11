@@ -1,3 +1,7 @@
+// ==============================
+// modal.js 
+// ==============================
+
 // ==================== BASES DO BUCKET S3 ====================
 const modelBaseURL = "https://ar-cardapio-models.s3.amazonaws.com";
 const altBaseURL   = "https://ar-cardapio-models.s3.us-east-1.amazonaws.com";

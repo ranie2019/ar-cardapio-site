@@ -1,5 +1,7 @@
 // ==============================
 // home3.js - Sincronização, QR Code e Sistema Principal
+// + Botão lápis ao lado do nome (sem mexer na lógica do clique)
+// + Salva nomes por usuário em: informacao/<email>/nomes.json
 // ==============================
 
 /* ==============================
@@ -10,11 +12,9 @@ const LOGO_URL = "https://site-arcardapio.s3.us-east-1.amazonaws.com/imagens/log
 function aplicarLogoNoCentro(qrDiv) {
   if (!qrDiv) return;
 
-  // evita duplicar logo ao regenerar
   const old = qrDiv.querySelector(".qr-logo");
   if (old) old.remove();
 
-  // garante que o container do QR é "ancora" pro absolute
   qrDiv.style.position = "relative";
 
   const img = document.createElement("img");
@@ -25,12 +25,11 @@ function aplicarLogoNoCentro(qrDiv) {
   img.loading = "eager";
   img.referrerPolicy = "no-referrer";
 
-  // estilo inline pra funcionar mesmo sem mexer no CSS
   img.style.position = "absolute";
   img.style.left = "50%";
   img.style.top = "50%";
   img.style.transform = "translate(-50%, -50%)";
-  img.style.width = "44px";     // ajuste aqui (40~60 costuma ficar bom)
+  img.style.width = "44px";
   img.style.height = "44px";
   img.style.borderRadius = "10px";
   img.style.background = "#fff";
@@ -39,6 +38,22 @@ function aplicarLogoNoCentro(qrDiv) {
   img.style.zIndex = "5";
 
   qrDiv.appendChild(img);
+}
+
+/* ==============================
+   HELPERS (rename)
+   ============================== */
+function emailToFolder(email) {
+  return String(email || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+function isConfigText(txt) {
+  const t = String(txt || "").trim().toLowerCase();
+  return t === "configuração" || t === "configuracao";
 }
 
 /* ==============================
@@ -51,6 +66,34 @@ class SistemaCardapio extends SistemaCardapioItens {
     this.setupQrCode();
     this.configurarSincronizacao();
     this.carregarConfiguracoesIniciais();
+
+    // ✅ RENOMEAR (lápis)
+    this.nomesMap = {};
+    this.ARQUIVO_CONFIG_NOMES = this._resolverArquivoNomes();
+    this._renameObserver = null;
+
+    // expõe helper global (se quiser usar de fora)
+    window.salvarNomePersonalizado = (nomePadrao, novoNome) =>
+      this.salvarNomePersonalizado(nomePadrao, novoNome);
+
+    this.setupRenomearUI();
+  }
+
+  _resolverArquivoNomes() {
+    // tenta derivar da URL que você já usa (mais confiável)
+    try {
+      if (this.ARQUIVO_CONFIG_ITENS && String(this.ARQUIVO_CONFIG_ITENS).includes("itens.json")) {
+        return String(this.ARQUIVO_CONFIG_ITENS).replace(/itens\.json(\?.*)?$/i, "nomes.json");
+      }
+      if (this.ARQUIVO_CONFIG_CATEGORIAS && String(this.ARQUIVO_CONFIG_CATEGORIAS).includes("config.json")) {
+        return String(this.ARQUIVO_CONFIG_CATEGORIAS).replace(/config\.json(\?.*)?$/i, "nomes.json");
+      }
+    } catch (_) {}
+
+    // fallback: monta pelo padrão do bucket informacao/<email>/
+    const email = (localStorage.getItem("ar.email") || "").trim().toLowerCase();
+    const folder = emailToFolder(email);
+    return `https://ar-cardapio-models.s3.amazonaws.com/informacao/${folder}/nomes.json`;
   }
 
   // ==============================
@@ -209,7 +252,180 @@ class SistemaCardapio extends SistemaCardapioItens {
     } catch (erro) {
       console.log("Configurações não encontradas - usando padrões:", erro.message);
     }
+
+    // ✅ nomes personalizados (se existir)
+    await this.carregarNomesPersonalizados();
+    this.aplicarNomesNaTela();
   }
+
+  /* ==============================
+     NOMES PERSONALIZADOS (S3)
+     ============================== */
+  async carregarNomesPersonalizados() {
+    this.nomesMap = {};
+    try {
+      const r = await fetch(`${this.ARQUIVO_CONFIG_NOMES}?v=${Date.now()}`);
+      if (!r.ok) return;
+      const data = await r.json();
+      if (data && typeof data === "object") this.nomesMap = data;
+    } catch (_) {
+      // se não existe ainda, tudo bem
+    }
+  }
+
+  async salvarNomesNoS3() {
+    try {
+      const r = await fetch(this.ARQUIVO_CONFIG_NOMES, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-amz-acl": "bucket-owner-full-control",
+        },
+        body: JSON.stringify(this.nomesMap || {}),
+      });
+      if (!r.ok) {
+        const t = await r.text().catch(() => "");
+        Holden;
+        throw new Error(`Falha ao salvar nomes (${r.status}) ${t}`);
+      }
+    } catch (err) {
+      console.error("Erro ao salvar nomes:", err);
+      alert("Falha ao salvar nome do produto: " + err.message);
+    }
+  }
+
+  async salvarNomePersonalizado(nomePadrao, novoNome) {
+    const base = String(nomePadrao || "").trim();
+    const novo = String(novoNome || "").trim();
+    if (!base || !novo) return;
+
+    const slug = this.nomeParaSlug(base);
+    this.nomesMap = this.nomesMap || {};
+    this.nomesMap[slug] = novo;
+
+    await this.salvarNomesNoS3();
+    this.aplicarNomesNaTela();
+  }
+
+  /* ==============================
+     LÁPIS AO LADO (SEM BOTÃO DENTRO DE BOTÃO)
+     Decorar os elementos reais: [data-nome]
+     ============================== */
+  setupRenomearUI() {
+    const run = () => this._decorarTodosItensComLapis();
+
+    run();
+
+    // observa o DOM porque a lista muda por categoria
+    if (this._renameObserver) this._renameObserver.disconnect();
+    this._renameObserver = new MutationObserver(() => run());
+    this._renameObserver.observe(document.body, { childList: true, subtree: true });
+
+    window.addEventListener("load", () => run());
+  }
+
+  _decorarTodosItensComLapis() {
+    const itens = document.querySelectorAll("[data-nome]");
+    if (!itens || !itens.length) return;
+
+    itens.forEach((el) => this._decorarItemComLapis(el));
+  }
+
+  _decorarItemComLapis(nameBtn) {
+  if (!nameBtn) return;
+
+  // já pronto no formato correto
+  if (nameBtn.closest(".itemBlock")) return;
+
+  // evita mexer em coisas fora do painel
+  if (nameBtn.closest("#dropdownCardapio")) return;
+  if (nameBtn.closest("#dropdownPerfil")) return;
+
+  const txt = (nameBtn.textContent || "").trim();
+  if (!txt) return;
+  if (isConfigText(txt)) return;
+
+  // pega o botão Configuração que vinha logo abaixo/ao lado no DOM original
+  const configBtn = nameBtn.nextElementSibling;
+  const temConfig = !!(configBtn && configBtn.tagName === "BUTTON" && isConfigText(configBtn.textContent));
+
+  // guarda nome original (chave)
+  if (!nameBtn.dataset.defaultName) nameBtn.dataset.defaultName = txt;
+  const nomePadrao = nameBtn.dataset.defaultName;
+
+  // aplica nome salvo (sem mudar data-nome)
+  const slug = this.nomeParaSlug(nomePadrao);
+  const nomeCustom = this.nomesMap?.[slug];
+  if (nomeCustom) nameBtn.textContent = nomeCustom;
+
+  // ====== cria BLOCO (mantém layout original: nome em cima e config embaixo) ======
+  const block = document.createElement("div");
+  block.className = "itemBlock";
+  block.style.display = "inline-block";
+  block.style.verticalAlign = "top";
+
+  const topRow = document.createElement("div");
+  topRow.className = "itemTopRow";
+  topRow.style.display = "inline-flex";
+  topRow.style.alignItems = "center";
+  topRow.style.gap = "8px";
+  topRow.style.width = "fit-content";
+
+  // botão lápis
+  const pencilBtn = document.createElement("button");
+  pencilBtn.type = "button";
+  pencilBtn.className = "editNameBtn";
+  pencilBtn.title = "Editar nome";
+  pencilBtn.setAttribute("aria-label", "Editar nome");
+  pencilBtn.textContent = "✎";
+
+  // herda visual do botão do nome
+  try {
+    const cs = getComputedStyle(nameBtn);
+    pencilBtn.style.background = cs.backgroundColor;
+    pencilBtn.style.color = cs.color;
+    pencilBtn.style.boxShadow = cs.boxShadow;
+  } catch (_) {}
+
+  // não deixa o lápis disparar o clique do item
+  const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
+  pencilBtn.addEventListener("pointerdown", stop, true);
+  pencilBtn.addEventListener("click", async (e) => {
+    stop(e);
+
+    const atual = String(nameBtn.textContent || nomePadrao).trim();
+    const novo = prompt("Novo nome do produto:", atual);
+    if (novo == null) return;
+
+    const clean = novo.trim();
+    if (!clean) return;
+
+    nameBtn.textContent = clean;
+    await this.salvarNomePersonalizado(nomePadrao, clean);
+  }, true);
+
+  // ====== injeta no DOM sem quebrar listeners ======
+  const parent = nameBtn.parentNode;
+  if (!parent) return;
+
+  parent.insertBefore(block, nameBtn);
+
+  // linha de cima
+  block.appendChild(topRow);
+  topRow.appendChild(nameBtn);       // move o botão original (com listeners)
+  topRow.appendChild(pencilBtn);     // lápis ao lado
+
+  // linha de baixo: Configuração (igual era antes)
+  if (temConfig) {
+    configBtn.style.display = "block";   // força ficar embaixo dentro do bloco
+    configBtn.style.marginTop = "6px";
+    block.appendChild(configBtn);        // move o botão original (com listeners)
+  }
+
+  // marca
+  nameBtn.dataset.renameReady = "1";
+}
+
 
   // ==============================
   // 9. GERADOR DE QR CODE (Usando /qr/resolve) + LOGO NO CENTRO
@@ -267,7 +483,6 @@ class SistemaCardapio extends SistemaCardapioItens {
         const qrDiv = document.getElementById(`qr-${i}`);
         if (!qrDiv) continue;
 
-        // limpa caso regenere
         qrDiv.innerHTML = "";
 
         new QRCode(qrDiv, {
@@ -279,7 +494,6 @@ class SistemaCardapio extends SistemaCardapioItens {
           correctLevel: QRCode.CorrectLevel.H,
         });
 
-        // aplica logo por cima
         aplicarLogoNoCentro(qrDiv);
       }
     };
