@@ -1006,17 +1006,29 @@ footer {
 .perfil-menu { position: relative; }
     .dropdown-perfil {
       position: absolute;
-      top: 100%;
+      top: 185%;
       right: 0;
-      background: rgba(0, 0, 0, 0.9);
-      border-radius: 8px;
-      padding: 10px 0;
+
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+
       min-width: 160px;
       z-index: 1000;
-      border: 2px solid #00ffff;
     }
+
+    .dropdown-perfil.hidden {
+      display: none;
+    }
+
+    .dropdown-perfil.show {
+      display: block;
+    }
+
     .dropdown-perfil.hidden { display: none; }
     .dropdown-perfil.show { display: block; }
+    
     #dropdownPerfil .btn-categoria { width: 160px; margin: 8px 0; }
 
     .texto-botao .nome-empresa {
@@ -1107,4 +1119,100 @@ footer {
 #itensContainer .item-box[data-categoria="logo"] + .btn-configurar-produto,
 #itensContainer .item-box[data-categoria="diversos"] + .btn-configurar-produto{
   display: none !important;
+}
+
+/* ===== Modal Plano ===== */
+.hidden { display: none !important; }
+
+.modal-overlay{
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.65);
+  z-index: 9999;
+  padding: 16px;
+}
+
+.modal-card{
+  width: min(420px, 92vw);
+  border-radius: 18px;
+  background: #071a1f;
+  border: 2px solid rgba(0,255,209,.55);
+  box-shadow: 0 0 20px rgba(0,255,209,.22);
+  overflow: hidden;
+}
+
+.modal-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: rgba(0,255,209,.08);
+}
+
+.modal-header h2{
+  margin: 0;
+  font-size: 18px;
+  color: #c9fff5;
+  letter-spacing: .3px;
+}
+
+.modal-close{
+  border: none;
+  background: transparent;
+  color: #c9fff5;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+
+.modal-close:hover{
+  background: rgba(0,255,209,.12);
+}
+
+.modal-body{
+  padding: 14px 16px 6px;
+}
+
+.modal-row{
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.modal-row:last-child{
+  border-bottom: none;
+}
+
+.label{
+  color: rgba(201,255,245,.75);
+  font-weight: 600;
+}
+
+.value{
+  color: #c9fff5;
+  font-weight: 700;
+  text-align: right;
+}
+
+.modal-footer{
+  padding: 12px 16px 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.modal-ok{
+  border: none;
+  cursor: pointer;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-weight: 800;
+  color: #022022;
+  background: linear-gradient(90deg, #00ffd1, #7ee6ff);
+  box-shadow: 0 0 18px rgba(0,255,209,.18);
 }

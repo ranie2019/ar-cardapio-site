@@ -4,6 +4,8 @@
 // + Salva nomes por usuário em: informacao/<email>/nomes.json
 // ==============================
 
+"use strict";
+
 /* ==============================
    QR LOGO (FORA DA CLASS)
    ============================== */
@@ -51,6 +53,7 @@ function emailToFolder(email) {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 }
+
 function isConfigText(txt) {
   const t = String(txt || "").trim().toLowerCase();
   return t === "configuração" || t === "configuracao";
@@ -63,9 +66,11 @@ class SistemaCardapio extends SistemaCardapioItens {
   constructor() {
     super();
 
+    // QR
     this.setupQrCode();
+
+    // Broadcast / sync
     this.configurarSincronizacao();
-    this.carregarConfiguracoesIniciais();
 
     // ✅ RENOMEAR (lápis)
     this.nomesMap = {};
@@ -76,7 +81,12 @@ class SistemaCardapio extends SistemaCardapioItens {
     window.salvarNomePersonalizado = (nomePadrao, novoNome) =>
       this.salvarNomePersonalizado(nomePadrao, novoNome);
 
+    // aplica UI do lápis
     this.setupRenomearUI();
+
+    // carrega configs (mantém a lógica original)
+    // (não dá pra usar await no constructor sem mexer na arquitetura)
+    this.carregarConfiguracoesIniciais();
   }
 
   _resolverArquivoNomes() {
@@ -96,12 +106,36 @@ class SistemaCardapio extends SistemaCardapioItens {
     return `https://ar-cardapio-models.s3.amazonaws.com/informacao/${folder}/nomes.json`;
   }
 
+  /* ==============================
+     APLICAR NOMES NA TELA (correção do erro do console)
+     ============================== */
+  aplicarNomesNaTela() {
+    try {
+      // aplica nomes personalizados nos botões já existentes sem mexer no data-nome
+      const itens = document.querySelectorAll("[data-nome]");
+      itens.forEach((el) => {
+        const nomeBase = el.dataset.defaultName || (el.textContent || "").trim();
+        if (!nomeBase) return;
+
+        // salva nome base pra nunca perder a referência
+        if (!el.dataset.defaultName) el.dataset.defaultName = nomeBase;
+
+        const slug = this.nomeParaSlug(nomeBase);
+        const nomeCustom = this.nomesMap?.[slug];
+        if (nomeCustom) el.textContent = nomeCustom;
+      });
+    } catch (e) {
+      console.warn("[HOME] aplicarNomesNaTela falhou:", e);
+    }
+  }
+
   // ==============================
   // 6. SINCRONIZAÇÃO COM O APP AR
   // ==============================
   configurarSincronizacao() {
+    // mantém sua lógica original
     this.canalStatus.onmessage = (evento) => {
-      const { nome, visivel } = evento.data;
+      const { nome, visivel } = evento.data || {};
       const elemento = document.querySelector(`[data-nome="${this.nomeParaSlug(nome)}"]`);
       if (!elemento) return;
       elemento.style.display = visivel ? "" : "none";
@@ -242,8 +276,8 @@ class SistemaCardapio extends SistemaCardapioItens {
       if (respostaItens.ok) {
         const itensDesativados = await respostaItens.json();
         Object.entries(itensDesativados).forEach(([categoria, itens]) => {
-          itens.forEach((nomeItemSlug) => {
-            const nomeNormalizado = nomeItemSlug.replace(/_/g, " ").toLowerCase();
+          (itens || []).forEach((nomeItemSlug) => {
+            const nomeNormalizado = String(nomeItemSlug || "").replace(/_/g, " ").toLowerCase();
             const chave = this.gerarChaveItem(categoria, nomeNormalizado);
             localStorage.setItem(chave, "true");
           });
@@ -283,9 +317,10 @@ class SistemaCardapio extends SistemaCardapioItens {
         },
         body: JSON.stringify(this.nomesMap || {}),
       });
+
       if (!r.ok) {
         const t = await r.text().catch(() => "");
-        Holden;
+        // ✅ CORREÇÃO: removido "Holden;" que quebrava tudo
         throw new Error(`Falha ao salvar nomes (${r.status}) ${t}`);
       }
     } catch (err) {
@@ -332,100 +367,107 @@ class SistemaCardapio extends SistemaCardapioItens {
   }
 
   _decorarItemComLapis(nameBtn) {
-  if (!nameBtn) return;
+    if (!nameBtn) return;
 
-  // já pronto no formato correto
-  if (nameBtn.closest(".itemBlock")) return;
+    // já pronto no formato correto
+    if (nameBtn.closest(".itemBlock")) return;
 
-  // evita mexer em coisas fora do painel
-  if (nameBtn.closest("#dropdownCardapio")) return;
-  if (nameBtn.closest("#dropdownPerfil")) return;
+    // evita mexer em coisas fora do painel
+    if (nameBtn.closest("#dropdownCardapio")) return;
+    if (nameBtn.closest("#dropdownPerfil")) return;
 
-  const txt = (nameBtn.textContent || "").trim();
-  if (!txt) return;
-  if (isConfigText(txt)) return;
+    const txt = (nameBtn.textContent || "").trim();
+    if (!txt) return;
+    if (isConfigText(txt)) return;
 
-  // pega o botão Configuração que vinha logo abaixo/ao lado no DOM original
-  const configBtn = nameBtn.nextElementSibling;
-  const temConfig = !!(configBtn && configBtn.tagName === "BUTTON" && isConfigText(configBtn.textContent));
+    // pega o botão Configuração que vinha logo abaixo/ao lado no DOM original
+    const configBtn = nameBtn.nextElementSibling;
+    const temConfig = !!(configBtn && configBtn.tagName === "BUTTON" && isConfigText(configBtn.textContent));
 
-  // guarda nome original (chave)
-  if (!nameBtn.dataset.defaultName) nameBtn.dataset.defaultName = txt;
-  const nomePadrao = nameBtn.dataset.defaultName;
+    // guarda nome original (chave)
+    if (!nameBtn.dataset.defaultName) nameBtn.dataset.defaultName = txt;
+    const nomePadrao = nameBtn.dataset.defaultName;
 
-  // aplica nome salvo (sem mudar data-nome)
-  const slug = this.nomeParaSlug(nomePadrao);
-  const nomeCustom = this.nomesMap?.[slug];
-  if (nomeCustom) nameBtn.textContent = nomeCustom;
+    // aplica nome salvo (sem mudar data-nome)
+    const slug = this.nomeParaSlug(nomePadrao);
+    const nomeCustom = this.nomesMap?.[slug];
+    if (nomeCustom) nameBtn.textContent = nomeCustom;
 
-  // ====== cria BLOCO (mantém layout original: nome em cima e config embaixo) ======
-  const block = document.createElement("div");
-  block.className = "itemBlock";
-  block.style.display = "inline-block";
-  block.style.verticalAlign = "top";
+    // ====== cria BLOCO (mantém layout original: nome em cima e config embaixo) ======
+    const block = document.createElement("div");
+    block.className = "itemBlock";
+    block.style.display = "inline-block";
+    block.style.verticalAlign = "top";
 
-  const topRow = document.createElement("div");
-  topRow.className = "itemTopRow";
-  topRow.style.display = "inline-flex";
-  topRow.style.alignItems = "center";
-  topRow.style.gap = "8px";
-  topRow.style.width = "fit-content";
+    const topRow = document.createElement("div");
+    topRow.className = "itemTopRow";
+    topRow.style.display = "inline-flex";
+    topRow.style.alignItems = "center";
+    topRow.style.gap = "8px";
+    topRow.style.width = "fit-content";
 
-  // botão lápis
-  const pencilBtn = document.createElement("button");
-  pencilBtn.type = "button";
-  pencilBtn.className = "editNameBtn";
-  pencilBtn.title = "Editar nome";
-  pencilBtn.setAttribute("aria-label", "Editar nome");
-  pencilBtn.textContent = "✎";
+    // botão lápis
+    const pencilBtn = document.createElement("button");
+    pencilBtn.type = "button";
+    pencilBtn.className = "editNameBtn";
+    pencilBtn.title = "Editar nome";
+    pencilBtn.setAttribute("aria-label", "Editar nome");
+    pencilBtn.textContent = "✎";
 
-  // herda visual do botão do nome
-  try {
-    const cs = getComputedStyle(nameBtn);
-    pencilBtn.style.background = cs.backgroundColor;
-    pencilBtn.style.color = cs.color;
-    pencilBtn.style.boxShadow = cs.boxShadow;
-  } catch (_) {}
+    // herda visual do botão do nome
+    try {
+      const cs = getComputedStyle(nameBtn);
+      pencilBtn.style.background = cs.backgroundColor;
+      pencilBtn.style.color = cs.color;
+      pencilBtn.style.boxShadow = cs.boxShadow;
+    } catch (_) {}
 
-  // não deixa o lápis disparar o clique do item
-  const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
-  pencilBtn.addEventListener("pointerdown", stop, true);
-  pencilBtn.addEventListener("click", async (e) => {
-    stop(e);
+    // não deixa o lápis disparar o clique do item
+    const stop = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
 
-    const atual = String(nameBtn.textContent || nomePadrao).trim();
-    const novo = prompt("Novo nome do produto:", atual);
-    if (novo == null) return;
+    pencilBtn.addEventListener("pointerdown", stop, true);
+    pencilBtn.addEventListener(
+      "click",
+      async (e) => {
+        stop(e);
 
-    const clean = novo.trim();
-    if (!clean) return;
+        const atual = String(nameBtn.textContent || nomePadrao).trim();
+        const novo = prompt("Novo nome do produto:", atual);
+        if (novo == null) return;
 
-    nameBtn.textContent = clean;
-    await this.salvarNomePersonalizado(nomePadrao, clean);
-  }, true);
+        const clean = novo.trim();
+        if (!clean) return;
 
-  // ====== injeta no DOM sem quebrar listeners ======
-  const parent = nameBtn.parentNode;
-  if (!parent) return;
+        nameBtn.textContent = clean;
+        await this.salvarNomePersonalizado(nomePadrao, clean);
+      },
+      true
+    );
 
-  parent.insertBefore(block, nameBtn);
+    // ====== injeta no DOM sem quebrar listeners ======
+    const parent = nameBtn.parentNode;
+    if (!parent) return;
 
-  // linha de cima
-  block.appendChild(topRow);
-  topRow.appendChild(nameBtn);       // move o botão original (com listeners)
-  topRow.appendChild(pencilBtn);     // lápis ao lado
+    parent.insertBefore(block, nameBtn);
 
-  // linha de baixo: Configuração (igual era antes)
-  if (temConfig) {
-    configBtn.style.display = "block";   // força ficar embaixo dentro do bloco
-    configBtn.style.marginTop = "6px";
-    block.appendChild(configBtn);        // move o botão original (com listeners)
+    // linha de cima
+    block.appendChild(topRow);
+    topRow.appendChild(nameBtn); // move o botão original (com listeners)
+    topRow.appendChild(pencilBtn); // lápis ao lado
+
+    // linha de baixo: Configuração (igual era antes)
+    if (temConfig) {
+      configBtn.style.display = "block";
+      configBtn.style.marginTop = "6px";
+      block.appendChild(configBtn); // move o botão original (com listeners)
+    }
+
+    // marca
+    nameBtn.dataset.renameReady = "1";
   }
-
-  // marca
-  nameBtn.dataset.renameReady = "1";
-}
-
 
   // ==============================
   // 9. GERADOR DE QR CODE (Usando /qr/resolve) + LOGO NO CENTRO
@@ -451,6 +493,13 @@ class SistemaCardapio extends SistemaCardapioItens {
       const email = (localStorage.getItem("ar.email") || "").trim().toLowerCase();
       if (!email) {
         alert("Não foi possível identificar o e-mail do cliente (ar.email). Faça login novamente.");
+        return;
+      }
+
+      // se a lib QRCode não carregou, evita quebrar o resto
+      if (typeof QRCode === "undefined") {
+        console.error("QRCode lib não carregada (QRCode is undefined). Verifique a ordem dos <script> no home.html.");
+        alert("Erro: biblioteca de QR Code não carregou. Recarregue a página ou verifique o home.html.");
         return;
       }
 
@@ -584,5 +633,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // IMPORTANTE: SistemaCardapioItens precisa estar carregado antes deste arquivo
   new SistemaCardapio();
 });

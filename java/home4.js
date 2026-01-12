@@ -5,21 +5,17 @@
 // ✅ REMOVE a rotação AUTOMÁTICA APENAS quando o preview for da categoria /diversos/ (sem alterar home2.js)
 // ✅ (opcional) efeito “andar pra frente + crescer” apenas quando o modelo for CHEF
 //
-// COMO USAR:
-// 1) Salve este arquivo como UTF-8 em: /java/home4.js
-// 2) No home.html, adicione por ÚLTIMO (depois do home3.js):
-//    <script src="../java/home4.js"></script>
-//
-// OBS: Não precisa alterar mais nada.
+// ✅ ADICIONADO (SEM QUEBRAR): PERFIL DROPDOWN + MODAL PLANO + FETCH /assinatura/statushome
 
 "use strict";
 
+/* ============================================================
+   BLOCO 1 — SUA LÓGICA DE ANIMAÇÃO (MANTIDA)
+   ============================================================ */
 (function () {
   // ========= CONFIG =========
   const FIX = {
-    // qualquer track de scale com max < THRESHOLD (ex: 0.003) será removida
     tinyScaleThreshold: 0.05,
-    // também remove scale negativo (min < 0)
     removeNegativeScale: true
   };
 
@@ -37,8 +33,8 @@
 
   const GLTF_ANIM = {
     enabled: true,
-    clip: "*",      // "*" = todas
-    loop: "repeat", // repeat | once
+    clip: "*",
+    loop: "repeat",
     timeScale: 1.0
   };
 
@@ -129,7 +125,6 @@
       },
 
       _shouldDropScaleTrack(track) {
-        // track.name: "Chef.scale" / "Armature.scale" / etc
         if (!track || !track.name || !track.name.endsWith(".scale")) return false;
 
         const v = track.values;
@@ -143,9 +138,7 @@
           if (val > max) max = val;
         }
 
-        // ✅ seu caso real: max ~ 0.0034 => SOME
         if (max < FIX.tinyScaleThreshold) return true;
-
         if (FIX.removeNegativeScale && min < 0) return true;
 
         return false;
@@ -209,7 +202,7 @@
     return true;
   }
 
-  // ========= COMPONENT: walk-depth-loop (só efeito de posição/scale no entity) =========
+  // ========= COMPONENT: walk-depth-loop =========
   function registerWalkDepthLoop() {
     if (!window.AFRAME) return false;
     if (AFRAME.components["walk-depth-loop"]) return true;
@@ -228,7 +221,7 @@
 
       init() {
         this.t0 = null;
-        this.phase = "move"; // move | pause
+        this.phase = "move";
         this.pauseT0 = null;
       },
 
@@ -246,7 +239,6 @@
           const z = this.data.startZ + (this.data.endZ - this.data.startZ) * k;
           const s = this.data.startScale + (this.data.endScale - this.data.startScale) * k;
 
-          // aplica só Z + SCALE (não mexe em X/Y)
           this.el.object3D.position.z = z;
           this.el.object3D.scale.set(s, s, s);
 
@@ -269,7 +261,7 @@
     return true;
   }
 
-  // ========= PATCH: remove rotação só em /diversos/ no PREVIEW (sem tocar home2.js) =========
+  // ========= PATCH: remove rotação só em /diversos/ no PREVIEW =========
   function patchPreviewRotationOnlyDiversos() {
     const root = document.body;
 
@@ -279,11 +271,8 @@
       const url = getGltfUrl(previewModelEl);
       if (!url) return;
 
-      // ✅ só remove rotação se for /diversos/
       if (isDiversosUrl(url)) {
-        // home2 usa "animation" pra girar
         if (previewModelEl.hasAttribute("animation")) previewModelEl.removeAttribute("animation");
-        // se algum dia você usar animation__x, remove também
         Array.from(previewModelEl.attributes || []).forEach((attr) => {
           if (attr && typeof attr.name === "string" && attr.name.startsWith("animation__")) {
             previewModelEl.removeAttribute(attr.name);
@@ -291,7 +280,6 @@
         });
       }
 
-      // ✅ toca animação do GLB no preview também (não quebra quem não tem animação)
       if (GLTF_ANIM.enabled) {
         previewModelEl.setAttribute(
           "safe-gltf-animation",
@@ -300,29 +288,30 @@
       }
     };
 
-    // tenta aplicar imediatamente (caso o preview já exista)
     const now = document.querySelector("#previewModel");
     if (now) apply(now);
 
-    // observa criação/atualização do preview
     const obs = new MutationObserver(() => {
       const el = document.querySelector("#previewModel");
       if (el) apply(el);
     });
 
-    obs.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["gltf-model", "animation"] });
+    obs.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["gltf-model", "animation"]
+    });
   }
 
-  // ========= HOME: aplica animação no #modelo3d (sem setar gltf-model) =========
+  // ========= HOME: aplica animação no #modelo3d =========
   function setupHomeEntityAnimation() {
     const el = document.getElementById("modelo3d");
     if (!el) return;
 
-    // câmera: aumenta far (não muda UI; só evita clipping)
     const cam = document.querySelector("a-camera");
     if (cam) cam.setAttribute("camera", "near: 0.01; far: 1000");
 
-    // sempre habilita mixer seguro (se o modelo tiver animação)
     if (GLTF_ANIM.enabled) {
       el.setAttribute(
         "safe-gltf-animation",
@@ -330,7 +319,6 @@
       );
     }
 
-    // efeito WALK só se for CHEF (pra não bagunçar outros modelos)
     const applyWalkIfChef = () => {
       if (!WALK.enabled) {
         el.removeAttribute("walk-depth-loop");
@@ -347,13 +335,11 @@
       }
     };
 
-    // aplica agora e também quando trocar o gltf-model
     applyWalkIfChef();
 
     const mo = new MutationObserver(applyWalkIfChef);
     mo.observe(el, { attributes: true, attributeFilter: ["gltf-model"] });
 
-    // debug
     el.addEventListener("model-loaded", () => {
       try {
         const mesh = el.getObject3D("mesh");
@@ -372,10 +358,8 @@
     registerSafeGltfAnimation();
     registerWalkDepthLoop();
 
-    // 1) remove rotação só em /diversos/ no preview (sem tocar home2.js)
     patchPreviewRotationOnlyDiversos();
 
-    // 2) animação do modelo principal da HOME
     await waitFor(() => !!document.getElementById("modelo3d"), 9000);
     setupHomeEntityAnimation();
   }
@@ -385,4 +369,263 @@
   } else {
     boot();
   }
+})();
+
+
+/* ============================================================
+   BLOCO 2 — PERFIL DROPDOWN + MODAL PLANO (CORRIGIDO)
+   ============================================================ */
+(function () {
+  const API_PLANO = "https://nfbnk2nku9.execute-api.us-east-1.amazonaws.com/assinatura/statushome";
+
+  function $(id) { return document.getElementById(id); }
+
+  function pickId(...ids) {
+    for (const id of ids) {
+      const el = $(id);
+      if (el) return el;
+    }
+    return null;
+  }
+
+  function ready(fn) {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", fn, { once: true });
+    } else fn();
+  }
+
+  function getEmailCliente() {
+    return (
+      localStorage.getItem("ar.email") ||
+      localStorage.getItem("usuarioEmail") ||
+      localStorage.getItem("email") ||
+      ""
+    ).trim().toLowerCase();
+  }
+
+  ready(() => {
+    const profileBtn  = $("profile-btn");
+    const dropdown    = $("dropdownPerfil");
+    const perfilTexto = $("perfil-texto");
+
+    if (!profileBtn || !dropdown) {
+      console.warn("[PERFIL] profile-btn ou dropdownPerfil não encontrado.");
+      return;
+    }
+
+    // evita duplicar listeners
+    if (profileBtn.dataset.perfilBound === "1") return;
+    profileBtn.dataset.perfilBound = "1";
+
+    const btnConta    = pickId("perfil-conta");
+    const btnPlano    = pickId("perfil-plano", "perfil-Plano"); // aceita legado
+    const btnMetricas = pickId("perfil-metricas");
+    const btnSair     = pickId("perfil-sair");
+
+    const overlay  = $("modalPlanoOverlay");
+    const btnClose = $("modalPlanoClose");
+    const btnOk    = $("modalPlanoOk");
+
+    const elNome     = $("planoNome");
+    const elStatus   = $("planoStatus");
+    const elValidade = $("planoValidade");
+
+    let timer = null;
+
+    function setArrow(open) {
+      const seta = perfilTexto?.querySelector(".perfil-seta");
+      if (seta) seta.textContent = open ? "▲" : "▼";
+      profileBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      dropdown.setAttribute("aria-hidden", open ? "false" : "true");
+    }
+
+    function openDropdown() {
+      dropdown.classList.remove("hidden");
+      dropdown.classList.add("show");
+      setArrow(true);
+    }
+
+    function closeDropdown() {
+      dropdown.classList.remove("show");
+      dropdown.classList.add("hidden");
+      setArrow(false);
+    }
+
+    function toggleDropdown() {
+      const isOpen = dropdown.classList.contains("show") && !dropdown.classList.contains("hidden");
+      if (isOpen) closeDropdown();
+      else openDropdown();
+    }
+
+    function openModalPlano() {
+      if (!overlay) return;
+      overlay.classList.remove("hidden");
+      overlay.setAttribute("aria-hidden", "false");
+    }
+
+    function closeModalPlano() {
+      if (!overlay) return;
+      overlay.classList.add("hidden");
+      overlay.setAttribute("aria-hidden", "true");
+      if (timer) { clearInterval(timer); timer = null; }
+    }
+
+    function startCountdown(expiresAtISO) {
+      if (!elValidade) return;
+
+      if (timer) { clearInterval(timer); timer = null; }
+
+      if (!expiresAtISO) {
+        elValidade.textContent = "Sem data de expiração";
+        return;
+      }
+
+      const expiresAt = new Date(expiresAtISO).getTime();
+      if (!Number.isFinite(expiresAt)) {
+        elValidade.textContent = "Sem data de expiração";
+        return;
+      }
+
+      function tick() {
+        const diff = expiresAt - Date.now();
+
+        if (diff <= 0) {
+          elValidade.textContent = "Expirado";
+          if (elStatus) elStatus.textContent = "Desativado";
+          clearInterval(timer);
+          timer = null;
+          return;
+        }
+
+        const totalSeconds = Math.floor(diff / 1000);
+        const days = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor((totalSeconds % 86400) / 3600);
+        const mins = Math.floor((totalSeconds % 3600) / 60);
+
+        elValidade.textContent = `Expira em ${days} dias ${hours}h ${mins}m`;
+      }
+
+      tick();
+      timer = setInterval(tick, 1000);
+    }
+
+    async function fetchPlano(email) {
+      const url = `${API_PLANO}?email=${encodeURIComponent(email)}`;
+
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json",
+          "X-Email": email
+        }
+      });
+
+      const text = await res.text();
+      let data = null;
+      try { data = JSON.parse(text); } catch (_) {}
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status} - ${text}`);
+      }
+
+      if (!data || (data.ok !== true && data.ok !== "true")) {
+        // ainda retorna o payload pro debug
+        throw new Error(`Resposta inválida: ${text}`);
+      }
+
+      return data;
+    }
+
+    async function loadPlano() {
+      if (elNome) elNome.textContent = "Carregando...";
+      if (elStatus) elStatus.textContent = "—";
+      if (elValidade) elValidade.textContent = "—";
+
+      const email = getEmailCliente();
+      if (!email) {
+        if (elNome) elNome.textContent = "—";
+        if (elStatus) elStatus.textContent = "—";
+        if (elValidade) elValidade.textContent = "Sem e-mail no login";
+        console.warn("[PLANO] Sem email no localStorage (ar.email/usuarioEmail/email).");
+        return;
+      }
+
+      try {
+        const data = await fetchPlano(email);
+
+        if (elNome) elNome.textContent = data.planName || "—";
+        if (elStatus) elStatus.textContent = (data.active || data.status === "ACTIVE") ? "Ativo" : "Desativado";
+        startCountdown(data.expiresAt || "");
+
+      } catch (err) {
+        console.warn("[PLANO] erro:", err);
+        if (elNome) elNome.textContent = "—";
+        if (elStatus) elStatus.textContent = "—";
+        if (elValidade) elValidade.textContent = "Falha ao carregar";
+      }
+    }
+
+    // ====== Eventos ======
+    profileBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleDropdown();
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!dropdown.contains(e.target) && e.target !== profileBtn) closeDropdown();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeDropdown();
+        if (overlay && !overlay.classList.contains("hidden")) closeModalPlano();
+      }
+    });
+
+    btnConta?.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      closeDropdown();
+      alert("Em breve: Conta");
+    });
+
+    btnMetricas?.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      closeDropdown();
+      window.location.href = "metricas.html";
+    });
+
+    btnSair?.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      closeDropdown();
+      localStorage.removeItem("ar.token");
+      localStorage.removeItem("ar.email");
+      localStorage.removeItem("ar.exp");
+      localStorage.removeItem("ar.statusPlano");
+      window.location.href = "../html/login.html";
+    });
+
+    btnPlano?.addEventListener("click", async (e) => {
+      e.preventDefault(); e.stopPropagation();
+      closeDropdown();
+
+      if (!overlay) {
+        console.warn("[PLANO] modalPlanoOverlay não existe no HTML.");
+        return;
+      }
+
+      openModalPlano();
+      await loadPlano();
+    });
+
+    btnClose?.addEventListener("click", closeModalPlano);
+    btnOk?.addEventListener("click", closeModalPlano);
+
+    overlay?.addEventListener("click", (e) => {
+      if (e.target === overlay) closeModalPlano();
+    });
+
+    // Debug rápido pra você ver o email que ele vai usar:
+    console.log("[PERFIL] bound OK. email:", getEmailCliente());
+  });
 })();

@@ -135,7 +135,12 @@ class SistemaCardapioBase {
   }
 
   nomeParaSlug(nome) {
-    return nome.trim().toLowerCase().replace(/\s+/g, "_");
+  return String(nome || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove acentos
+    .replace(/[^a-z0-9]+/g, "_")                      // tudo vira _
+    .replace(/^_+|_+$/g, "");                         // tira _ do começo/fim
   }
 
   nomeParaArquivo(nome) {
@@ -340,3 +345,76 @@ function showToast(message, type = "success", ms = 3000) {
     t.addEventListener("transitionend", () => t.remove(), { once: true });
   }, ms);
 }
+
+// ==============================
+// QR CODE — abrir/fechar modal
+// ==============================
+(function () {
+  function ready(fn) {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", fn, { once: true });
+    } else {
+      fn();
+    }
+  }
+
+  ready(() => {
+    const btnOpen = document.getElementById("btnGerarQR"); // seu botão
+    const modal   = document.getElementById("modalQrCode"); // seu modal
+    const btnClose = document.getElementById("fecharModal"); // seu X (span)
+
+    if (!btnOpen || !modal) {
+      console.warn("[QR] Não achei btnGerarQR ou modalQrCode", {
+        btnGerarQR: !!btnOpen,
+        modalQrCode: !!modal
+      });
+      return;
+    }
+
+    // evita duplicar listener caso o script rode mais de 1x
+    if (btnOpen.dataset.qrBound === "1") return;
+    btnOpen.dataset.qrBound = "1";
+
+    function openModal() {
+      modal.classList.remove("hidden");
+      modal.classList.add("ativo");
+      modal.style.display = "flex"; // garante abrir mesmo se CSS variar
+    }
+
+    function closeModal() {
+      modal.classList.add("hidden");
+      modal.classList.remove("ativo");
+      modal.style.display = "none"; // garante fechar mesmo se CSS variar
+    }
+
+    // abrir
+    btnOpen.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openModal();
+    });
+
+    // fechar no X
+    if (btnClose) {
+      btnClose.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeModal();
+      });
+    }
+
+    // fechar clicando fora do conteúdo
+    modal.addEventListener("click", (e) => {
+      const content = modal.querySelector(".conteudo-modal");
+      if (content && !content.contains(e.target)) closeModal();
+    });
+
+    // ESC fecha
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeModal();
+    });
+
+    // debug rápido
+    console.log("[QR] bind OK");
+  });
+})();

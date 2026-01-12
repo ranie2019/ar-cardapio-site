@@ -1,4 +1,4 @@
-<!-- HOME.HTML (ATUALIZADO) -->
+<!-- HOME.HTML (LIMPO - SEM JS INLINE) -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -7,12 +7,15 @@
   <title>Home - Sistema</title>
 
   <link rel="stylesheet" href="../css/home.css">
+
+  <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
 </head>
 
 <body>
   <!-- VÍDEO DE FUNDO -->
-  <video autoplay muted loop id="bg-video" style="position:fixed;right:0;bottom:0;min-width:100%;min-height:100%;z-index:-1;">
+  <video autoplay muted loop id="bg-video"
+    style="position:fixed;right:0;bottom:0;min-width:100%;min-height:100%;z-index:-1;">
     <source src="../videos/home.mp4" type="video/mp4">
     Seu navegador não suporta vídeo em HTML5.
   </video>
@@ -20,21 +23,27 @@
   <!-- CABEÇALHO -->
   <header class="header">
     <div class="menu-lateral">
-      <button class="botao-com-video" id="cardapio-btn">
-        <video autoplay muted loop class="video-hover"><source src="../videos/botoes.mp4" type="video/mp4"></video>
+      <button class="botao-com-video" id="cardapio-btn" type="button">
+        <video autoplay muted loop class="video-hover">
+          <source src="../videos/botoes.mp4" type="video/mp4">
+        </video>
         <span class="texto-botao">Cardápio ▼</span>
       </button>
 
-      <button class="botao-com-video" id="btnGerarQR">
-        <video autoplay muted loop class="video-hover"><source src="../videos/botoes.mp4" type="video/mp4"></video>
+      <button class="botao-com-video" id="btnGerarQR" type="button">
+        <video autoplay muted loop class="video-hover">
+          <source src="../videos/botoes.mp4" type="video/mp4">
+        </video>
         <span class="texto-botao">QR Code</span>
       </button>
     </div>
 
     <div class="menu-direita">
       <div class="perfil-menu">
-        <button class="botao-com-video" id="profile-btn" aria-haspopup="true" aria-expanded="false">
-          <video autoplay muted loop class="video-hover"><source src="../videos/botoes.mp4" type="video/mp4"></video>
+        <button class="botao-com-video" id="profile-btn" type="button" aria-haspopup="true" aria-expanded="false">
+          <video autoplay muted loop class="video-hover">
+            <source src="../videos/botoes.mp4" type="video/mp4">
+          </video>
           <span class="texto-botao" id="perfil-texto">
             Perfil <span class="perfil-seta">▼</span>
             <small class="nome-empresa" id="nome-empresa"></small>
@@ -42,9 +51,10 @@
         </button>
 
         <div id="dropdownPerfil" class="dropdown-perfil hidden" aria-hidden="true">
-          <button id="perfil-dados" class="btn-categoria">Conta</button>
-          <button id="perfil-metricas" class="btn-categoria">Métricas</button>
-          <button id="perfil-sair" class="btn-categoria">Sair</button>
+          <button id="perfil-conta" class="btn-categoria" type="button">Conta</button>
+          <button id="perfil-plano" class="btn-categoria" type="button">Plano</button>
+          <button id="perfil-metricas" class="btn-categoria" type="button">Métricas</button>
+          <button id="perfil-sair" class="btn-categoria" type="button">Sair</button>
         </div>
       </div>
     </div>
@@ -55,21 +65,21 @@
   <!-- CARDÁPIO -->
   <div class="cardapio-menu">
     <div id="dropdownCardapio" class="dropdown-cardapio hidden">
-      <button data-categoria="logo" class="btn-categoria">Logo</button>
-      <button data-categoria="bebidas" class="btn-categoria">Bebidas</button>
-      <button data-categoria="carnes" class="btn-categoria">Carnes</button>
-      <button data-categoria="pizzas" class="btn-categoria">Pizzas</button>
-      <button data-categoria="lanches" class="btn-categoria">Lanches</button>
-      <button data-categoria="sobremesas" class="btn-categoria">Sobremesas</button>
-      <button data-categoria="porcoes" class="btn-categoria">Porções</button>
-      <button data-categoria="diversos" class="btn-categoria">Diversos</button>
+      <button data-categoria="logo" class="btn-categoria" type="button">Logo</button>
+      <button data-categoria="bebidas" class="btn-categoria" type="button">Bebidas</button>
+      <button data-categoria="carnes" class="btn-categoria" type="button">Carnes</button>
+      <button data-categoria="pizzas" class="btn-categoria" type="button">Pizzas</button>
+      <button data-categoria="lanches" class="btn-categoria" type="button">Lanches</button>
+      <button data-categoria="sobremesas" class="btn-categoria" type="button">Sobremesas</button>
+      <button data-categoria="porcoes" class="btn-categoria" type="button">Porções</button>
+      <button data-categoria="diversos" class="btn-categoria" type="button">Diversos</button>
     </div>
   </div>
 
   <!-- CONTAINER DE ITENS -->
   <div id="itensContainer" class="itens-container"></div>
 
-  <!-- ✅ JANELA 3D / PREVIEW -->
+  <!-- JANELA 3D / PREVIEW -->
   <div id="scene3D" class="scene-3d">
     <a-scene
       embedded
@@ -100,396 +110,54 @@
       <div class="controles-qrcode">
         <label for="qtdQr">Quantidade:</label>
         <input type="number" id="qtdQr" value="1" min="1" />
-        <button id="diminuirQr">-</button>
-        <button id="aumentarQr">+</button>
-        <button id="imprimirQr">Imprimir</button>
+        <button id="diminuirQr" type="button">-</button>
+        <button id="aumentarQr" type="button">+</button>
+        <button id="imprimirQr" type="button">Imprimir</button>
       </div>
 
       <div id="qrcodeContainer"></div>
     </div>
   </div>
 
+  <!-- MODAL PLANO -->
+  <div id="modalPlanoOverlay" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalPlanoTitle">
+      <div class="modal-header">
+        <h2 id="modalPlanoTitle">Plano</h2>
+        <button id="modalPlanoClose" class="modal-close" type="button" aria-label="Fechar">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-row">
+          <span class="label">Plano:</span>
+          <span id="planoNome" class="value">—</span>
+        </div>
+
+        <div class="modal-row">
+          <span class="label">Status:</span>
+          <span id="planoStatus" class="value">—</span>
+        </div>
+
+        <div class="modal-row">
+          <span class="label">Validade:</span>
+          <span id="planoValidade" class="value">—</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="modalPlanoOk" class="modal-ok" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
   <!-- BIBLIOTECA QR -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <!-- SCRIPTS DO PROJETO (carregam em ordem) -->
-  <script src="../java/cardapio.js"></script>
-  <script src="../java/home1.js"></script>
-  <script src="../java/home2.js"></script>
-  <script src="../java/home3.js"></script>
-  <script src="../java/home4.js"></script>
-
-  <!-- ✅ AUTOPLAY DA ANIMAÇÃO GLB NA HOME + EFEITO PROFUNDIDADE -->
-  <script>
-    (function () {
-      function registerAutoGltfAnimation() {
-        if (!window.AFRAME || AFRAME.components["auto-gltf-animation"]) return;
-
-        AFRAME.registerComponent("auto-gltf-animation", {
-          schema: {
-            clip: { default: "*" },
-            timeScale: { default: 1.0 },
-            loop: { default: "repeat" }
-          },
-
-          init: function () {
-            this.mixer = null;
-            this.actions = [];
-
-            this._onModelLoaded = (e) => {
-              this._stopAll();
-
-              const model = e && e.detail && e.detail.model;
-              const clips = model && model.animations ? model.animations : [];
-              if (!model || !clips.length) return;
-
-              this.mixer = new THREE.AnimationMixer(model);
-
-              const wantAll = (this.data.clip === "*" || !this.data.clip);
-              for (const clip of clips) {
-                if (!wantAll && clip.name !== this.data.clip) continue;
-
-                const action = this.mixer.clipAction(clip);
-                action.reset();
-
-                if (this.data.loop === "once") {
-                  action.setLoop(THREE.LoopOnce, 1);
-                  action.clampWhenFinished = true;
-                } else {
-                  action.setLoop(THREE.LoopRepeat, Infinity);
-                }
-
-                action.play();
-                this.actions.push(action);
-              }
-
-              this.mixer.timeScale = Number(this.data.timeScale) || 1.0;
-            };
-
-            this.el.addEventListener("model-loaded", this._onModelLoaded);
-          },
-
-          tick: function (_t, dt) {
-            if (this.mixer) this.mixer.update((dt || 0) / 1000);
-          },
-
-          remove: function () {
-            this.el.removeEventListener("model-loaded", this._onModelLoaded);
-            this._stopAll();
-          },
-
-          _stopAll: function () {
-            if (this.actions && this.actions.length) {
-              this.actions.forEach(a => { try { a.stop(); } catch (_) {} });
-            }
-            this.actions = [];
-            this.mixer = null;
-          }
-        });
-      }
-
-      function applyHomeAutoplayAndDepth() {
-        const el = document.getElementById("modelo3d");
-        if (!el) return;
-
-        registerAutoGltfAnimation();
-        el.setAttribute("auto-gltf-animation", "clip:*; loop:repeat; timeScale:1");
-
-        const onLoaded = () => {
-          el.removeEventListener("model-loaded", onLoaded);
-
-          const normalPos = el.getAttribute("position") || { x: 0, y: 0, z: -3 };
-          const normalScale = el.getAttribute("scale") || { x: 1, y: 1, z: 1 };
-
-          const startScale = 0.25;
-          const startZ = (typeof normalPos.z === "number" ? normalPos.z : -3) - 3;
-
-          el.setAttribute("position", `${normalPos.x || 0} ${normalPos.y || 0} ${startZ}`);
-          el.setAttribute("scale", `${startScale} ${startScale} ${startScale}`);
-
-          el.setAttribute(
-            "animation__homeDepthPos",
-            `property: position; from: ${normalPos.x || 0} ${normalPos.y || 0} ${startZ}; to: ${normalPos.x || 0} ${normalPos.y || 0} ${normalPos.z}; dur: 2200; loop: true; easing: linear`
-          );
-
-          el.setAttribute(
-            "animation__homeDepthScale",
-            `property: scale; from: ${startScale} ${startScale} ${startScale}; to: ${normalScale.x || 1} ${normalScale.y || 1} ${normalScale.z || 1}; dur: 2200; loop: true; easing: linear`
-          );
-
-          try {
-            const mesh = el.getObject3D("mesh");
-            const clips = (mesh && mesh.animations) ? mesh.animations : [];
-            console.log("[HOME] GLB animations:", clips.map(c => c.name));
-            if (!clips.length) console.warn("[HOME] Seu GLB não tem animação embutida.");
-          } catch (_) {}
-        };
-
-        el.addEventListener("model-loaded", onLoaded, { once: true });
-      }
-
-      function watchGltfModelChanges() {
-        const el = document.getElementById("modelo3d");
-        if (!el) return;
-
-        const obs = new MutationObserver((list) => {
-          for (const m of list) {
-            if (m.type === "attributes" && m.attributeName === "gltf-model") {
-              setTimeout(applyHomeAutoplayAndDepth, 0);
-              break;
-            }
-          }
-        });
-
-        obs.observe(el, { attributes: true });
-      }
-
-      document.addEventListener("DOMContentLoaded", () => {
-        applyHomeAutoplayAndDepth();
-        watchGltfModelChanges();
-      });
-    })();
-  </script>
-
-  <!-- ✅ ADD (FOCO): cria o botão lápis ao lado do nome SEM alterar o botão do nome -->
-  <script>
-    (function () {
-      function isConfigButton(btn) {
-        const t = (btn?.textContent || "").trim().toLowerCase();
-        return t === "configuração" || t === "configuracao";
-      }
-
-      function acharCardDoItem(cfgBtn, container) {
-        // Sobe até achar um "card" que contenha poucos botões (nome + config)
-        let el = cfgBtn.parentElement;
-        while (el && el !== container) {
-          const btns = el.querySelectorAll("button");
-          if (btns.length <= 3) return el; // normalmente 2 (nome + config)
-          el = el.parentElement;
-        }
-        return cfgBtn.parentElement;
-      }
-
-      async function tentarSalvarNome(nomePadrao, novoNome) {
-        // não quebra nada se ainda não existir
-        if (window.sistemaCardapio && typeof window.sistemaCardapio.salvarNomePersonalizado === "function") {
-          return window.sistemaCardapio.salvarNomePersonalizado(nomePadrao, novoNome);
-        }
-        if (typeof window.salvarNomePersonalizado === "function") {
-          return window.salvarNomePersonalizado(nomePadrao, novoNome);
-        }
-        console.warn("[Rename] Sem função de salvar ainda. Alterou só visual.");
-        return null;
-      }
-
-      function aplicarLapis(nameBtn) {
-        if (!nameBtn || nameBtn.dataset.hasEdit === "1") return;
-        nameBtn.dataset.hasEdit = "1";
-
-        const nomePadrao = (nameBtn.textContent || "").trim();
-        if (!nomePadrao) return;
-
-        // regra: só se houver um botão "Configuração" no mesmo card
-        const card = nameBtn.parentElement;
-        const temConfig = !!Array.from(card.querySelectorAll("button")).find(isConfigButton);
-        if (!temConfig) return;
-
-        // cria wrapper da linha do nome (NÃO muda o botão original)
-        const row = document.createElement("div");
-        row.className = "itemNameRow";
-
-        // insere row no lugar do botão do nome
-        nameBtn.parentNode.insertBefore(row, nameBtn);
-        row.appendChild(nameBtn);
-
-        // cria lápis
-        const pencilBtn = document.createElement("button");
-        pencilBtn.type = "button";
-        pencilBtn.className = "editNameBtn";
-        pencilBtn.title = "Editar nome";
-        pencilBtn.setAttribute("aria-label", "Editar nome");
-        pencilBtn.textContent = "✎";
-
-        // tenta copiar cor do botão nome (visual)
-        try {
-          const cs = getComputedStyle(nameBtn);
-          pencilBtn.style.background = cs.backgroundColor;
-          pencilBtn.style.color = cs.color;
-          pencilBtn.style.boxShadow = cs.boxShadow;
-        } catch (_) {}
-
-        row.appendChild(pencilBtn);
-
-        // clique do lápis NÃO dispara o clique do item
-        const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
-        pencilBtn.addEventListener("pointerdown", stop, true);
-        pencilBtn.addEventListener("click", async (e) => {
-          stop(e);
-
-          const atual = (nameBtn.textContent || nomePadrao).trim();
-          const novo = prompt("Novo nome do produto:", atual);
-          if (novo == null) return;
-
-          const clean = novo.trim();
-          if (!clean) return;
-
-          // muda só o texto (o resto do botão continua igual)
-          nameBtn.textContent = clean;
-
-          try {
-            await tentarSalvarNome(nomePadrao, clean);
-          } catch (err) {
-            console.warn("[Rename] Falha ao salvar. Visual já foi alterado.", err);
-          }
-        }, true);
-      }
-
-      function scan(container) {
-        if (!container) return;
-
-        // A lógica mais segura: achar todos os "Configuração" e pegar o botão do nome no mesmo card
-        const cfgBtns = Array.from(container.querySelectorAll("button")).filter(isConfigButton);
-
-        for (const cfg of cfgBtns) {
-          const card = acharCardDoItem(cfg, container);
-          if (!card) continue;
-
-          const btns = Array.from(card.querySelectorAll("button"));
-          const nameBtn = btns.find(b => !isConfigButton(b));
-          if (!nameBtn) continue;
-
-          aplicarLapis(nameBtn);
-        }
-      }
-
-      function init() {
-        const container = document.getElementById("itensContainer");
-        if (!container) return;
-
-        scan(container);
-
-        const obs = new MutationObserver(() => scan(container));
-        obs.observe(container, { childList: true, subtree: true });
-
-        // reforço (caso o render aconteça com delay)
-        setTimeout(() => scan(container), 0);
-        setTimeout(() => scan(container), 300);
-        setTimeout(() => scan(container), 900);
-      }
-
-      document.addEventListener("DOMContentLoaded", init);
-    })();
-  </script>
-
-  <!-- CONTROLE DE DROPDOWNS E PERFIL (SEM criar 2ª instância do sistema) -->
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      function getRestauranteId() {
-        return (
-          localStorage.getItem('nomeRestaurante') ||
-          localStorage.getItem('ar.email') ||
-          localStorage.getItem('usuarioEmail') ||
-          localStorage.getItem('email') ||
-          ''
-        );
-      }
-
-      const modalConfig = document.getElementById("modalConfiguracao");
-      const btnFechar = modalConfig?.querySelector(".fechar-modal-config");
-      if (btnFechar) {
-        btnFechar.addEventListener("click", () => modalConfig.classList.remove("active"));
-        const btnSalvar = modalConfig.querySelector("#btnSalvarModal");
-        if (btnSalvar) btnSalvar.addEventListener("click", () => modalConfig.classList.remove("active"));
-      }
-
-      const modalQr = document.getElementById("modalQrCode");
-      const btnFecharQr = modalQr?.querySelector("#fecharModal");
-      if (btnFecharQr) btnFecharQr.addEventListener("click", () => modalQr.classList.add("hidden"));
-
-      if ("BroadcastChannel" in window) {
-        const canalStatus = new BroadcastChannel("cardapio_channel");
-        window.canalStatus = canalStatus;
-        canalStatus.onmessage = (event) => {
-          const { nome, visivel } = event.data || {};
-          if (!nome) return;
-          const btn = document.querySelector(`button[data-nome="${nome}"]`);
-          if (btn) btn.style.display = visivel ? 'inline-block' : 'none';
-        };
-      }
-
-      const profileButtonOriginal = document.getElementById("profile-btn");
-      const dropdownPerfil = document.getElementById("dropdownPerfil");
-      const perfilTexto = document.getElementById("perfil-texto");
-      let profileButton = profileButtonOriginal;
-
-      if (profileButtonOriginal) {
-        try {
-          profileButton = profileButtonOriginal.cloneNode(true);
-          profileButtonOriginal.parentNode.replaceChild(profileButton, profileButtonOriginal);
-        } catch (e) {
-          console.warn('Erro ao clonar profile-btn:', e);
-          profileButton = profileButtonOriginal;
-        }
-      } else {
-        console.warn('profile-btn não encontrado no DOM.');
-      }
-
-      function setarSinalAberto(aberto) {
-        const seta = perfilTexto?.querySelector(".perfil-seta");
-        if (seta) seta.textContent = aberto ? "▲" : "▼";
-      }
-
-      if (profileButton && dropdownPerfil) {
-        profileButton.addEventListener("click", (e) => {
-          e.stopPropagation();
-          dropdownPerfil.classList.toggle("show");
-          dropdownPerfil.classList.toggle("hidden");
-          const aberto = dropdownPerfil.classList.contains("show");
-          dropdownPerfil.setAttribute('aria-hidden', String(!aberto));
-          setarSinalAberto(aberto);
-        });
-      }
-
-      const btnPerfilDados     = document.getElementById("perfil-dados");
-      const btnPerfilMetricas  = document.getElementById("perfil-metricas");
-      const btnPerfilSair      = document.getElementById("perfil-sair");
-
-      btnPerfilDados?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        alert("Em breve: Dados da Conta");
-        dropdownPerfil.classList.remove("show");
-        dropdownPerfil.classList.add("hidden");
-        setarSinalAberto(false);
-      });
-
-      btnPerfilMetricas?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const r = getRestauranteId();
-        const qs = r ? `?r=${encodeURIComponent(r)}` : '';
-        window.location.href = `metricas.html${qs}`;
-        dropdownPerfil.classList.remove("show");
-        dropdownPerfil.classList.add("hidden");
-        setarSinalAberto(false);
-      });
-
-      btnPerfilSair?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        localStorage.removeItem('ar.token');
-        localStorage.removeItem('ar.email');
-        localStorage.removeItem('ar.exp');
-        localStorage.removeItem('ar.statusPlano');
-        window.location.href = "../html/login.html";
-      });
-
-      document.addEventListener("click", (e) => {
-        if (!dropdownPerfil) return;
-        if (!dropdownPerfil.contains(e.target) && e.target !== profileButton) {
-          dropdownPerfil.classList.remove("show");
-          dropdownPerfil.classList.add("hidden");
-          setarSinalAberto(false);
-        }
-      });
-    });
-  </script>
+  <!-- SCRIPTS DO PROJETO (ordem importa) -->
+  <script src="../java/cardapio.js?v=2"></script>
+  <script src="../java/home1.js?v=2"></script>
+  <script src="../java/home2.js?v=2"></script>
+  <script src="../java/home3.js?v=2"></script>
+  <script src="../java/home4.js?v=2"></script>
 </body>
 </html>

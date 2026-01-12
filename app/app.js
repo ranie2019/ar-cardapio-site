@@ -576,10 +576,54 @@ function __isAutoRotateBlockedNow() {
   return false;
 }
 
+// ==================== LOCK DE NAVEGAÇÃO + CONCORRÊNCIA (ANTI CLIQUE DUPLO) ====================
+let __isLoadingModel = false;
+let __loadToken = 0;
+let __activeXhr = null;
+
+function __getNavButtons() {
+  // tenta pegar por ids comuns (se existirem)
+  const a = document.getElementById("prevBtn");
+  const b = document.getElementById("nextBtn");
+
+  // fallback: botões com onclick="changeModel(...)" (se for seu caso)
+  const byOnclick = Array.from(document.querySelectorAll('[onclick*="changeModel("]'));
+
+  // fallback: qualquer coisa que você use como seta (ajuste se tiver classes específicas)
+  const arr = [];
+  if (a) arr.push(a);
+  if (b) arr.push(b);
+  arr.push(...byOnclick);
+
+  // remove duplicados
+  return Array.from(new Set(arr)).filter(Boolean);
+}
+
+function __setNavLocked(locked) {
+  __isLoadingModel = !!locked;
+
+  const btns = __getNavButtons();
+  btns.forEach((el) => {
+    try { el.disabled = !!locked; } catch (_) {}
+    try { el.style.pointerEvents = locked ? "none" : "auto"; } catch (_) {}
+    try { el.style.opacity = locked ? "0.65" : ""; } catch (_) {}
+  });
+}
+
 async function loadModel(path) {
   const container = document.querySelector("#modelContainer");
   const loadingIndicator = document.getElementById("loadingIndicator");
   if (!container || !loadingIndicator) return;
+
+  // ✅ token novo (ignora eventos atrasados)
+  const myToken = ++__loadToken;
+
+  // ✅ cancela XHR anterior (se existir)
+  try { if (__activeXhr) __activeXhr.abort(); } catch (_) {}
+  __activeXhr = null;
+
+  // ✅ trava navegação
+  __setNavLocked(true);
 
   // Se o modelo indicado está invisível, pula para o próximo visível
   const targetModel = getModelDataByPath(path);
@@ -631,6 +675,10 @@ async function loadModel(path) {
   const onModelLoaded = (ev) => {
     container.removeEventListener("model-loaded", onModelLoaded);
 
+    // ✅ se não é o load atual, ignora
+    if (myToken !== __loadToken) return;
+
+
     // ✅ reforça regra global após carregar (evita reset)
     __applyFrontRules(container, path);
 
@@ -646,7 +694,7 @@ async function loadModel(path) {
 
   container.addEventListener("model-loaded", onModelLoaded);
 
-  if (modelCache[modelUrl]) {
+    if (modelCache[modelUrl]) {
     container.setAttribute("gltf-model", modelCache[modelUrl]);
 
     await atualizarPrecoDoModelo(path);
@@ -655,36 +703,67 @@ async function loadModel(path) {
     updateUI({ path, price: getModelPrice(path) });
 
     syncLikeWithCurrentItem();
+
+    // ✅ destrava (cache carregou instantâneo)
+    if (myToken === __loadToken) __setNavLocked(false);
     return;
   }
 
-  const xhr = new XMLHttpRequest();
+
+    const xhr = new XMLHttpRequest();
+  __activeXhr = xhr;
+
   xhr.open("GET", modelUrl, true);
   xhr.responseType = "blob";
 
   xhr.onprogress = (e) => {
+    // ✅ ignora progresso atrasado
+    if (myToken !== __loadToken) return;
+
     if (e.lengthComputable) {
-      loadingIndicator.innerText = `${Math.round((e.loaded / e.total) * 100)}%`;
+      const pct = Math.max(0, Math.min(100, Math.round((e.loaded / e.total) * 100)));
+      loadingIndicator.innerText = `${pct}%`;
+    } else {
+      loadingIndicator.innerText = "Carregando...";
     }
   };
 
   xhr.onload = async () => {
-    const blobURL = URL.createObjectURL(xhr.response);
-    modelCache[modelUrl] = blobURL;
+    // ✅ se chegou atrasado, ignora
+    if (myToken !== __loadToken) return;
 
-    container.setAttribute("gltf-model", blobURL);
+    try {
+      const blobURL = URL.createObjectURL(xhr.response);
+      modelCache[modelUrl] = blobURL;
 
-    await atualizarPrecoDoModelo(path);
+      container.setAttribute("gltf-model", blobURL);
 
-    loadingIndicator.style.display = "none";
-    updateUI({ path, price: getModelPrice(path) });
+      await atualizarPrecoDoModelo(path);
 
-    syncLikeWithCurrentItem();
+      loadingIndicator.style.display = "none";
+      updateUI({ path, price: getModelPrice(path) });
+
+      syncLikeWithCurrentItem();
+    } finally {
+      // ✅ só destrava se esse load ainda é o atual
+      if (myToken === __loadToken) __setNavLocked(false);
+      if (__activeXhr === xhr) __activeXhr = null;
+    }
   };
 
   xhr.onerror = () => {
+    if (myToken !== __loadToken) return;
+
     console.error("Erro ao carregar o modelo:", modelUrl);
     loadingIndicator.innerText = "Erro ao carregar o modelo";
+
+    if (myToken === __loadToken) __setNavLocked(false);
+    if (__activeXhr === xhr) __activeXhr = null;
+  };
+
+  xhr.onabort = () => {
+    // abort é normal quando troca rápido
+    if (__activeXhr === xhr) __activeXhr = null;
   };
 
   xhr.send();
@@ -710,6 +789,9 @@ async function atualizarPrecoDoModelo(path) {
 
 // ==================== CONTROLE DE MODELOS ====================
 function changeModel(dir) {
+  // ✅ trava clique durante carregamento
+  if (__isLoadingModel) return;
+
   const total = models[currentCategory]?.length || 0;
   if (!total) return;
 
