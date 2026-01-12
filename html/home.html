@@ -1,4 +1,4 @@
-<!-- HOME.HTML (LIMPO - SEM JS INLINE) -->
+<!-- HOME.HTML (LIMPO - SEM JS INLINE “solto”) -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -145,6 +145,7 @@
       </div>
 
       <div class="modal-footer">
+        <!-- O botão "Trocar plano" é criado via JS e inserido antes do OK -->
         <button id="modalPlanoOk" class="modal-ok" type="button">OK</button>
       </div>
     </div>
@@ -153,11 +154,135 @@
   <!-- BIBLIOTECA QR -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
+  <!-- MODAL PLANO — JS -->
+  <script>
+  (function PlanoModal() {
+    const overlay   = document.getElementById("modalPlanoOverlay");
+    const btnClose  = document.getElementById("modalPlanoClose");
+    const btnOk     = document.getElementById("modalPlanoOk");
+
+    const elNome     = document.getElementById("planoNome");
+    const elStatus   = document.getElementById("planoStatus");
+    const elValidade = document.getElementById("planoValidade");
+
+    if (!overlay || !btnClose || !btnOk || !elNome || !elStatus || !elValidade) {
+      console.warn("[PlanoModal] IDs do modal não encontrados. Verifique o HTML.");
+      return;
+    }
+
+    // cria o botão "Trocar plano" no footer (sem mexer no HTML)
+    let btnTrocar = document.getElementById("btnTrocarPlano");
+    if (!btnTrocar) {
+      btnTrocar = document.createElement("button");
+      btnTrocar.id = "btnTrocarPlano";
+      btnTrocar.type = "button";
+      btnTrocar.className = "modal-upgrade"; // estilize no CSS
+      btnTrocar.textContent = "Trocar plano";
+      btnOk.parentNode.insertBefore(btnTrocar, btnOk);
+    }
+
+    function qs(name, def = "") {
+      const v = new URL(location.href).searchParams.get(name);
+      return v == null ? def : v;
+    }
+
+    function setOverlayOpen(isOpen) {
+      overlay.classList.toggle("hidden", !isOpen);
+      overlay.setAttribute("aria-hidden", isOpen ? "false" : "true");
+    }
+
+    function closeModal() { setOverlayOpen(false); }
+    function openModal() { setOverlayOpen(true); }
+
+    function normalizeStatus(status) {
+      const s = String(status || "").toLowerCase();
+      if (s === "active" || s === "ativo") return "Ativo";
+      if (s === "inactive" || s === "inativo") return "Inativo";
+      if (s === "expired" || s === "expirado") return "Expirado";
+      return status ? String(status) : "—";
+    }
+
+    function buildValidade(data) {
+      if (!data) return "—";
+      if (data.remainingText) return String(data.remainingText);
+
+      if (typeof data.expiraEmMs === "number" && isFinite(data.expiraEmMs)) {
+        const ms = Math.max(0, data.expiraEmMs);
+        const totalMin = Math.floor(ms / 60000);
+        const dias = Math.floor(totalMin / (60 * 24));
+        const horas = Math.floor((totalMin - dias * 60 * 24) / 60);
+        const mins = totalMin - (dias * 60 * 24) - (horas * 60);
+        return `Expira em ${dias} dias ${horas}h ${mins}m`;
+      }
+
+      if (data.expiresAt) {
+        const d = new Date(data.expiresAt);
+        if (!isNaN(d.getTime())) {
+          return `Até ${d.toLocaleDateString("pt-BR")} ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+        }
+      }
+
+      if (data.validade) return String(data.validade);
+      return "—";
+    }
+
+    function updateTrocarVisibility(plano) {
+      const p = String(plano || "").toLowerCase();
+      const podeTrocar = (p === "teste" || p === "plus" || p === "pro");
+      btnTrocar.style.display = podeTrocar ? "inline-flex" : "none";
+    }
+
+    // ✅ LINK CERTO (ABSOLUTO) + mantém ?u e ?restaurante
+    btnTrocar.addEventListener("click", () => {
+    // usa o mesmo domínio que está aberto agora (S3 ou arcardapio.com.br)
+    const url = new URL("/html/plano.html", window.location.origin);
+
+    const u = qs("u", "");
+    const restaurante = qs("restaurante", "");
+
+    if (u) url.searchParams.set("u", u);
+    if (restaurante) url.searchParams.set("restaurante", restaurante);
+
+    // cache-buster (só pra garantir quando o cache respeita query)
+    url.searchParams.set("v", Date.now().toString());
+
+    window.location.href = url.toString();
+  });
+
+    btnClose.addEventListener("click", closeModal);
+    btnOk.addEventListener("click", closeModal);
+
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) closeModal();
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !overlay.classList.contains("hidden")) closeModal();
+    });
+
+    // API pública
+    window.openPlanoModal = function openPlanoModal(data) {
+      const plano = (data && (data.plano || data.plan)) ? (data.plano || data.plan) : "—";
+      const status = normalizeStatus(data && (data.status || data.state));
+      const validade = buildValidade(data);
+
+      elNome.textContent = String(plano);
+      elStatus.textContent = String(status);
+      elValidade.textContent = String(validade);
+
+      updateTrocarVisibility(plano);
+      openModal();
+    };
+
+    window.closePlanoModal = closeModal;
+  })();
+  </script>
+
   <!-- SCRIPTS DO PROJETO (ordem importa) -->
-  <script src="../java/cardapio.js?v=2"></script>
-  <script src="../java/home1.js?v=2"></script>
-  <script src="../java/home2.js?v=2"></script>
-  <script src="../java/home3.js?v=2"></script>
-  <script src="../java/home4.js?v=2"></script>
+  <script src="../java/cardapio.js?v=3"></script>
+  <script src="../java/home1.js?v=3"></script>
+  <script src="../java/home2.js?v=3"></script>
+  <script src="../java/home3.js?v=3"></script>
+  <script src="../java/home4.js?v=3"></script>
 </body>
 </html>
